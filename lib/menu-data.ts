@@ -153,7 +153,7 @@ export const getMenuItems = unstable_cache(
       return [];
     }
   },
-  ["menu-items"],
+  ["menu-items-v2"],
   { tags: ["menu"], revalidate: 3600 }
 );
 
@@ -185,7 +185,7 @@ export const getMenuCategories = unstable_cache(
       return [];
     }
   },
-  ["menu-categories"],
+  ["menu-categories-v2"],
   { tags: ["menu"], revalidate: 3600 }
 );
 
