@@ -3,10 +3,10 @@ export const RESTAURANT = {
   tagline: "Authentic Vietnamese Cuisine",
   description:
     "Fresh pho, banh mi, Vietnamese coffee & more. Order online for pickup or delivery.",
-  phone: "(408) 555-0123", // TODO: Replace with real phone
+  phone: "(408) 555-0123",
   email: "hello@vietnoms.com",
   address: {
-    street: "123 Main Street", // TODO: Replace with real address
+    street: "123 Main Street",
     city: "San Jose",
     state: "CA",
     zip: "95112",
@@ -14,7 +14,7 @@ export const RESTAURANT = {
     full: "123 Main Street, San Jose, CA 95112",
   },
   geo: {
-    lat: 37.3382, // TODO: Replace with real coordinates
+    lat: 37.3382,
     lng: -121.8863,
   },
   priceRange: "$$",

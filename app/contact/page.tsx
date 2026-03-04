@@ -42,7 +42,7 @@ export default function ContactPage() {
             {/* Map */}
             <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-200">
               <iframe
-                src={`https://www.google.com/maps/embed/v1/place?key=YOUR_MAPS_API_KEY&q=${encodeURIComponent(RESTAURANT.address.full)}`}
+                src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3172!2d${RESTAURANT.geo.lng}!3d${RESTAURANT.geo.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s${encodeURIComponent(RESTAURANT.address.full)}!5e0!3m2!1sen!2sus`}
                 width="100%"
                 height="100%"
                 style={{ border: 0 }}

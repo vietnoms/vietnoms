@@ -4,7 +4,7 @@ import crypto from "crypto";
 
 const WEBHOOK_SIGNATURE_KEY = process.env.SQUARE_WEBHOOK_SIGNATURE_KEY || "";
 const WEBHOOK_URL =
-  process.env.NEXT_PUBLIC_SITE_URL + "/api/webhooks/square" || "";
+  (process.env.NEXT_PUBLIC_SITE_URL || "") + "/api/webhooks/square";
 
 function isValidSignature(
   body: string,

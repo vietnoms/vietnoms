@@ -119,11 +119,13 @@ export async function calculateOrder(
     });
 
     const order = response?.order;
+    const total = order?.totalMoney ? Number(order.totalMoney.amount) : 0;
+    const tax = order?.totalTaxMoney ? Number(order.totalTaxMoney.amount) : 0;
     return {
       success: true,
-      subtotal: order?.totalMoney ? Number(order.totalMoney.amount) : 0,
-      tax: order?.totalTaxMoney ? Number(order.totalTaxMoney.amount) : 0,
-      total: order?.totalMoney ? Number(order.totalMoney.amount) : 0,
+      subtotal: total - tax,
+      tax,
+      total,
     };
   } catch (error) {
     console.error("Failed to calculate order:", error);

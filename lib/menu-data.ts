@@ -52,7 +52,7 @@ export async function getMenuItems(): Promise<MenuItem[]> {
         variations,
         modifierLists: [], // TODO: fetch modifier lists if needed
         dietaryLabels: parseDietaryLabels(itemData.description || ""),
-        available: !itemData.isTaxable, // Square doesn't have "available" — use item visibility
+        available: !(itemData.isArchived || itemData.isDeleted),
       });
     }
 
