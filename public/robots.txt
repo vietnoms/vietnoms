@@ -1,0 +1,11 @@
+# *
+User-agent: *
+Allow: /
+Disallow: /order/confirmation
+Disallow: /order/checkout
+
+# Host
+Host: https://vietnoms.com
+
+# Sitemaps
+Sitemap: https://vietnoms.com/sitemap.xml
