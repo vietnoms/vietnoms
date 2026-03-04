@@ -147,13 +147,14 @@ export const getMenuItems = unstable_cache(
         };
       });
 
+      console.log(`[menu-data] Fetched ${items.length} items, categories used: ${[...new Set(items.map(i => i.categoryId))].join(', ')}`);
       return items;
     } catch (error) {
       console.error("Failed to fetch menu items from Square:", error);
       return [];
     }
   },
-  ["menu-items-v2"],
+  ["menu-items-v3"],
   { tags: ["menu"], revalidate: 3600 }
 );
 
@@ -168,7 +169,7 @@ export const getMenuCategories = unstable_cache(
 
       const allObjects = page?.data || [];
 
-      return allObjects
+      const categories = allObjects
         .filter((obj: any) => obj.type === "CATEGORY")
         .map((obj: any, index: number) => {
           const catData = obj.categoryData;
@@ -180,12 +181,14 @@ export const getMenuCategories = unstable_cache(
             items: [],
           };
         });
+      console.log(`[menu-data] Fetched ${allObjects.length} raw objects, ${categories.length} categories: ${categories.map(c => `${c.name}(${c.id})`).join(', ')}`);
+      return categories;
     } catch (error) {
       console.error("Failed to fetch categories from Square:", error);
       return [];
     }
   },
-  ["menu-categories-v2"],
+  ["menu-categories-v3"],
   { tags: ["menu"], revalidate: 3600 }
 );
 
