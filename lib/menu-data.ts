@@ -166,10 +166,10 @@ export const getMenuCategories = unstable_cache(
       const square = getSquare();
       const page = await square.catalog.list({ types: "CATEGORY" });
 
-      if (!page?.data) return [];
+      const allObjects = page?.data || [];
 
-      return page.data
-        .filter((obj) => obj.type === "CATEGORY")
+      return allObjects
+        .filter((obj: any) => obj.type === "CATEGORY")
         .map((obj: any, index: number) => {
           const catData = obj.categoryData;
           return {

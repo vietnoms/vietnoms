@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { getFullMenu } from "@/lib/menu-data";
+
+export const revalidate = 3600;
 import { OrderMenu } from "@/components/order/order-menu";
 import { CartSidebar } from "@/components/order/cart-sidebar";
 import { RESTAURANT } from "@/lib/constants";

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getFullMenu } from "@/lib/menu-data";
+
+export const revalidate = 3600;
 import { MenuItemCard } from "@/components/menu-item-card";
 import { MenuPageSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
