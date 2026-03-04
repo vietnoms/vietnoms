@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getMenuItems, getMenuItemBySlug } from "@/lib/menu-data";
 import { MenuItemSchema, BreadcrumbSchema } from "@/components/schema-markup";
@@ -7,7 +8,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RESTAURANT } from "@/lib/constants";
 
-export const revalidate = 3600;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
@@ -78,17 +78,26 @@ export default async function MenuItemPage({
 
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             {/* Image */}
-            <div className="aspect-square rounded-lg overflow-hidden bg-gray-200">
+            <div className="aspect-square rounded-lg overflow-hidden bg-gray-200 relative">
               {item.imageUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={item.imageUrl}
                   alt={item.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 50vw"
+                  className="object-cover"
+                  priority
                 />
               ) : (
                 <div className="h-full flex items-center justify-center text-gray-400">
                   {item.name}
+                </div>
+              )}
+              {item.soldOut && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <span className="bg-white text-brand-black font-semibold px-4 py-2 rounded-full">
+                    Sold Out
+                  </span>
                 </div>
               )}
             </div>
@@ -120,8 +129,8 @@ export default async function MenuItemPage({
                 </div>
               )}
 
-              <p className="mt-4 text-2xl font-bold text-brand-red">
-                {item.formattedPrice}
+              <p className={`mt-4 text-2xl font-bold ${item.soldOut ? "text-gray-400" : "text-brand-red"}`}>
+                {item.soldOut ? "Sold Out" : item.formattedPrice}
               </p>
 
               {item.description && (
@@ -150,9 +159,15 @@ export default async function MenuItemPage({
               )}
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                <Button asChild size="xl">
-                  <Link href="/order">Order This Item</Link>
-                </Button>
+                {item.soldOut ? (
+                  <Button size="xl" disabled className="opacity-50 cursor-not-allowed">
+                    Sold Out
+                  </Button>
+                ) : (
+                  <Button asChild size="xl">
+                    <Link href="/order">Order This Item</Link>
+                  </Button>
+                )}
                 <Button asChild size="lg" variant="outline">
                   <Link href="/menu">Back to Menu</Link>
                 </Button>

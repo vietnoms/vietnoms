@@ -5,12 +5,21 @@ import { OrderingCallout } from "@/components/home/ordering-callout";
 import { CateringBanner } from "@/components/home/catering-banner";
 import { ReviewsSection } from "@/components/home/reviews-section";
 import { LocationSection } from "@/components/home/location-section";
+import { reader } from "@/lib/keystatic";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const homePage = await reader.singletons.homePage.read().catch(() => null);
+
   return (
     <>
-      <HeroSection />
-      <AboutSnippet />
+      <HeroSection
+        subtitle={homePage?.heroSubtitle}
+      />
+      <AboutSnippet
+        heading={homePage?.aboutHeading}
+        text1={homePage?.aboutText1}
+        text2={homePage?.aboutText2}
+      />
       <FeaturedDishes />
       <OrderingCallout />
       <CateringBanner />

@@ -5,8 +5,6 @@ import { MenuItemCard } from "@/components/menu-item-card";
 import { MenuPageSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 
-export const revalidate = 3600; // ISR: revalidate every hour
-
 export const metadata: Metadata = {
   title: "Menu | Pho, Banh Mi, Vietnamese Coffee",
   description:

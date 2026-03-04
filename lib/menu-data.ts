@@ -1,96 +1,193 @@
-import { getSquare, toNumber, toDollars } from "./square";
+import { unstable_cache } from "next/cache";
+import { getSquare, toNumber, toDollars, LOCATION_ID } from "./square";
 import { slugify } from "./utils";
-import type { MenuItem, MenuCategory, MenuVariation, ModifierList } from "./types";
+import type { MenuItem, MenuCategory, MenuVariation } from "./types";
 
 /**
  * Fetches all menu items from Square Catalog API.
- * Converts BigInt values to numbers before returning.
+ * Uses catalog.search with includeRelatedObjects to batch-fetch images.
+ * Checks inventory counts and sold-out overrides for availability.
+ * Wrapped in unstable_cache with "menu" tag for on-demand revalidation via webhooks.
  */
-export async function getMenuItems(): Promise<MenuItem[]> {
-  try {
-    const square = getSquare();
-    const page = await square.catalog.list({ types: "ITEM" });
+export const getMenuItems = unstable_cache(
+  async (): Promise<MenuItem[]> => {
+    try {
+      const square = getSquare();
 
-    if (!page?.data) return [];
-
-    const items: MenuItem[] = [];
-
-    for (const obj of page.data) {
-      if (obj.type !== "ITEM") continue;
-
-      const itemData = (obj as any).itemData;
-      if (!itemData) continue;
-      // Square SDK v44 types: variations are CatalogObject[] union — cast to access ITEM_VARIATION data
-      const variations: MenuVariation[] = ((itemData.variations || []) as any[])
-        .filter((v: any) => v.type === "ITEM_VARIATION")
-        .map((v: any) => {
-
-          const varData = v.itemVariationData;
-          const price = varData?.priceMoney?.amount;
-          return {
-            id: v.id || "",
-            name: varData?.name || "Regular",
-            price: toNumber(price),
-            formattedPrice: toDollars(price),
-          };
-        });
-
-      const basePrice = variations[0]?.price || 0;
-
-      items.push({
-        id: obj.id || "",
-        name: itemData.name || "",
-        slug: slugify(itemData.name || ""),
-        description: itemData.description || "",
-        price: basePrice,
-        formattedPrice: variations[0]?.formattedPrice || "$0.00",
-        categoryId: itemData.categoryId || "",
-        categoryName: "", // resolved below
-        imageUrl: itemData.imageIds?.[0]
-          ? await getImageUrl(itemData.imageIds[0])
-          : null,
-        variations,
-        modifierLists: [], // TODO: fetch modifier lists if needed
-        dietaryLabels: parseDietaryLabels(itemData.description || ""),
-        available: !(itemData.isArchived || itemData.isDeleted),
+      // Fetch items with related objects (images, categories) in a single call
+      const response = await square.catalog.search({
+        objectTypes: ["ITEM"],
+        includeRelatedObjects: true,
       });
-    }
 
-    return items;
-  } catch (error) {
-    console.error("Failed to fetch menu items from Square:", error);
-    return [];
-  }
-}
+      const objects = response?.objects || [];
+      const relatedObjects = response?.relatedObjects || [];
+
+      // Build image map: imageId -> URL
+      const imageMap = new Map<string, string>();
+      for (const obj of relatedObjects) {
+        if (obj.type === "IMAGE") {
+          const url = (obj as any).imageData?.url;
+          if (url) imageMap.set(obj.id!, url);
+        }
+      }
+
+      // Collect all variation IDs for inventory check
+      const allVariationIds: string[] = [];
+      const variationToItemId = new Map<string, string>();
+
+      const rawItems: {
+        item: any;
+        obj: any;
+        variations: MenuVariation[];
+      }[] = [];
+
+      for (const obj of objects) {
+        if (obj.type !== "ITEM") continue;
+        const itemData = (obj as any).itemData;
+        if (!itemData) continue;
+
+        const variations: MenuVariation[] = ((itemData.variations || []) as any[])
+          .filter((v: any) => v.type === "ITEM_VARIATION")
+          .map((v: any) => {
+            const varData = v.itemVariationData;
+            const price = varData?.priceMoney?.amount;
+
+            // Track variation for inventory lookup
+            if (v.id) {
+              allVariationIds.push(v.id);
+              variationToItemId.set(v.id, obj.id!);
+            }
+
+            // Check sold_out in location overrides
+            const overrides: any[] = varData?.locationOverrides || [];
+            const locationOverride = overrides.find(
+              (o: any) => o.locationId === LOCATION_ID
+            );
+            const soldOutOverride = locationOverride?.soldOut === true;
+            // Check if soldOutValidUntil has passed
+            const validUntil = locationOverride?.soldOutValidUntil;
+            const overrideExpired = validUntil && new Date(validUntil) < new Date();
+
+            return {
+              id: v.id || "",
+              name: varData?.name || "Regular",
+              price: toNumber(price),
+              formattedPrice: toDollars(price),
+              _soldOutOverride: soldOutOverride && !overrideExpired,
+            } as MenuVariation & { _soldOutOverride: boolean };
+          });
+
+        rawItems.push({ item: itemData, obj, variations });
+      }
+
+      // Batch fetch inventory counts for all variations
+      const soldOutItemIds = new Set<string>();
+
+      if (allVariationIds.length > 0 && LOCATION_ID) {
+        try {
+          const countsPage = await square.inventory.batchGetCounts({
+            catalogObjectIds: allVariationIds,
+            locationIds: [LOCATION_ID],
+            states: ["IN_STOCK"],
+          });
+
+          // Build a set of variation IDs that have inventory tracked and are at 0
+          const trackedVariations = new Set<string>();
+          for await (const count of countsPage) {
+            if (count.catalogObjectId) {
+              trackedVariations.add(count.catalogObjectId);
+              const qty = parseFloat(count.quantity || "0");
+              if (qty <= 0) {
+                const itemId = variationToItemId.get(count.catalogObjectId);
+                if (itemId) soldOutItemIds.add(itemId);
+              }
+            }
+          }
+        } catch (invError) {
+          // Inventory API may fail if not enabled — continue without it
+          console.warn("Inventory check failed (may not be enabled):", invError);
+        }
+      }
+
+      // Also check sold_out overrides from variations
+      for (const { obj, variations } of rawItems) {
+        const hasOverride = (variations as any[]).some(
+          (v: any) => v._soldOutOverride
+        );
+        if (hasOverride) {
+          soldOutItemIds.add(obj.id!);
+        }
+      }
+
+      // Build final items
+      const items: MenuItem[] = rawItems.map(({ item, obj, variations }) => {
+        const cleanVariations = variations.map(
+          ({ _soldOutOverride, ...v }: any) => v as MenuVariation
+        );
+        const basePrice = cleanVariations[0]?.price || 0;
+        const imageId = item.imageIds?.[0];
+        const soldOut = soldOutItemIds.has(obj.id!);
+
+        return {
+          id: obj.id || "",
+          name: item.name || "",
+          slug: slugify(item.name || ""),
+          description: item.description || "",
+          price: basePrice,
+          formattedPrice: cleanVariations[0]?.formattedPrice || "$0.00",
+          categoryId: item.categoryId || "",
+          categoryName: "",
+          imageUrl: imageId ? (imageMap.get(imageId) || null) : null,
+          variations: cleanVariations,
+          modifierLists: [],
+          dietaryLabels: parseDietaryLabels(item.description || ""),
+          available: !soldOut && !(item.isArchived || item.isDeleted),
+          soldOut,
+        };
+      });
+
+      return items;
+    } catch (error) {
+      console.error("Failed to fetch menu items from Square:", error);
+      return [];
+    }
+  },
+  ["menu-items"],
+  { tags: ["menu"], revalidate: 3600 }
+);
 
 /**
  * Fetches menu categories from Square Catalog API.
  */
-export async function getMenuCategories(): Promise<MenuCategory[]> {
-  try {
-    const square = getSquare();
-    const page = await square.catalog.list({ types: "CATEGORY" });
+export const getMenuCategories = unstable_cache(
+  async (): Promise<MenuCategory[]> => {
+    try {
+      const square = getSquare();
+      const page = await square.catalog.list({ types: "CATEGORY" });
 
-    if (!page?.data) return [];
+      if (!page?.data) return [];
 
-    return page.data
-      .filter((obj) => obj.type === "CATEGORY")
-      .map((obj: any, index: number) => {
-
-        const catData = obj.categoryData;
-        return {
-          id: obj.id || "",
-          name: catData?.name || "",
-          slug: slugify(catData?.name || ""),
-          ordinal: index,
-          items: [],
-        };
-      });
-  } catch (error) {
-    console.error("Failed to fetch categories from Square:", error);
-    return [];
-  }
-}
+      return page.data
+        .filter((obj) => obj.type === "CATEGORY")
+        .map((obj: any, index: number) => {
+          const catData = obj.categoryData;
+          return {
+            id: obj.id || "",
+            name: catData?.name || "",
+            slug: slugify(catData?.name || ""),
+            ordinal: index,
+            items: [],
+          };
+        });
+    } catch (error) {
+      console.error("Failed to fetch categories from Square:", error);
+      return [];
+    }
+  },
+  ["menu-categories"],
+  { tags: ["menu"], revalidate: 3600 }
+);
 
 /**
  * Gets a single menu item by its slug.
@@ -113,7 +210,6 @@ export async function getFullMenu(): Promise<MenuCategory[]> {
 
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
-  // Assign items to categories
   for (const item of items) {
     const category = categoryMap.get(item.categoryId);
     if (category) {
@@ -122,22 +218,9 @@ export async function getFullMenu(): Promise<MenuCategory[]> {
     }
   }
 
-  // Return only categories with items, sorted by ordinal
   return categories
     .filter((c) => c.items.length > 0)
     .sort((a, b) => a.ordinal - b.ordinal);
-}
-
-/** Fetches the image URL for a Square catalog image object */
-async function getImageUrl(imageId: string): Promise<string | null> {
-  try {
-    const square = getSquare();
-    const response = await square.catalog.batchGet({ objectIds: [imageId] });
-    const imageObj = response?.objects?.[0] as any;
-    return imageObj?.imageData?.url || null;
-  } catch {
-    return null;
-  }
 }
 
 /** Parses dietary labels from item description text */

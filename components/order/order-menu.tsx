@@ -63,10 +63,14 @@ export function OrderMenu({ categories }: OrderMenuProps) {
               {category.items.map((item) => (
                 <Card
                   key={item.id}
-                  className="flex overflow-hidden hover:shadow-sm transition-shadow"
+                  className={`flex overflow-hidden transition-shadow ${
+                    item.soldOut
+                      ? "opacity-60"
+                      : "hover:shadow-sm"
+                  }`}
                 >
                   {/* Image */}
-                  <div className="w-24 h-24 flex-shrink-0 bg-gray-200">
+                  <div className="w-24 h-24 flex-shrink-0 bg-gray-200 relative">
                     {item.imageUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -85,8 +89,10 @@ export function OrderMenu({ categories }: OrderMenuProps) {
                     <div>
                       <div className="flex items-start justify-between gap-2">
                         <h3 className="font-semibold text-sm">{item.name}</h3>
-                        <span className="text-brand-red text-sm font-semibold whitespace-nowrap">
-                          {item.formattedPrice}
+                        <span className={`text-sm font-semibold whitespace-nowrap ${
+                          item.soldOut ? "text-gray-400" : "text-brand-red"
+                        }`}>
+                          {item.soldOut ? "Sold Out" : item.formattedPrice}
                         </span>
                       </div>
                       {item.description && (
@@ -108,22 +114,28 @@ export function OrderMenu({ categories }: OrderMenuProps) {
                         </div>
                       )}
                     </div>
-                    <Button
-                      size="sm"
-                      className="mt-2 self-end h-7 text-xs"
-                      onClick={() =>
-                        addItem({
-                          menuItem: item,
-                          variationId: item.variations[0]?.id || item.id,
-                          variationName:
-                            item.variations[0]?.name || "Regular",
-                          modifiers: [],
-                        })
-                      }
-                    >
-                      <Plus className="h-3 w-3 mr-1" />
-                      Add
-                    </Button>
+                    {item.soldOut ? (
+                      <span className="mt-2 self-end text-xs text-gray-400 font-medium">
+                        Unavailable
+                      </span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="mt-2 self-end h-7 text-xs"
+                        onClick={() =>
+                          addItem({
+                            menuItem: item,
+                            variationId: item.variations[0]?.id || item.id,
+                            variationName:
+                              item.variations[0]?.name || "Regular",
+                            modifiers: [],
+                          })
+                        }
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}

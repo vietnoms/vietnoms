@@ -12,6 +12,7 @@ export interface MenuItem {
   modifierLists: ModifierList[];
   dietaryLabels: string[];
   available: boolean;
+  soldOut: boolean;
 }
 
 export interface MenuVariation {

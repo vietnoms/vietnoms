@@ -3,6 +3,7 @@ import { ServiceSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 import { CateringForm } from "@/components/catering-form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { reader } from "@/lib/keystatic";
 
 export const metadata: Metadata = {
   title: "Vietnamese Catering San Jose | Pho Bar, Banh Mi & More",
@@ -60,7 +61,17 @@ const PACKAGES = [
   },
 ];
 
-export default function CateringPage() {
+export default async function CateringPage() {
+  const catering = await reader.singletons.cateringPage.read().catch(() => null);
+  const packages = catering?.packages && catering.packages.length > 0
+    ? catering.packages.map((p) => ({
+        name: p.name,
+        price: p.price,
+        minGuests: p.minGuests ?? 20,
+        description: p.description,
+        includes: p.includes,
+      }))
+    : PACKAGES;
   return (
     <>
       <ServiceSchema />
@@ -78,8 +89,7 @@ export default function CateringPage() {
             Catering
           </h1>
           <p className="mt-4 text-lg text-gray-300 max-w-2xl">
-            Bring the bold flavors of Vietnam to your next event. From corporate
-            lunches to weddings, we&apos;ve got you covered.
+            {catering?.heroSubtitle || "Bring the bold flavors of Vietnam to your next event. From corporate lunches to weddings, we've got you covered."}
           </p>
         </div>
       </section>
@@ -93,7 +103,7 @@ export default function CateringPage() {
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
 
           <div className="mt-12 grid md:grid-cols-3 gap-6">
-            {PACKAGES.map((pkg) => (
+            {packages.map((pkg) => (
               <Card
                 key={pkg.name}
                 className="flex flex-col hover:shadow-md transition-shadow"

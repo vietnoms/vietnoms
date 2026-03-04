@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { MenuItem } from "@/lib/types";
@@ -10,19 +11,31 @@ interface MenuItemCardProps {
 
 export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
   const content = (
-    <Card className="group overflow-hidden hover:shadow-md transition-shadow h-full">
+    <Card
+      className={`group overflow-hidden hover:shadow-md transition-shadow h-full ${
+        item.soldOut ? "opacity-60" : ""
+      }`}
+    >
       {/* Image */}
       <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
         {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
+          <Image
             src={item.imageUrl}
             alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
             {item.name}
+          </div>
+        )}
+        {item.soldOut && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="bg-white text-brand-black font-semibold text-sm px-3 py-1 rounded-full">
+              Sold Out
+            </span>
           </div>
         )}
       </div>
@@ -33,7 +46,7 @@ export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
             {item.name}
           </h3>
           <span className="text-brand-red font-semibold whitespace-nowrap">
-            {item.formattedPrice}
+            {item.soldOut ? "Sold Out" : item.formattedPrice}
           </span>
         </div>
 

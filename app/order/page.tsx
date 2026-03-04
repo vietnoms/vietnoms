@@ -4,8 +4,6 @@ import { OrderMenu } from "@/components/order/order-menu";
 import { CartSidebar } from "@/components/order/cart-sidebar";
 import { RESTAURANT } from "@/lib/constants";
 
-export const revalidate = 3600;
-
 export const metadata: Metadata = {
   title: "Order Online | Vietnamese Food Pickup",
   description: `Order Vietnamese food online from Vietnoms for pickup. Fresh pho, banh mi, and more in San Jose. Call ${RESTAURANT.phone}.`,

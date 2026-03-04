@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  subtitle?: string;
+}
+
+export function HeroSection({ subtitle }: HeroSectionProps) {
   return (
     <section className="relative bg-brand-black text-white overflow-hidden">
       {/* Background image placeholder - replace with actual hero photo */}
@@ -22,8 +26,7 @@ export function HeroSection() {
             Cuisine
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-gray-200 max-w-lg">
-            Fresh pho, crispy banh mi, rich Vietnamese coffee, and so much more.
-            Made with love in San Jose.
+            {subtitle || "Fresh pho, crispy banh mi, rich Vietnamese coffee, and so much more. Made with love in San Jose."}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Button asChild size="xl">

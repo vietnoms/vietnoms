@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
+import { reader } from "@/lib/keystatic";
 
 export const metadata: Metadata = {
   title: "About Vietnoms | Our Story | Vietnamese Restaurant San Jose",
@@ -13,7 +14,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const about = await reader.singletons.aboutPage.read().catch(() => null);
   return (
     <>
       <BreadcrumbSchema
@@ -30,8 +32,7 @@ export default function AboutPage() {
             Our Story
           </h1>
           <p className="mt-4 text-lg text-gray-300 max-w-2xl">
-            From humble beginnings to San Jose&apos;s favorite Vietnamese
-            restaurant.
+            {about?.heroSubtitle || "From humble beginnings to San Jose's favorite Vietnamese restaurant."}
           </p>
         </div>
       </section>
@@ -42,20 +43,14 @@ export default function AboutPage() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="font-display text-3xl font-bold text-brand-black">
-                How It Started
+                {about?.originTitle || "How It Started"}
               </h2>
               <div className="mt-2 h-1 w-16 bg-brand-red rounded-full" />
               <p className="mt-6 text-gray-600 leading-relaxed">
-                Vietnoms was born from a deep love for Vietnamese food and a
-                desire to share authentic flavors with the San Jose community.
-                Our recipes have been passed down through generations, perfected
-                over decades of family cooking.
+                {about?.originText1 || "Vietnoms was born from a deep love for Vietnamese food and a desire to share authentic flavors with the San Jose community. Our recipes have been passed down through generations, perfected over decades of family cooking."}
               </p>
               <p className="mt-4 text-gray-600 leading-relaxed">
-                What started as a dream became reality when we opened our doors,
-                serving the same dishes that brought our family together around
-                the dinner table — rich, slow-simmered pho, crispy banh mi,
-                and refreshing Vietnamese coffee.
+                {about?.originText2 || "What started as a dream became reality when we opened our doors, serving the same dishes that brought our family together around the dinner table — rich, slow-simmered pho, crispy banh mi, and refreshing Vietnamese coffee."}
               </p>
             </div>
             <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-200">
@@ -76,20 +71,14 @@ export default function AboutPage() {
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
 
           <div className="mt-12 grid sm:grid-cols-3 gap-8">
-            {[
-              {
-                title: "Authenticity",
-                desc: "Traditional recipes made the way they were meant to be. No shortcuts, no compromises.",
-              },
-              {
-                title: "Fresh Ingredients",
-                desc: "We source the freshest herbs, produce, and proteins daily to ensure quality in every dish.",
-              },
-              {
-                title: "Community",
-                desc: "We're proud to be part of the San Jose community, serving neighbors and friends alike.",
-              },
-            ].map((value) => (
+            {(about?.values && about.values.length > 0
+              ? about.values.map((v) => ({ title: v.title, desc: v.description }))
+              : [
+                  { title: "Authenticity", desc: "Traditional recipes made the way they were meant to be. No shortcuts, no compromises." },
+                  { title: "Fresh Ingredients", desc: "We source the freshest herbs, produce, and proteins daily to ensure quality in every dish." },
+                  { title: "Community", desc: "We're proud to be part of the San Jose community, serving neighbors and friends alike." },
+                ]
+            ).map((value) => (
               <div key={value.title} className="text-center">
                 <h3 className="font-display text-xl font-semibold text-brand-black">
                   {value.title}
@@ -109,8 +98,7 @@ export default function AboutPage() {
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-yellow rounded-full" />
           <p className="mt-6 text-gray-600 max-w-xl mx-auto">
-            We were featured on Diners, Drive-Ins and Dives! Guy Fieri loved
-            our classic pho and called our banh mi &ldquo;out of bounds.&rdquo;
+            {about?.dddText || 'We were featured on Diners, Drive-Ins and Dives! Guy Fieri loved our classic pho and called our banh mi "out of bounds."'}
           </p>
           <div className="mt-8 aspect-video max-w-2xl mx-auto rounded-lg overflow-hidden bg-gray-200">
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">
