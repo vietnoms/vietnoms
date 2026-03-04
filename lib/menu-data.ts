@@ -147,8 +147,6 @@ export const getMenuItems = unstable_cache(
         };
       });
 
-      const catIds = Array.from(new Set(items.map(i => i.categoryId)));
-      console.log(`[menu-data] Fetched ${items.length} items, categoryIds: ${catIds.join(', ')}`);
       return items;
     } catch (error) {
       console.error("Failed to fetch menu items from Square:", error);
@@ -182,7 +180,6 @@ export const getMenuCategories = unstable_cache(
             items: [],
           };
         });
-      console.log(`[menu-data] Fetched ${allObjects.length} raw objects, ${categories.length} categories: ${categories.map(c => `${c.name}(${c.id})`).join(', ')}`);
       return categories;
     } catch (error) {
       console.error("Failed to fetch categories from Square:", error);
