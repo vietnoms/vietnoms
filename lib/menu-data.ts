@@ -136,7 +136,7 @@ export const getMenuItems = unstable_cache(
           description: item.description || "",
           price: basePrice,
           formattedPrice: cleanVariations[0]?.formattedPrice || "$0.00",
-          categoryId: item.categoryId || "",
+          categoryId: item.categoryId || item.categories?.[0]?.id || "",
           categoryName: "",
           imageUrl: imageId ? (imageMap.get(imageId) || null) : null,
           variations: cleanVariations,
