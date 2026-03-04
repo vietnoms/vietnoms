@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { RestaurantSchema } from "@/components/schema-markup";
+import { CartProvider } from "@/lib/cart-context";
+import { AuthProvider } from "@/lib/auth-context";
 import { SEO_DEFAULTS, RESTAURANT } from "@/lib/constants";
 import "./globals.css";
 
@@ -62,9 +64,13 @@ export default function RootLayout({
         )}
       </head>
       <body className="font-body antialiased min-h-screen flex flex-col">
-        <Nav />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <AuthProvider>
+          <CartProvider>
+            <Nav />
+            <main className="flex-1">{children}</main>
+            <Footer />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );
