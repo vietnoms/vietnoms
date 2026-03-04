@@ -1,15 +1,12 @@
 import { config, fields, collection, singleton } from "@keystatic/core";
 
-const isGithubMode =
-  process.env.NODE_ENV === "production" &&
-  !!process.env.KEYSTATIC_GITHUB_CLIENT_ID;
-
-const storage = isGithubMode
-  ? {
-      kind: "github" as const,
-      repo: "vietnoms/vietnoms" as const,
-    }
-  : { kind: "local" as const };
+const storage =
+  process.env.NODE_ENV === "production"
+    ? {
+        kind: "github" as const,
+        repo: "vietnoms/vietnoms" as const,
+      }
+    : { kind: "local" as const };
 
 export default config({
   storage,
