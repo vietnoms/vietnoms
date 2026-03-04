@@ -147,7 +147,8 @@ export const getMenuItems = unstable_cache(
         };
       });
 
-      console.log(`[menu-data] Fetched ${items.length} items, categories used: ${[...new Set(items.map(i => i.categoryId))].join(', ')}`);
+      const catIds = Array.from(new Set(items.map(i => i.categoryId)));
+      console.log(`[menu-data] Fetched ${items.length} items, categoryIds: ${catIds.join(', ')}`);
       return items;
     } catch (error) {
       console.error("Failed to fetch menu items from Square:", error);
