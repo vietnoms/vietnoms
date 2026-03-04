@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { PaymentFormWrapper } from "@/components/order/payment-form-wrapper";
 import { createGiftCard } from "@/app/gift-cards/actions";
 import { formatPrice } from "@/lib/utils";
 import { CheckCircle, Gift } from "lucide-react";
@@ -261,7 +260,9 @@ export function GiftCardForm() {
           <h2 className="font-display text-xl font-bold">
             Pay {formatPrice(effectiveAmount)}
           </h2>
-          <PaymentFormWrapper onPaymentSuccess={handlePaymentSuccess} />
+          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
+            Gift card purchasing is being updated. Please call the restaurant to purchase gift cards.
+          </div>
           <Button
             variant="outline"
             onClick={() => setStep("details")}

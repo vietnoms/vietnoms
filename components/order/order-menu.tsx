@@ -22,7 +22,7 @@ interface OrderMenuProps {
 }
 
 export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
-  const { addItem } = useCart();
+  const { addItem, openCart } = useCart();
   const { user, setShowLogin } = useAuth();
   const [activeCategory, setActiveCategory] = useState(
     categories[0]?.slug || ""
@@ -314,6 +314,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                                   item.variations[0]?.name || "Regular",
                                 modifiers: [],
                               });
+                              openCart();
                             }}
                           >
                             <Plus className="h-3 w-3 mr-1" />

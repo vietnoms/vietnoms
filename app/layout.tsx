@@ -4,6 +4,7 @@ import { Footer } from "@/components/footer";
 import { RestaurantSchema } from "@/components/schema-markup";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
+import { CartDrawer } from "@/components/order/cart-drawer";
 import { SEO_DEFAULTS, RESTAURANT } from "@/lib/constants";
 import "./globals.css";
 
@@ -69,6 +70,7 @@ export default function RootLayout({
             <Nav />
             <main className="flex-1">{children}</main>
             <Footer />
+            <CartDrawer />
           </CartProvider>
         </AuthProvider>
       </body>

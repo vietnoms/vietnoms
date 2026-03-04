@@ -80,6 +80,7 @@ export async function POST(request: Request) {
           },
         ],
         ...(session?.customerId ? { customerId: session.customerId } : {}),
+        ...(rewardId ? { rewards: [{ id: rewardId, rewardTierId: rewardId }] } : {}),
       },
       idempotencyKey: crypto.randomUUID(),
     });

@@ -26,6 +26,8 @@ export interface ModifierList {
   id: string;
   name: string;
   selectionType: "SINGLE" | "MULTIPLE";
+  minSelected?: number;
+  maxSelected?: number;
   modifiers: Modifier[];
 }
 

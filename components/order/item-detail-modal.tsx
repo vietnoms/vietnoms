@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import {
@@ -54,7 +54,7 @@ export function ItemDetailModal({
   liked = false,
   onToggleLike,
 }: ItemDetailModalProps) {
-  const { addItem } = useCart();
+  const { addItem, openCart } = useCart();
   const { user, setShowLogin } = useAuth();
 
   const [selectedVariationId, setSelectedVariationId] = useState("");
@@ -65,6 +65,7 @@ export function ItemDetailModal({
   const [added, setAdded] = useState(false);
   const [reviews, setReviews] = useState<ReviewData[]>([]);
   const [loadingReviews, setLoadingReviews] = useState(false);
+  const [modifierErrors, setModifierErrors] = useState<Record<string, string>>({});
 
   // Review form
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -124,7 +125,8 @@ export function ItemDetailModal({
   function toggleModifier(
     listId: string,
     modId: string,
-    selectionType: "SINGLE" | "MULTIPLE"
+    selectionType: "SINGLE" | "MULTIPLE",
+    maxSelected?: number
   ) {
     setSelectedModifiers((prev) => {
       const next = { ...prev };
@@ -135,16 +137,46 @@ export function ItemDetailModal({
         if (current.has(modId)) {
           current.delete(modId);
         } else {
+          if (maxSelected && current.size >= maxSelected) return prev;
           current.add(modId);
         }
         next[listId] = current;
       }
       return next;
     });
+    setModifierErrors((prev) => {
+      const next = { ...prev };
+      delete next[listId];
+      return next;
+    });
   }
+
+  const validateModifiers = useCallback((): boolean => {
+    if (!item) return true;
+    const errors: Record<string, string> = {};
+    for (const list of item.modifierLists) {
+      const selected = selectedModifiers[list.id]?.size || 0;
+      if (list.minSelected && selected < list.minSelected) {
+        errors[list.id] = `Please select at least ${list.minSelected}`;
+      }
+    }
+    setModifierErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [item, selectedModifiers]);
+
+  const canAddToCart = useMemo(() => {
+    if (!item) return false;
+    for (const list of item.modifierLists) {
+      const selected = selectedModifiers[list.id]?.size || 0;
+      if (list.minSelected && selected < list.minSelected) return false;
+    }
+    return true;
+  }, [item, selectedModifiers]);
 
   function handleAddToCart() {
     if (!item) return;
+    if (!validateModifiers()) return;
+
     const modifiers: { id: string; name: string; price: number }[] = [];
     for (const list of item.modifierLists) {
       const selected = selectedModifiers[list.id];
@@ -169,6 +201,7 @@ export function ItemDetailModal({
     setTimeout(() => {
       setAdded(false);
       onOpenChange(false);
+      openCart();
     }, 1200);
   }
 
@@ -302,52 +335,79 @@ export function ItemDetailModal({
           )}
 
           {/* Modifier lists */}
-          {item.modifierLists.map((list) => (
-            <div key={list.id}>
-              <h3 className="font-semibold text-sm text-gray-700 mb-2">
-                {list.name}
-                {list.selectionType === "SINGLE" && (
-                  <span className="text-gray-400 font-normal ml-1">
-                    (pick one)
-                  </span>
+          {item.modifierLists.map((list) => {
+            const selectedCount = selectedModifiers[list.id]?.size || 0;
+            const atMax = !!(list.maxSelected && selectedCount >= list.maxSelected);
+
+            let hint = "";
+            if (list.minSelected && list.maxSelected && list.minSelected === list.maxSelected) {
+              hint = `(pick exactly ${list.minSelected})`;
+            } else if (list.minSelected && list.minSelected > 0) {
+              hint = list.selectionType === "SINGLE"
+                ? "(required)"
+                : `(pick at least ${list.minSelected})`;
+            } else if (list.maxSelected) {
+              hint = `(pick up to ${list.maxSelected})`;
+            } else if (list.selectionType === "SINGLE") {
+              hint = "(pick one)";
+            }
+
+            return (
+              <div key={list.id}>
+                <h3 className="font-semibold text-sm text-gray-700 mb-2">
+                  {list.name}
+                  {hint && (
+                    <span className="text-gray-400 font-normal ml-1">
+                      {hint}
+                    </span>
+                  )}
+                </h3>
+                {modifierErrors[list.id] && (
+                  <p className="text-xs text-red-500 mb-1.5">
+                    {modifierErrors[list.id]}
+                  </p>
                 )}
-              </h3>
-              <div className="space-y-1.5">
-                {list.modifiers.map((mod) => {
-                  const isSelected =
-                    selectedModifiers[list.id]?.has(mod.id) || false;
-                  return (
-                    <label
-                      key={mod.id}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                        isSelected
-                          ? "border-brand-red bg-brand-red/5"
-                          : "border-gray-200 hover:border-gray-300"
-                      }`}
-                    >
-                      <input
-                        type={
-                          list.selectionType === "SINGLE" ? "radio" : "checkbox"
-                        }
-                        name={`modal-modifier-${list.id}`}
-                        checked={isSelected}
-                        onChange={() =>
-                          toggleModifier(list.id, mod.id, list.selectionType)
-                        }
-                        className="accent-brand-red"
-                      />
-                      <span className="flex-1 text-sm">{mod.name}</span>
-                      {mod.price > 0 && (
-                        <span className="text-sm text-gray-500">
-                          +{mod.formattedPrice}
-                        </span>
-                      )}
-                    </label>
-                  );
-                })}
+                <div className="space-y-1.5">
+                  {list.modifiers.map((mod) => {
+                    const isSelected =
+                      selectedModifiers[list.id]?.has(mod.id) || false;
+                    const disabled = !isSelected && atMax && list.selectionType === "MULTIPLE";
+                    return (
+                      <label
+                        key={mod.id}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
+                          disabled
+                            ? "border-gray-100 bg-gray-50 cursor-not-allowed opacity-50"
+                            : isSelected
+                              ? "border-brand-red bg-brand-red/5 cursor-pointer"
+                              : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                        }`}
+                      >
+                        <input
+                          type={
+                            list.selectionType === "SINGLE" ? "radio" : "checkbox"
+                          }
+                          name={`modal-modifier-${list.id}`}
+                          checked={isSelected}
+                          disabled={disabled}
+                          onChange={() =>
+                            toggleModifier(list.id, mod.id, list.selectionType, list.maxSelected)
+                          }
+                          className="accent-brand-red"
+                        />
+                        <span className="flex-1 text-sm">{mod.name}</span>
+                        {mod.price > 0 && (
+                          <span className="text-sm text-gray-500">
+                            +{mod.formattedPrice}
+                          </span>
+                        )}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* Reviews section */}
           <div className="border-t border-gray-100 pt-4">
@@ -476,7 +536,7 @@ export function ItemDetailModal({
             <Button
               className="flex-1"
               onClick={handleAddToCart}
-              disabled={added || item.soldOut}
+              disabled={added || item.soldOut || !canAddToCart}
             >
               {added ? (
                 <>

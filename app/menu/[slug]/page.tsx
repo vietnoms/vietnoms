@@ -3,16 +3,30 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getMenuItems, getMenuItemBySlug } from "@/lib/menu-data";
+import { getItemStats } from "@/lib/db/reviews";
+import { getLikeCount } from "@/lib/db/likes";
 import { MenuItemSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RESTAURANT } from "@/lib/constants";
+import { ItemAddToCart } from "@/components/order/item-add-to-cart";
+import { ItemReviews } from "@/components/order/item-reviews";
+import { reader } from "@/lib/keystatic";
 
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
   const items = await getMenuItems();
   return items.map((item) => ({ slug: item.slug }));
+}
+
+async function getMenuItemContent(itemId: string) {
+  try {
+    const allContent = await reader.collections.menuItemContent.all();
+    return allContent.find((c) => c.entry.squareItemId === itemId)?.entry || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({
@@ -23,15 +37,18 @@ export async function generateMetadata({
   const item = await getMenuItemBySlug(params.slug);
   if (!item) return { title: "Menu Item Not Found" };
 
+  const content = await getMenuItemContent(item.id);
+  const description =
+    content?.seoDescription ||
+    item.description ||
+    `Order ${item.name} from Vietnoms — authentic Vietnamese cuisine in San Jose. ${item.formattedPrice}.`;
+
   return {
     title: `${item.name} | Vietnoms Menu`,
-    description:
-      item.description ||
-      `Order ${item.name} from Vietnoms — authentic Vietnamese cuisine in San Jose. ${item.formattedPrice}.`,
+    description,
     openGraph: {
       title: `${item.name} | Vietnoms`,
-      description:
-        item.description || `${item.name} — ${item.formattedPrice}`,
+      description,
       images: item.imageUrl ? [{ url: item.imageUrl }] : undefined,
     },
   };
@@ -44,6 +61,24 @@ export default async function MenuItemPage({
 }) {
   const item = await getMenuItemBySlug(params.slug);
   if (!item) notFound();
+
+  const content = await getMenuItemContent(item.id);
+
+  // Fetch review/like stats
+  let itemStats = { averageRating: 0, reviewCount: 0, likeCount: 0 };
+  try {
+    const [reviewStats, likeCount] = await Promise.all([
+      getItemStats(item.id),
+      getLikeCount(item.id),
+    ]);
+    itemStats = {
+      averageRating: reviewStats.averageRating,
+      reviewCount: reviewStats.reviewCount,
+      likeCount,
+    };
+  } catch {
+    // Turso not configured or unavailable
+  }
 
   return (
     <>
@@ -139,35 +174,38 @@ export default async function MenuItemPage({
                 </p>
               )}
 
-              {/* Variations */}
-              {item.variations.length > 1 && (
-                <div className="mt-6">
-                  <h3 className="font-semibold text-sm text-gray-700 mb-2">
-                    Options
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {item.variations.map((v) => (
-                      <span
-                        key={v.id}
-                        className="px-3 py-1.5 rounded-full border border-gray-200 text-sm"
-                      >
-                        {v.name} — {v.formattedPrice}
-                      </span>
-                    ))}
+              {content?.story && (
+                <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-lg">
+                  <h3 className="font-display text-sm font-bold text-amber-900 mb-1">The Story</h3>
+                  <p className="text-sm text-amber-800 leading-relaxed">{content.story}</p>
+                </div>
+              )}
+
+              {content?.dddFeatured && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
+                  <span className="text-2xl flex-shrink-0">🔥</span>
+                  <div>
+                    <p className="font-display text-sm font-bold text-red-900">
+                      As Seen on Diners, Drive-Ins &amp; Dives!
+                    </p>
+                    {content.dddQuote && (
+                      <p className="text-sm text-red-800 mt-1 italic">
+                        &ldquo;{content.dddQuote}&rdquo; — Guy Fieri
+                      </p>
+                    )}
                   </div>
                 </div>
               )}
 
-              <div className="mt-8 flex flex-col sm:flex-row gap-3">
-                {item.soldOut ? (
-                  <Button size="xl" disabled className="opacity-50 cursor-not-allowed">
-                    Sold Out
-                  </Button>
-                ) : (
-                  <Button asChild size="xl">
-                    <Link href="/order">Order This Item</Link>
-                  </Button>
-                )}
+              <div className="mt-8">
+                <ItemAddToCart item={item} />
+              </div>
+
+              <div className="mt-8 border-t border-gray-100 pt-6">
+                <ItemReviews itemId={item.id} initialStats={itemStats} />
+              </div>
+
+              <div className="mt-4">
                 <Button asChild size="lg" variant="outline">
                   <Link href="/menu">Back to Menu</Link>
                 </Button>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
@@ -9,8 +9,21 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPrice } from "@/lib/utils";
-import { PaymentForm, CreditCard } from "react-square-web-payments-sdk";
-import { ArrowLeft, Loader2, CheckCircle, Star } from "lucide-react";
+import {
+  PaymentForm,
+  CreditCard,
+  ApplePay,
+  GooglePay,
+  CashAppPay,
+} from "react-square-web-payments-sdk";
+import { ArrowLeft, Loader2, CheckCircle, Star, Clock } from "lucide-react";
+import {
+  isOpenNow,
+  canAcceptOrders,
+  getTodayHoursDisplay,
+  generatePickupSlots,
+  getOrderCutoff,
+} from "@/lib/restaurant-hours";
 
 type Step = "info" | "review" | "payment" | "processing" | "success";
 
@@ -38,18 +51,40 @@ export function CheckoutForm() {
     notes: "",
   });
 
+  const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
+  const [customerLookupDone, setCustomerLookupDone] = useState(false);
+  const [customerLookupMsg, setCustomerLookupMsg] = useState("");
+
   // Loyalty state
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [selectedRewardId, setSelectedRewardId] = useState<string>("");
+
+  // Hours state
+  const [hoursDisplay, setHoursDisplay] = useState<string | null>(null);
+  const [restaurantOpen, setRestaurantOpen] = useState(true);
+  const [acceptingOrders, setAcceptingOrders] = useState(true);
+  const [pickupSlots, setPickupSlots] = useState<{ label: string; value: string }[]>([]);
+
+  // Check restaurant hours
+  useEffect(() => {
+    const now = new Date();
+    setHoursDisplay(getTodayHoursDisplay(now));
+    setRestaurantOpen(isOpenNow(now));
+    setAcceptingOrders(canAcceptOrders(now));
+    setPickupSlots(generatePickupSlots(now));
+  }, [step]);
 
   // Pre-fill from auth
   useEffect(() => {
     if (user) {
       setCustomerInfo((prev) => ({
         ...prev,
-        name: prev.name || [user.givenName, user.familyName].filter(Boolean).join(" "),
+        name:
+          prev.name ||
+          [user.givenName, user.familyName].filter(Boolean).join(" "),
         phone: prev.phone || user.phone || "",
       }));
+      setCustomerLookupDone(true);
     }
   }, [user]);
 
@@ -67,6 +102,37 @@ export function CheckoutForm() {
     }
   }, [user, step]);
 
+  // Phone-based customer lookup
+  const handlePhoneLookup = useCallback(async (phone: string) => {
+    if (!phone || phone.replace(/\D/g, "").length < 10) return;
+    if (customerLookupDone) return;
+
+    try {
+      const res = await fetch("/api/customers/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await res.json();
+      if (data.found) {
+        const name = [data.givenName, data.familyName]
+          .filter(Boolean)
+          .join(" ");
+        setCustomerInfo((prev) => ({
+          ...prev,
+          name: prev.name || name,
+          email: prev.email || data.emailAddress || "",
+        }));
+        setCustomerLookupMsg(
+          `Welcome back${data.givenName ? `, ${data.givenName}` : ""}!`
+        );
+      }
+      setCustomerLookupDone(true);
+    } catch {
+      // ignore
+    }
+  }, [customerLookupDone]);
+
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
@@ -82,12 +148,19 @@ export function CheckoutForm() {
 
   const handleInfoSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (pickupMode === "asap") {
+      setCustomerInfo((prev) => ({ ...prev, pickupTime: "" }));
+    }
     setStep("review");
   };
 
-  const handlePaymentToken = async (token: { status: string; token?: string; errors?: unknown[] }) => {
+  const handlePaymentToken = async (token: {
+    status: string;
+    token?: string;
+    errors?: unknown[];
+  }) => {
     if (token.status !== "OK" || !token.token) {
-      setError("Card tokenization failed. Please try again.");
+      setError("Payment failed. Please try again.");
       return;
     }
     setStep("processing");
@@ -106,7 +179,11 @@ export function CheckoutForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lineItems,
-          customerInfo,
+          customerInfo: {
+            ...customerInfo,
+            pickupTime:
+              pickupMode === "asap" ? "" : customerInfo.pickupTime,
+          },
           paymentToken: token.token,
           rewardId: selectedRewardId || undefined,
         }),
@@ -120,22 +197,60 @@ export function CheckoutForm() {
 
       setStep("success");
 
-      // Navigate to confirmation after brief delay
       setTimeout(() => {
         router.push(`/order/confirmation?orderId=${data.orderId}`);
       }, 2000);
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Payment failed. Please try again."
+        err instanceof Error
+          ? err.message
+          : "Payment failed. Please try again."
       );
       setStep("payment");
     }
   };
 
-  const stepIndex = { info: 0, review: 1, payment: 2, processing: 2, success: 3 };
+  const stepIndex = {
+    info: 0,
+    review: 1,
+    payment: 2,
+    processing: 2,
+    success: 3,
+  };
+
+  // Closed / kitchen closing warning
+  const closedMessage = !restaurantOpen
+    ? "We're currently closed. Please check back during business hours."
+    : !acceptingOrders
+      ? "Kitchen is closing soon — orders are no longer accepted."
+      : null;
 
   return (
     <div className="max-w-xl">
+      {/* Hours banner */}
+      {hoursDisplay && (
+        <div className="flex items-center gap-2 text-sm mb-4 px-3 py-2 bg-gray-50 rounded-lg">
+          <Clock className="h-4 w-4 text-gray-500" />
+          <span className="text-gray-600">
+            Open today: {hoursDisplay}
+          </span>
+          {!restaurantOpen && (
+            <span className="text-red-500 font-medium ml-auto">Closed</span>
+          )}
+          {restaurantOpen && !acceptingOrders && (
+            <span className="text-amber-600 font-medium ml-auto">
+              Closing soon
+            </span>
+          )}
+        </div>
+      )}
+
+      {closedMessage && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          {closedMessage}
+        </div>
+      )}
+
       {/* Step indicator */}
       <div className="flex gap-2 mb-8">
         {(["Details", "Review", "Payment"] as const).map((label, i) => (
@@ -167,7 +282,33 @@ export function CheckoutForm() {
       {step === "info" && (
         <form onSubmit={handleInfoSubmit} className="space-y-4">
           <h2 className="font-display text-xl font-bold">Pickup Details</h2>
+
+          {customerLookupMsg && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {customerLookupMsg}
+            </div>
+          )}
+
           <div className="space-y-3">
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                required
+                value={customerInfo.phone}
+                onChange={(e) => {
+                  setCustomerInfo((prev) => ({
+                    ...prev,
+                    phone: e.target.value,
+                  }));
+                  setCustomerLookupDone(false);
+                  setCustomerLookupMsg("");
+                }}
+                onBlur={(e) => handlePhoneLookup(e.target.value)}
+                placeholder="(408) 555-0123"
+              />
+            </div>
             <div>
               <Label htmlFor="name">Name</Label>
               <Input
@@ -175,17 +316,19 @@ export function CheckoutForm() {
                 required
                 value={customerInfo.name}
                 onChange={(e) =>
-                  setCustomerInfo((prev) => ({ ...prev, name: e.target.value }))
+                  setCustomerInfo((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
                 }
                 placeholder="Your name"
               />
             </div>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">Email (optional)</Label>
               <Input
                 id="email"
                 type="email"
-                required
                 value={customerInfo.email}
                 onChange={(e) =>
                   setCustomerInfo((prev) => ({
@@ -196,39 +339,69 @@ export function CheckoutForm() {
                 placeholder="your@email.com"
               />
             </div>
+
+            {/* Pickup time toggle */}
             <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                required
-                value={customerInfo.phone}
-                onChange={(e) =>
-                  setCustomerInfo((prev) => ({
-                    ...prev,
-                    phone: e.target.value,
-                  }))
-                }
-                placeholder="(408) 555-0123"
-              />
+              <Label>Pickup Time</Label>
+              <div className="flex gap-2 mt-1">
+                <button
+                  type="button"
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                    pickupMode === "asap"
+                      ? "border-brand-red bg-brand-red/5 text-brand-red"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setPickupMode("asap")}
+                >
+                  ASAP
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
+                    pickupMode === "scheduled"
+                      ? "border-brand-red bg-brand-red/5 text-brand-red"
+                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                  }`}
+                  onClick={() => setPickupMode("scheduled")}
+                >
+                  Schedule for Later
+                </button>
+              </div>
+              {pickupMode === "asap" && (
+                <p className="text-sm text-gray-500 mt-2">
+                  Estimated ready in 10-15 minutes
+                </p>
+              )}
+              {pickupMode === "scheduled" && (
+                <div className="mt-2">
+                  {pickupSlots.length > 0 ? (
+                    <select
+                      value={customerInfo.pickupTime}
+                      onChange={(e) =>
+                        setCustomerInfo((prev) => ({
+                          ...prev,
+                          pickupTime: e.target.value,
+                        }))
+                      }
+                      required
+                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                    >
+                      <option value="">Select a time</option>
+                      {pickupSlots.map((slot) => (
+                        <option key={slot.value} value={slot.value}>
+                          {slot.label}
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className="text-sm text-gray-500">
+                      No available time slots today.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            <div>
-              <Label htmlFor="pickupTime">Pickup Time (optional)</Label>
-              <Input
-                id="pickupTime"
-                type="time"
-                value={customerInfo.pickupTime}
-                onChange={(e) =>
-                  setCustomerInfo((prev) => ({
-                    ...prev,
-                    pickupTime: e.target.value,
-                  }))
-                }
-              />
-              <p className="text-xs text-gray-400 mt-1">
-                Leave blank for ASAP pickup.
-              </p>
-            </div>
+
             <div>
               <Label htmlFor="notes">Special Instructions</Label>
               <Textarea
@@ -245,7 +418,12 @@ export function CheckoutForm() {
               />
             </div>
           </div>
-          <Button type="submit" size="lg" className="w-full">
+          <Button
+            type="submit"
+            size="lg"
+            className="w-full"
+            disabled={!!closedMessage}
+          >
             Continue to Review
           </Button>
         </form>
@@ -289,14 +467,19 @@ export function CheckoutForm() {
             <p>
               <strong>Name:</strong> {customerInfo.name}
             </p>
-            <p>
-              <strong>Email:</strong> {customerInfo.email}
-            </p>
+            {customerInfo.email && (
+              <p>
+                <strong>Email:</strong> {customerInfo.email}
+              </p>
+            )}
             <p>
               <strong>Phone:</strong> {customerInfo.phone}
             </p>
             <p>
-              <strong>Pickup:</strong> {customerInfo.pickupTime || "ASAP"}
+              <strong>Pickup:</strong>{" "}
+              {pickupMode === "asap"
+                ? "ASAP (10-15 min)"
+                : customerInfo.pickupTime || "Scheduled"}
             </p>
             {customerInfo.notes && (
               <p>
@@ -314,9 +497,7 @@ export function CheckoutForm() {
               </div>
               {loyalty.program.rewardTiers.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-xs text-gray-600">
-                    Available rewards:
-                  </p>
+                  <p className="text-xs text-gray-600">Available rewards:</p>
                   {loyalty.program.rewardTiers
                     .filter(
                       (tier) => loyalty.account!.balance >= tier.points
@@ -399,10 +580,19 @@ export function CheckoutForm() {
               })}
             >
               <CreditCard />
+              <div className="my-3 text-center text-sm text-gray-400">
+                or pay with
+              </div>
+              <div className="space-y-2">
+                <ApplePay />
+                <GooglePay />
+                <CashAppPay />
+              </div>
             </PaymentForm>
           ) : (
             <p className="text-sm text-gray-500">
-              Payment is not configured yet. Please contact us to place your order.
+              Payment is not configured yet. Please contact us to place your
+              order.
             </p>
           )}
 

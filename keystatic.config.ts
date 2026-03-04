@@ -105,6 +105,18 @@ export default config({
     }),
   },
   collections: {
+    menuItemContent: collection({
+      label: "Menu Item Content",
+      slugField: "squareItemId",
+      path: "content/menu-items/*",
+      schema: {
+        squareItemId: fields.text({ label: "Square Item ID", validation: { isRequired: true } }),
+        story: fields.text({ label: "Story/Origin", multiline: true }),
+        dddFeatured: fields.checkbox({ label: "Featured on DDD?" }),
+        dddQuote: fields.text({ label: "Guy Fieri Quote", multiline: true }),
+        seoDescription: fields.text({ label: "SEO Description", multiline: true }),
+      },
+    }),
     blogPosts: collection({
       label: "Blog Posts",
       slugField: "slug",

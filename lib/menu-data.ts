@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { getSquare, toNumber, toDollars, LOCATION_ID } from "./square";
 import { slugify } from "./utils";
-import type { MenuItem, MenuCategory, MenuVariation } from "./types";
+import type { MenuItem, MenuCategory, MenuVariation, ModifierList } from "./types";
 
 /**
  * Fetches all menu items from Square Catalog API.
@@ -25,10 +25,29 @@ export const getMenuItems = unstable_cache(
 
       // Build image map: imageId -> URL
       const imageMap = new Map<string, string>();
+      // Build modifier list map: modifierListId -> ModifierList
+      const modifierListMap = new Map<string, ModifierList>();
       for (const obj of relatedObjects) {
         if (obj.type === "IMAGE") {
           const url = (obj as any).imageData?.url;
           if (url) imageMap.set(obj.id!, url);
+        } else if (obj.type === "MODIFIER_LIST") {
+          const data = (obj as any).modifierListData;
+          if (data) {
+            modifierListMap.set(obj.id!, {
+              id: obj.id!,
+              name: data.name || "",
+              selectionType: data.selectionType === "SINGLE" ? "SINGLE" : "MULTIPLE",
+              minSelected: data.minSelectedModifiers != null ? Number(data.minSelectedModifiers) : undefined,
+              maxSelected: data.maxSelectedModifiers != null ? Number(data.maxSelectedModifiers) : undefined,
+              modifiers: ((data.modifiers || []) as any[]).map((m: any) => ({
+                id: m.id || "",
+                name: m.modifierData?.name || "",
+                price: toNumber(m.modifierData?.priceMoney?.amount),
+                formattedPrice: toDollars(m.modifierData?.priceMoney?.amount),
+              })),
+            });
+          }
         }
       }
 
@@ -129,6 +148,17 @@ export const getMenuItems = unstable_cache(
         const imageId = item.imageIds?.[0];
         const soldOut = soldOutItemIds.has(obj.id!);
 
+        // Look up modifier lists for this item
+        const itemModifierLists: ModifierList[] = [];
+        const modListInfo = (item.modifierListInfo || []) as any[];
+        for (const info of modListInfo) {
+          const listId = info.modifierListId;
+          if (listId) {
+            const modList = modifierListMap.get(listId);
+            if (modList) itemModifierLists.push(modList);
+          }
+        }
+
         return {
           id: obj.id || "",
           name: item.name || "",
@@ -140,7 +170,7 @@ export const getMenuItems = unstable_cache(
           categoryName: "",
           imageUrl: imageId ? (imageMap.get(imageId) || null) : null,
           variations: cleanVariations,
-          modifierLists: [],
+          modifierLists: itemModifierLists,
           dietaryLabels: parseDietaryLabels(item.description || ""),
           available: !soldOut && !(item.isArchived || item.isDeleted),
           soldOut,

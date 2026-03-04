@@ -4,6 +4,8 @@ import {
   createContext,
   useContext,
   useReducer,
+  useState,
+  useCallback,
   useEffect,
   type ReactNode,
 } from "react";
@@ -32,8 +34,10 @@ type CartAction =
   | { type: "LOAD_CART"; payload: CartItem[] };
 
 function calculateLineTotal(item: CartItem): number {
+  const variation = item.menuItem.variations.find(v => v.id === item.variationId);
+  const basePrice = variation?.price ?? item.menuItem.price;
   const modifiersTotal = item.modifiers.reduce((sum, m) => sum + m.price, 0);
-  return (item.menuItem.price + modifiersTotal) * item.quantity;
+  return (basePrice + modifiersTotal) * item.quantity;
 }
 
 function calculateTotal(items: CartItem[]): number {
@@ -150,6 +154,9 @@ interface CartContextType extends CartState {
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
+  isCartOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -162,6 +169,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     total: 0,
     itemCount: 0,
   });
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const openCart = useCallback(() => setIsCartOpen(true), []);
+  const closeCart = useCallback(() => setIsCartOpen(false), []);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -192,6 +202,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     updateQuantity: (index, quantity) =>
       dispatch({ type: "UPDATE_QUANTITY", payload: { index, quantity } }),
     clearCart: () => dispatch({ type: "CLEAR_CART" }),
+    isCartOpen,
+    openCart,
+    closeCart,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

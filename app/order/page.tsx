@@ -4,7 +4,6 @@ import { getBulkItemStats } from "@/lib/db/reviews";
 
 export const revalidate = 3600;
 import { OrderMenu } from "@/components/order/order-menu";
-import { CartSidebar } from "@/components/order/cart-sidebar";
 import { MobileCartBar } from "@/components/order/mobile-cart-bar";
 import { RESTAURANT } from "@/lib/constants";
 
@@ -50,16 +49,8 @@ export default async function OrderPage() {
           Build your order and pick it up fresh.
         </p>
 
-        <div className="mt-8 flex gap-8">
-          {/* Menu section (flexible width) */}
-          <div className="flex-1 min-w-0">
-            <OrderMenu categories={menuData} itemStats={itemStats} />
-          </div>
-
-          {/* Cart sidebar (fixed width, desktop only) */}
-          <div className="hidden lg:block w-80 shrink-0">
-            <CartSidebar />
-          </div>
+        <div className="mt-8">
+          <OrderMenu categories={menuData} itemStats={itemStats} />
         </div>
       </div>
 
