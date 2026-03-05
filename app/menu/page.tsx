@@ -50,14 +50,14 @@ export default async function MenuPage() {
 
       {/* Category Anchor Nav */}
       {categories.length > 0 && (
-        <nav className="sticky top-16 z-40 bg-white border-b border-gray-100 overflow-x-auto">
+        <nav className="sticky top-16 z-40 bg-surface-alt/90 backdrop-blur-lg border-b border-gray-800/50 overflow-x-auto">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex gap-6 py-3">
               {categories.map((cat) => (
                 <a
                   key={cat.id}
                   href={`#${cat.slug}`}
-                  className="text-sm font-medium text-gray-600 hover:text-brand-red whitespace-nowrap transition-colors"
+                  className="text-sm font-medium text-gray-400 hover:text-brand-red whitespace-nowrap transition-colors"
                 >
                   {cat.name}
                 </a>
@@ -72,7 +72,7 @@ export default async function MenuPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
           {categories.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-gray-500 text-lg">
+              <p className="text-gray-400 text-lg">
                 Menu is being updated. Please check back soon or call us at{" "}
                 {RESTAURANT.phone}.
               </p>
@@ -80,7 +80,7 @@ export default async function MenuPage() {
           ) : (
             categories.map((category) => (
               <div key={category.id} id={category.slug}>
-                <h2 className="font-display text-2xl md:text-3xl font-bold text-brand-black">
+                <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
                   {category.name}
                 </h2>
                 <div className="mt-1 h-1 w-12 bg-brand-red rounded-full" />

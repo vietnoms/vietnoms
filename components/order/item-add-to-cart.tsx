@@ -137,7 +137,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
   if (item.soldOut) {
     return (
       <>
-        <p className="text-2xl font-bold text-gray-400 mb-5">Sold Out</p>
+        <p className="text-2xl font-bold text-gray-500 mb-5">Sold Out</p>
         <Button size="xl" disabled className="opacity-50 cursor-not-allowed">
           Sold Out
         </Button>
@@ -157,7 +157,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
       {/* Variation selector */}
       {item.variations.length > 1 && (
         <div>
-          <h3 className="font-semibold text-sm text-gray-700 mb-2">Size</h3>
+          <h3 className="font-semibold text-sm text-gray-300 mb-2">Size</h3>
           <div className="flex flex-wrap gap-2">
             {item.variations.map((v) => (
               <button
@@ -169,7 +169,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
                 className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
                   selectedVariationId === v.id
                     ? "border-brand-red bg-brand-red/5 text-brand-red"
-                    : "border-gray-200 text-gray-700 hover:border-gray-300"
+                    : "border-gray-600 text-gray-300 hover:border-gray-300"
                 }`}
               >
                 {v.name} &mdash; {v.formattedPrice}
@@ -199,10 +199,10 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
 
         return (
           <div key={list.id}>
-            <h3 className="font-semibold text-sm text-gray-700 mb-2">
+            <h3 className="font-semibold text-sm text-gray-300 mb-2">
               {list.name}
               {hint && (
-                <span className="text-gray-400 font-normal ml-1">{hint}</span>
+                <span className="text-gray-500 font-normal ml-1">{hint}</span>
               )}
             </h3>
             {modifierErrors[list.id] && (
@@ -220,10 +220,10 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
                     key={mod.id}
                     className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
                       disabled
-                        ? "border-gray-100 bg-gray-50 cursor-not-allowed opacity-50"
+                        ? "border-gray-700 bg-gray-800 cursor-not-allowed opacity-50"
                         : isSelected
                           ? "border-brand-red bg-brand-red/5 cursor-pointer"
-                          : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                          : "border-gray-600 hover:border-gray-300 cursor-pointer"
                     }`}
                   >
                     <input
@@ -254,10 +254,10 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
 
       {/* Quantity + total + add to cart */}
       <div className="flex items-center gap-4 pt-2">
-        <div className="flex items-center border border-gray-200 rounded-lg">
+        <div className="flex items-center border border-gray-600 rounded-lg">
           <button
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-            className="p-2 hover:bg-gray-50 rounded-l-lg"
+            className="p-2 hover:bg-white/10 rounded-l-lg"
             aria-label="Decrease quantity"
           >
             <Minus className="h-4 w-4" />
@@ -267,7 +267,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
           </span>
           <button
             onClick={() => setQuantity((q) => q + 1)}
-            className="p-2 hover:bg-gray-50 rounded-r-lg"
+            className="p-2 hover:bg-white/10 rounded-r-lg"
             aria-label="Increase quantity"
           >
             <Plus className="h-4 w-4" />

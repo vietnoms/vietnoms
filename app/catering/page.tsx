@@ -97,7 +97,7 @@ export default async function CateringPage() {
       {/* Packages */}
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl font-bold text-brand-black text-center">
+          <h2 className="font-display text-3xl font-bold text-white text-center">
             Our Packages
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
@@ -115,17 +115,17 @@ export default async function CateringPage() {
                   <p className="text-brand-red font-semibold text-lg">
                     {pkg.price}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-400">
                     Minimum {pkg.minGuests} guests
                   </p>
                 </CardHeader>
                 <CardContent className="flex-1">
-                  <p className="text-gray-600 text-sm">{pkg.description}</p>
+                  <p className="text-gray-400 text-sm">{pkg.description}</p>
                   <ul className="mt-4 space-y-1.5">
                     {pkg.includes.map((item) => (
                       <li
                         key={item}
-                        className="text-sm text-gray-600 flex items-start gap-2"
+                        className="text-sm text-gray-400 flex items-start gap-2"
                       >
                         <span className="text-brand-red mt-1">&#10003;</span>
                         {item}
@@ -140,12 +140,12 @@ export default async function CateringPage() {
       </section>
 
       {/* Inquiry Form */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-16 md:py-24 bg-surface-alt/50">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl font-bold text-brand-black text-center">
+          <h2 className="font-display text-3xl font-bold text-white text-center">
             Request a Quote
           </h2>
-          <p className="mt-2 text-center text-gray-600">
+          <p className="mt-2 text-center text-gray-400">
             Tell us about your event and we&apos;ll put together a custom
             proposal.
           </p>

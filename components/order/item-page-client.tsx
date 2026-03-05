@@ -23,7 +23,7 @@ export function ItemPageClient({ item, children }: ItemPageClientProps) {
   return (
     <>
       {/* Image */}
-      <div className="aspect-square rounded-lg overflow-hidden bg-gray-200 relative">
+      <div className="aspect-square rounded-lg overflow-hidden bg-gray-800 relative">
         {displayImageUrl ? (
           <Image
             src={displayImageUrl}

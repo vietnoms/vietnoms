@@ -110,7 +110,7 @@ export function LoginDialog() {
         </DialogHeader>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
             {error}
           </div>
         )}
@@ -160,7 +160,7 @@ export function LoginDialog() {
             <button
               type="button"
               onClick={() => { setStep("phone"); setError(""); }}
-              className="text-sm text-gray-500 hover:text-gray-700 w-full text-center"
+              className="text-sm text-gray-400 hover:text-gray-300 w-full text-center"
             >
               Use a different number
             </button>
@@ -170,7 +170,7 @@ export function LoginDialog() {
         {step === "success" && (
           <div className="text-center py-4">
             <div className="text-green-500 text-4xl mb-2">&#10003;</div>
-            <p className="text-gray-600">Signed in successfully!</p>
+            <p className="text-gray-400">Signed in successfully!</p>
           </div>
         )}
       </DialogContent>

@@ -12,12 +12,12 @@ interface MenuItemCardProps {
 export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
   const content = (
     <Card
-      className={`group overflow-hidden hover:shadow-md transition-shadow h-full ${
+      className={`group overflow-hidden hover:shadow-md hover:-translate-y-0.5 h-full ${
         item.soldOut ? "opacity-60" : ""
       }`}
     >
       {/* Image */}
-      <div className="aspect-[4/3] bg-gray-200 relative overflow-hidden">
+      <div className="aspect-[4/3] bg-gray-800 relative overflow-hidden">
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
@@ -51,7 +51,7 @@ export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
         </div>
 
         {item.description && (
-          <p className="mt-1.5 text-sm text-gray-500 line-clamp-2">
+          <p className="mt-1.5 text-sm text-gray-400 line-clamp-2">
             {item.description}
           </p>
         )}

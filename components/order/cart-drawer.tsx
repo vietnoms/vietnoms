@@ -53,7 +53,7 @@ export function CartDrawer() {
 
       {/* Drawer panel */}
       <div
-        className={`fixed top-0 right-0 h-full w-full max-w-md bg-white z-50 shadow-xl flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 right-0 h-full w-full max-w-md bg-surface-high z-50 shadow-xl flex flex-col transition-transform duration-300 ease-in-out ${
           isCartOpen ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
@@ -61,7 +61,7 @@ export function CartDrawer() {
         aria-label="Shopping cart"
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gray-50">
+        <div className="flex items-center justify-between p-4 border-b border-gray-700/50 bg-surface-alt">
           <h2 className="font-semibold text-lg flex items-center gap-2">
             <ShoppingBag className="h-5 w-5" />
             Your Order
@@ -73,7 +73,7 @@ export function CartDrawer() {
           </h2>
           <button
             onClick={closeCart}
-            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
             aria-label="Close cart"
           >
             <X className="h-5 w-5" />
@@ -98,7 +98,7 @@ export function CartDrawer() {
               {items.map((item, index) => (
                 <div
                   key={`${item.menuItem.id}-${item.variationId}-${index}`}
-                  className="flex gap-3 py-2 border-b border-gray-50 last:border-0"
+                  className="flex gap-3 py-2 border-b border-gray-700/30 last:border-0"
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-sm truncate">
@@ -122,7 +122,7 @@ export function CartDrawer() {
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => updateQuantity(index, item.quantity - 1)}
-                      className="h-6 w-6 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                      className="h-6 w-6 rounded border border-gray-600 flex items-center justify-center hover:bg-white/10"
                       aria-label="Decrease quantity"
                     >
                       <Minus className="h-3 w-3" />
@@ -132,7 +132,7 @@ export function CartDrawer() {
                     </span>
                     <button
                       onClick={() => updateQuantity(index, item.quantity + 1)}
-                      className="h-6 w-6 rounded border border-gray-200 flex items-center justify-center hover:bg-gray-50"
+                      className="h-6 w-6 rounded border border-gray-600 flex items-center justify-center hover:bg-white/10"
                       aria-label="Increase quantity"
                     >
                       <Plus className="h-3 w-3" />
@@ -150,7 +150,7 @@ export function CartDrawer() {
             </div>
 
             {/* Footer */}
-            <div className="p-4 border-t border-gray-100 space-y-3">
+            <div className="p-4 border-t border-gray-700/50 space-y-3">
               <div className="flex justify-between font-semibold">
                 <span>Subtotal</span>
                 <span className="text-brand-red">{formatPrice(total)}</span>

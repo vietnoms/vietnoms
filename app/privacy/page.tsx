@@ -12,7 +12,7 @@ export default function PrivacyPage() {
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 prose prose-gray">
         <h1 className="font-display">Privacy Policy</h1>
-        <p className="text-sm text-gray-500">Last updated: March 2026</p>
+        <p className="text-sm text-gray-400">Last updated: March 2026</p>
 
         <h2>Information We Collect</h2>
         <p>

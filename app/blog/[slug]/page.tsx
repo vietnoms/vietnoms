@@ -68,7 +68,7 @@ export default function BlogPostPage({
       <article className="py-12 md:py-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
-          <nav className="mb-8 text-sm text-gray-500">
+          <nav className="mb-8 text-sm text-gray-400">
             <Link href="/" className="hover:text-brand-red">
               Home
             </Link>{" "}
@@ -87,10 +87,10 @@ export default function BlogPostPage({
               )}
               {post.type === "pillar" && <Badge>Guide</Badge>}
             </div>
-            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-brand-black leading-tight">
+            <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight">
               {post.title}
             </h1>
-            <time className="mt-4 block text-sm text-gray-500">
+            <time className="mt-4 block text-sm text-gray-400">
               {new Date(post.date).toLocaleDateString("en-US", {
                 year: "numeric",
                 month: "long",
@@ -108,9 +108,9 @@ export default function BlogPostPage({
 
       {/* Related Posts */}
       {related.length > 0 && (
-        <section className="py-12 bg-gray-50">
+        <section className="py-12 bg-surface-alt/50">
           <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-            <h2 className="font-display text-2xl font-bold text-brand-black mb-6">
+            <h2 className="font-display text-2xl font-bold text-white mb-6">
               Related Articles
             </h2>
             <div className="grid gap-4">
@@ -123,7 +123,7 @@ export default function BlogPostPage({
                   <h3 className="font-semibold hover:text-brand-red transition-colors">
                     {r.title}
                   </h3>
-                  <p className="mt-1 text-sm text-gray-500 line-clamp-1">
+                  <p className="mt-1 text-sm text-gray-400 line-clamp-1">
                     {r.description}
                   </p>
                 </Link>

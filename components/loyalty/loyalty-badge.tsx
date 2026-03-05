@@ -27,7 +27,7 @@ export function LoyaltyBadge() {
   if (!user || points === null) return null;
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-800 text-xs font-medium">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-900/40 text-yellow-400 text-xs font-medium">
       <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" />
       {points} pts
     </span>

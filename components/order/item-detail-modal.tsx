@@ -254,7 +254,7 @@ export function ItemDetailModal({
         {(() => {
           const displayImageUrl = selectedVariation?.imageUrl || item.imageUrl;
           return displayImageUrl ? (
-            <div className="w-full aspect-[16/10] bg-gray-200 relative">
+            <div className="w-full aspect-[16/10] bg-gray-800 relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={displayImageUrl}
@@ -269,7 +269,7 @@ export function ItemDetailModal({
           {/* Name, price, badges */}
           <div>
             <div className="flex items-start justify-between gap-3">
-              <h2 className="font-display text-xl font-bold text-brand-black">
+              <h2 className="font-display text-xl font-bold text-white">
                 {item.name}
               </h2>
               <span className="text-lg font-bold text-brand-red whitespace-nowrap">
@@ -327,7 +327,7 @@ export function ItemDetailModal({
                     className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
                       selectedVariationId === v.id
                         ? "border-brand-red bg-brand-red/5 text-brand-red"
-                        : "border-gray-200 text-gray-700 hover:border-gray-300"
+                        : "border-gray-600 text-gray-300 hover:border-gray-300"
                     }`}
                   >
                     {v.name} &mdash; {v.formattedPrice}
@@ -380,10 +380,10 @@ export function ItemDetailModal({
                         key={mod.id}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg border transition-colors ${
                           disabled
-                            ? "border-gray-100 bg-gray-50 cursor-not-allowed opacity-50"
+                            ? "border-gray-700 bg-gray-800 cursor-not-allowed opacity-50"
                             : isSelected
                               ? "border-brand-red bg-brand-red/5 cursor-pointer"
-                              : "border-gray-200 hover:border-gray-300 cursor-pointer"
+                              : "border-gray-600 hover:border-gray-300 cursor-pointer"
                         }`}
                       >
                         <input
@@ -400,7 +400,7 @@ export function ItemDetailModal({
                         />
                         <span className="flex-1 text-sm">{mod.name}</span>
                         {mod.price > 0 && (
-                          <span className="text-sm text-gray-500">
+                          <span className="text-sm text-gray-400">
                             +{mod.formattedPrice}
                           </span>
                         )}
@@ -441,7 +441,7 @@ export function ItemDetailModal({
                           />
                         ))}
                       </div>
-                      <span className="text-gray-500">
+                      <span className="text-gray-400">
                         {review.givenName || "Customer"}
                       </span>
                     </div>
@@ -464,7 +464,7 @@ export function ItemDetailModal({
             )}
 
             {showReviewForm && (
-              <div className="mt-3 space-y-3 bg-gray-50 rounded-lg p-3">
+              <div className="mt-3 space-y-3 bg-surface-alt rounded-lg p-3">
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <button
@@ -486,7 +486,7 @@ export function ItemDetailModal({
                   value={reviewText}
                   onChange={(e) => setReviewText(e.target.value)}
                   placeholder="What did you think? (optional)"
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                  className="w-full rounded-lg border border-gray-600 px-3 py-2 text-sm bg-surface-high text-white focus:outline-none focus:ring-2 focus:ring-brand-red"
                   rows={2}
                 />
                 <div className="flex gap-2">
@@ -515,11 +515,11 @@ export function ItemDetailModal({
 
         {/* Sticky add to cart bar */}
         {!item.soldOut && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 flex items-center gap-3">
-            <div className="flex items-center border border-gray-200 rounded-lg">
+          <div className="sticky bottom-0 bg-surface-high border-t border-gray-700/50 p-4 flex items-center gap-3">
+            <div className="flex items-center border border-gray-600 rounded-lg">
               <button
                 onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="p-2 hover:bg-gray-50 rounded-l-lg"
+                className="p-2 hover:bg-white/10 rounded-l-lg"
                 aria-label="Decrease quantity"
               >
                 <Minus className="h-4 w-4" />
@@ -529,7 +529,7 @@ export function ItemDetailModal({
               </span>
               <button
                 onClick={() => setQuantity((q) => q + 1)}
-                className="p-2 hover:bg-gray-50 rounded-r-lg"
+                className="p-2 hover:bg-white/10 rounded-r-lg"
                 aria-label="Increase quantity"
               >
                 <Plus className="h-4 w-4" />
@@ -557,7 +557,7 @@ export function ItemDetailModal({
         )}
 
         {item.soldOut && (
-          <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4">
+          <div className="sticky bottom-0 bg-surface-high border-t border-gray-700/50 p-4">
             <Button disabled className="w-full opacity-50">
               Sold Out
             </Button>

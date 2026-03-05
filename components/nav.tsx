@@ -23,7 +23,7 @@ export function Nav() {
 
   return (
     <>
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 border-b border-gray-100">
+      <header className="sticky top-0 z-50 bg-surface-alt/90 backdrop-blur-lg supports-[backdrop-filter]:bg-surface-alt/80 border-b border-gray-800/50">
         <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
@@ -39,7 +39,7 @@ export function Nav() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="text-sm font-medium text-gray-700 hover:text-brand-red transition-colors"
+                  className="text-sm font-medium text-gray-300 hover:text-brand-red transition-colors"
                 >
                   {link.label}
                 </Link>
@@ -51,7 +51,7 @@ export function Nav() {
                   {user ? (
                     <div className="flex items-center gap-3">
                       <LoyaltyBadge />
-                      <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
                         <User className="h-4 w-4" />
                         <span className="font-medium">
                           {user.givenName || "Account"}
@@ -59,7 +59,7 @@ export function Nav() {
                       </div>
                       <button
                         onClick={logout}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
+                        className="text-gray-500 hover:text-gray-300 transition-colors"
                         aria-label="Sign out"
                       >
                         <LogOut className="h-4 w-4" />
@@ -68,7 +68,7 @@ export function Nav() {
                   ) : (
                     <button
                       onClick={() => setShowLogin(true)}
-                      className="text-sm font-medium text-gray-700 hover:text-brand-red transition-colors"
+                      className="text-sm font-medium text-gray-300 hover:text-brand-red transition-colors"
                     >
                       Sign In
                     </button>
@@ -78,7 +78,7 @@ export function Nav() {
 
               <Link
                 href="/order"
-                className="rounded-full bg-brand-red px-5 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                className="rounded-full bg-brand-red px-5 py-2 text-sm font-semibold text-white hover:bg-red-600 hover:shadow-lg hover:shadow-red-500/20 transition-colors"
               >
                 Order Now
               </Link>
@@ -87,7 +87,7 @@ export function Nav() {
             {/* Mobile menu button */}
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="lg:hidden p-2 text-gray-700"
+              className="lg:hidden p-2 text-gray-300"
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
               {mobileOpen ? <X size={24} /> : <Menu size={24} />}
@@ -96,13 +96,13 @@ export function Nav() {
 
           {/* Mobile nav */}
           {mobileOpen && (
-            <div className="lg:hidden border-t border-gray-100 py-4">
+            <div className="lg:hidden border-t border-gray-800 py-4">
               <div className="flex flex-col gap-3">
                 {NAV_LINKS.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className="text-base font-medium text-gray-700 hover:text-brand-red transition-colors py-1"
+                    className="text-base font-medium text-gray-300 hover:text-brand-red transition-colors py-1"
                     onClick={() => setMobileOpen(false)}
                   >
                     {link.label}
@@ -113,17 +113,17 @@ export function Nav() {
                 {!loading && (
                   <>
                     {user ? (
-                      <div className="flex items-center justify-between py-2 border-t border-gray-100 mt-2 pt-3">
+                      <div className="flex items-center justify-between py-2 border-t border-gray-800 mt-2 pt-3">
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm font-medium text-gray-700">
+                          <User className="h-4 w-4 text-gray-400" />
+                          <span className="text-sm font-medium text-gray-300">
                             {user.givenName || "Account"}
                           </span>
                           <LoyaltyBadge />
                         </div>
                         <button
                           onClick={() => { logout(); setMobileOpen(false); }}
-                          className="text-sm text-gray-500 hover:text-gray-700"
+                          className="text-sm text-gray-400 hover:text-gray-300"
                         >
                           Sign Out
                         </button>
@@ -131,7 +131,7 @@ export function Nav() {
                     ) : (
                       <button
                         onClick={() => { setShowLogin(true); setMobileOpen(false); }}
-                        className="text-base font-medium text-gray-700 hover:text-brand-red transition-colors py-1"
+                        className="text-base font-medium text-gray-300 hover:text-brand-red transition-colors py-1"
                       >
                         Sign In
                       </button>
@@ -141,7 +141,7 @@ export function Nav() {
 
                 <Link
                   href="/order"
-                  className="mt-2 rounded-full bg-brand-red px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                  className="mt-2 rounded-full bg-brand-red px-5 py-2.5 text-center text-sm font-semibold text-white hover:bg-red-600 hover:shadow-lg hover:shadow-red-500/20 transition-colors"
                   onClick={() => setMobileOpen(false)}
                 >
                   Order Now

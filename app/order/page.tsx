@@ -42,10 +42,10 @@ export default async function OrderPage() {
   return (
     <section className="py-8 md:py-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <h1 className="font-display text-3xl md:text-4xl font-bold text-brand-black">
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-white">
           Order Online
         </h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-400">
           Build your order and pick it up fresh.
         </p>
 

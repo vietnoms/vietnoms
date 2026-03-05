@@ -46,7 +46,7 @@ export function CateringForm() {
         <h3 className="mt-4 font-display text-xl font-bold">
           Inquiry Submitted!
         </h3>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-400">
           Thank you! We&apos;ll get back to you within 24 hours with a custom
           quote.
         </p>
@@ -57,7 +57,7 @@ export function CateringForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
           {error}
         </div>
       )}
@@ -113,7 +113,7 @@ export function CateringForm() {
           <select
             id="packageInterest"
             name="packageInterest"
-            className="flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
+            className="flex h-10 w-full rounded-md border border-gray-600 bg-surface-high text-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2"
           >
             <option value="">Select a package</option>
             <option value="banh-mi-spread">Banh Mi Spread</option>

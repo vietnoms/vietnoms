@@ -34,14 +34,14 @@ const FEATURED = [
 
 export function FeaturedDishes() {
   return (
-    <section className="py-16 md:py-24 bg-gray-50">
+    <section className="py-16 md:py-24 bg-surface-alt/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-black">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-white">
             Signature Dishes
           </h2>
-          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
-          <p className="mt-4 text-gray-600 max-w-xl mx-auto">
+          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
+          <p className="mt-4 text-gray-400 max-w-xl mx-auto">
             Explore our most-loved dishes, made fresh daily with authentic
             Vietnamese flavors.
           </p>
@@ -50,8 +50,8 @@ export function FeaturedDishes() {
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {FEATURED.map((dish) => (
             <Link key={dish.slug} href={`/menu/${dish.slug}`}>
-              <Card className="group overflow-hidden hover:shadow-md transition-shadow h-full">
-                <div className="aspect-square bg-gray-200 relative overflow-hidden">
+              <Card className="group overflow-hidden hover:shadow-md hover:-translate-y-0.5 h-full">
+                <div className="aspect-square bg-gray-800 relative overflow-hidden">
                   <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
                     {dish.name}
                   </div>
@@ -60,7 +60,7 @@ export function FeaturedDishes() {
                   <h3 className="font-display text-lg font-semibold group-hover:text-brand-red transition-colors">
                     {dish.name}
                   </h3>
-                  <p className="mt-1 text-sm text-gray-500 line-clamp-2">
+                  <p className="mt-1 text-sm text-gray-400 line-clamp-2">
                     {dish.description}
                   </p>
                   <p className="mt-2 font-semibold text-brand-red">

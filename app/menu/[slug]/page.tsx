@@ -99,7 +99,7 @@ export default async function MenuItemPage({
       <section className="py-12 md:py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {/* Breadcrumb */}
-          <nav className="mb-8 text-sm text-gray-500">
+          <nav className="mb-8 text-sm text-gray-400">
             <Link href="/" className="hover:text-brand-red">
               Home
             </Link>{" "}
@@ -107,12 +107,12 @@ export default async function MenuItemPage({
             <Link href="/menu" className="hover:text-brand-red">
               Menu
             </Link>{" "}
-            / <span className="text-gray-900">{item.name}</span>
+            / <span className="text-white">{item.name}</span>
           </nav>
 
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
             <ItemPageClient item={item}>
-              <h1 className="font-display text-3xl md:text-4xl font-bold text-brand-black">
+              <h1 className="font-display text-3xl md:text-4xl font-bold text-white">
                 {item.name}
               </h1>
 

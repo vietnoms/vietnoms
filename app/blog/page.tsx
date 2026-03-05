@@ -64,7 +64,7 @@ export default function BlogPage() {
 
           {posts.length === 0 ? (
             <div className="text-center py-20">
-              <p className="text-gray-500 text-lg">
+              <p className="text-gray-400 text-lg">
                 Blog posts coming soon! Check back for Vietnamese food guides,
                 recipes, and stories.
               </p>
@@ -74,7 +74,7 @@ export default function BlogPage() {
               {posts.map((post) => (
                 <Link key={post.slug} href={`/blog/${post.slug}`}>
                   <Card className="group overflow-hidden hover:shadow-md transition-shadow h-full">
-                    <div className="aspect-[16/9] bg-gray-200 relative overflow-hidden">
+                    <div className="aspect-[16/9] bg-gray-800 relative overflow-hidden">
                       <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
                         {post.title}
                       </div>
@@ -95,7 +95,7 @@ export default function BlogPage() {
                       <h2 className="font-display text-lg font-semibold group-hover:text-brand-red transition-colors">
                         {post.title}
                       </h2>
-                      <p className="mt-2 text-sm text-gray-500 line-clamp-2">
+                      <p className="mt-2 text-sm text-gray-400 line-clamp-2">
                         {post.description}
                       </p>
                       <time className="mt-3 block text-xs text-gray-400">

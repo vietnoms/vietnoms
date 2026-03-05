@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 
 export function OrderingCallout() {
   return (
-    <section className="py-16 md:py-20 bg-brand-red text-white">
+    <section className="py-16 md:py-20 bg-gradient-to-r from-red-700 via-brand-red to-red-700 text-white">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="font-display text-3xl md:text-4xl font-bold">
           Order Online for Pickup

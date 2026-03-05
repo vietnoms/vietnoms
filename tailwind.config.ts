@@ -11,14 +11,19 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          red: "#DC2626",
-          yellow: "#EAB308",
-          black: "#111111",
-          white: "#FAFAFA",
+          red: "#ff3333",
+          yellow: "#fdd05c",
+          black: "#333333",
+          white: "#ffffff",
+        },
+        surface: {
+          DEFAULT: "#1a1a1a",
+          alt: "#222222",
+          high: "#2a2a2a",
         },
       },
       fontFamily: {
-        display: ["Playfair Display", "serif"],
+        display: ["Bebas Neue", "sans-serif"],
         body: ["Inter", "sans-serif"],
       },
       keyframes: {

@@ -11,7 +11,7 @@ export function MobileCartBar() {
   if (items.length === 0) return null;
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-surface-alt border-t border-gray-700/50 shadow-lg">
       <Link
         href="/order/checkout"
         className="flex items-center justify-between px-4 py-3 mx-4 my-2 bg-brand-red text-white rounded-full"

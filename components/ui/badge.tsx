@@ -8,11 +8,11 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "border-transparent bg-brand-red text-white",
-        secondary: "border-transparent bg-gray-100 text-gray-700",
-        outline: "border-gray-300 text-gray-700",
-        vegan: "border-transparent bg-green-100 text-green-800",
-        spicy: "border-transparent bg-red-100 text-red-800",
-        gf: "border-transparent bg-yellow-100 text-yellow-800",
+        secondary: "border-transparent bg-gray-700/50 text-gray-300",
+        outline: "border-gray-600 text-gray-300",
+        vegan: "border-transparent bg-green-900/40 text-green-400",
+        spicy: "border-transparent bg-red-900/40 text-red-400",
+        gf: "border-transparent bg-yellow-900/40 text-yellow-400",
       },
     },
     defaultVariants: {

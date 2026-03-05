@@ -34,13 +34,13 @@ export function ReviewsSection() {
   const next = () => setCurrent((c) => (c === REVIEWS.length - 1 ? 0 : c + 1));
 
   return (
-    <section className="py-16 md:py-24 bg-gray-50">
+    <section className="py-16 md:py-24 bg-surface-alt/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-black">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-white">
             What Our Guests Say
           </h2>
-          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
+          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
         </div>
 
         <div className="mt-12 relative max-w-2xl mx-auto">
@@ -54,10 +54,10 @@ export function ReviewsSection() {
                   />
                 ))}
               </div>
-              <blockquote className="text-lg md:text-xl text-gray-700 italic leading-relaxed">
+              <blockquote className="text-lg md:text-xl text-gray-300 italic leading-relaxed">
                 &ldquo;{REVIEWS[current].text}&rdquo;
               </blockquote>
-              <p className="mt-4 font-semibold text-brand-black">
+              <p className="mt-4 font-semibold text-white">
                 {REVIEWS[current].name}
               </p>
             </CardContent>
@@ -66,7 +66,7 @@ export function ReviewsSection() {
           <div className="flex justify-center gap-4 mt-8">
             <button
               onClick={prev}
-              className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full border border-gray-600 hover:bg-white/10 transition-colors"
               aria-label="Previous review"
             >
               <ChevronLeft className="h-5 w-5" />
@@ -79,7 +79,7 @@ export function ReviewsSection() {
                   className={`h-2 rounded-full transition-all ${
                     i === current
                       ? "w-6 bg-brand-red"
-                      : "w-2 bg-gray-300 hover:bg-gray-400"
+                      : "w-2 bg-gray-600 hover:bg-gray-500"
                   }`}
                   aria-label={`Go to review ${i + 1}`}
                 />
@@ -87,7 +87,7 @@ export function ReviewsSection() {
             </div>
             <button
               onClick={next}
-              className="p-2 rounded-full border border-gray-300 hover:bg-gray-100 transition-colors"
+              className="p-2 rounded-full border border-gray-600 hover:bg-white/10 transition-colors"
               aria-label="Next review"
             >
               <ChevronRight className="h-5 w-5" />

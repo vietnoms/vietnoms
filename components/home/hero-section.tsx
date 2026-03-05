@@ -10,6 +10,8 @@ export function HeroSection({ subtitle }: HeroSectionProps) {
     <section className="relative bg-brand-black text-white overflow-hidden">
       {/* Background image placeholder - replace with actual hero photo */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+      {/* Subtle radial glow behind heading */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,_rgba(255,51,51,0.08)_0%,_rgba(253,208,92,0.05)_30%,_transparent_70%)]" />
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/images/hero.jpg')" }}

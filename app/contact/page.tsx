@@ -40,7 +40,7 @@ export default function ContactPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Map */}
-            <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-200">
+            <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-800">
               <iframe
                 src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3172!2d${RESTAURANT.geo.lng}!3d${RESTAURANT.geo.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2s${encodeURIComponent(RESTAURANT.address.full)}!5e0!3m2!1sen!2sus`}
                 width="100%"
@@ -59,7 +59,7 @@ export default function ContactPage() {
                 <MapPin className="h-6 w-6 text-brand-red flex-shrink-0 mt-0.5" />
                 <div>
                   <h2 className="font-semibold text-lg">Address</h2>
-                  <p className="text-gray-600 mt-1">
+                  <p className="text-gray-400 mt-1">
                     {RESTAURANT.address.street}
                     <br />
                     {RESTAURANT.address.city}, {RESTAURANT.address.state}{" "}
@@ -82,7 +82,7 @@ export default function ContactPage() {
                   <h2 className="font-semibold text-lg">Phone</h2>
                   <a
                     href={formatPhoneForTel(RESTAURANT.phone)}
-                    className="text-gray-600 mt-1 hover:text-brand-red transition-colors block"
+                    className="text-gray-400 mt-1 hover:text-brand-red transition-colors block"
                   >
                     {RESTAURANT.phone}
                   </a>
@@ -95,7 +95,7 @@ export default function ContactPage() {
                   <h2 className="font-semibold text-lg">Email</h2>
                   <a
                     href={`mailto:${RESTAURANT.email}`}
-                    className="text-gray-600 mt-1 hover:text-brand-red transition-colors block"
+                    className="text-gray-400 mt-1 hover:text-brand-red transition-colors block"
                   >
                     {RESTAURANT.email}
                   </a>
@@ -108,8 +108,8 @@ export default function ContactPage() {
                   <h2 className="font-semibold text-lg">Hours</h2>
                   <ul className="mt-1 space-y-1">
                     {RESTAURANT.hours.map((h) => (
-                      <li key={h.days} className="text-gray-600">
-                        <span className="font-medium text-gray-800">
+                      <li key={h.days} className="text-gray-400">
+                        <span className="font-medium text-gray-200">
                           {h.days}:
                         </span>{" "}
                         {h.open} – {h.close}

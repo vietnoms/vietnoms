@@ -137,7 +137,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
       {/* Stats row */}
       <div className="flex items-center gap-4">
         {stats.reviewCount > 0 && (
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1 text-sm text-gray-400">
             <div className="flex">
               {Array.from({ length: 5 }).map((_, i) => (
                 <Star
@@ -145,7 +145,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
                   className={`h-4 w-4 ${
                     i < Math.round(stats.averageRating)
                       ? "fill-yellow-400 text-yellow-400"
-                      : "text-gray-200"
+                      : "text-gray-600"
                   }`}
                 />
               ))}
@@ -160,7 +160,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
         )}
         <button
           onClick={handleLike}
-          className="flex items-center gap-1 text-sm text-gray-600 hover:text-red-500 transition-colors"
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-red-500 transition-colors"
         >
           <Heart
             className={`h-4 w-4 ${
@@ -173,7 +173,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
 
       {/* Reviews list */}
       <div>
-        <h3 className="font-semibold text-sm text-gray-700 mb-2">Reviews</h3>
+        <h3 className="font-semibold text-sm text-gray-300 mb-2">Reviews</h3>
         {loadingReviews ? (
           <div className="flex items-center gap-2 text-sm text-gray-400 py-2">
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -195,17 +195,17 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
                         className={`h-3 w-3 ${
                           i < review.rating
                             ? "fill-yellow-400 text-yellow-400"
-                            : "text-gray-200"
+                            : "text-gray-600"
                         }`}
                       />
                     ))}
                   </div>
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     {review.givenName || "Customer"}
                   </span>
                 </div>
                 {review.reviewText && (
-                  <p className="text-gray-600 mt-1">{review.reviewText}</p>
+                  <p className="text-gray-400 mt-1">{review.reviewText}</p>
                 )}
               </div>
             ))}
@@ -231,7 +231,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
         )}
 
         {showReviewForm && (
-          <div className="mt-3 space-y-3 bg-gray-50 rounded-lg p-3">
+          <div className="mt-3 space-y-3 bg-surface-alt rounded-lg p-3">
             <div className="flex items-center gap-1">
               {Array.from({ length: 5 }).map((_, i) => (
                 <button
@@ -253,7 +253,7 @@ export function ItemReviews({ itemId, initialStats }: ItemReviewsProps) {
               value={reviewText}
               onChange={(e) => setReviewText(e.target.value)}
               placeholder="What did you think? (optional)"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+              className="w-full rounded-lg border border-gray-600 bg-surface-high text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
               rows={2}
             />
             <div className="flex gap-2">

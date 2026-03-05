@@ -156,7 +156,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
   if (categories.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">
+        <p className="text-gray-400">
           Menu is currently being updated. Please check back soon.
         </p>
       </div>
@@ -175,7 +175,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
               className={`block w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeCategory === cat.slug
                   ? "bg-brand-red text-white"
-                  : "text-gray-600 hover:bg-gray-100"
+                  : "text-gray-400 hover:bg-white/10"
               }`}
             >
               {cat.name}
@@ -187,7 +187,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
       {/* Main content */}
       <div className="flex-1 min-w-0">
         {/* Mobile horizontal scrollable tabs */}
-        <div className="lg:hidden flex gap-2 mb-6 sticky top-16 bg-white py-3 z-30 border-b border-gray-100 overflow-x-auto scrollbar-hide -mx-4 px-4">
+        <div className="lg:hidden flex gap-2 mb-6 sticky top-16 bg-surface-alt/90 backdrop-blur-lg py-3 z-30 border-b border-gray-800/50 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {categories.map((cat) => (
             <button
               key={cat.slug}
@@ -195,7 +195,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                 activeCategory === cat.slug
                   ? "bg-brand-red text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
               }`}
             >
               {cat.name}
@@ -207,7 +207,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
         <div className="space-y-10">
           {categories.map((category) => (
             <div key={category.id} id={`order-${category.slug}`}>
-              <h2 className="font-display text-xl font-bold text-brand-black mb-4">
+              <h2 className="font-display text-xl font-bold text-white mb-4">
                 {category.name}
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -226,7 +226,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                       onClick={() => handleItemClick(item)}
                     >
                       {/* Image */}
-                      <div className="w-24 h-24 flex-shrink-0 bg-gray-200 relative">
+                      <div className="w-24 h-24 flex-shrink-0 bg-gray-800 relative">
                         {item.imageUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -235,7 +235,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                          <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">
                             {item.name.substring(0, 10)}
                           </div>
                         )}
@@ -275,13 +275,13 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                               </Badge>
                             ))}
                             {stats && stats.reviewCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                              <span className="flex items-center gap-0.5 text-xs text-gray-400">
                                 <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                                 {stats.averageRating.toFixed(1)}
                               </span>
                             )}
                             {stats && stats.likeCount > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-gray-500">
+                              <span className="flex items-center gap-0.5 text-xs text-gray-400">
                                 <Heart
                                   className={`h-3 w-3 ${
                                     isLiked

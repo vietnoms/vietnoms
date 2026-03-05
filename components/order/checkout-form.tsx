@@ -159,7 +159,7 @@ export function CheckoutForm() {
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500">
+        <p className="text-gray-400">
           Your cart is empty. Add items to place an order.
         </p>
       </div>
@@ -254,9 +254,9 @@ export function CheckoutForm() {
     <div className="max-w-xl">
       {/* Hours banner */}
       {hoursDisplay && (
-        <div className="flex items-center gap-2 text-sm mb-4 px-3 py-2 bg-gray-50 rounded-lg">
-          <Clock className="h-4 w-4 text-gray-500" />
-          <span className="text-gray-600">
+        <div className="flex items-center gap-2 text-sm mb-4 px-3 py-2 bg-surface-alt rounded-lg">
+          <Clock className="h-4 w-4 text-gray-400" />
+          <span className="text-gray-400">
             Open today: {hoursDisplay}
           </span>
           {!restaurantOpen && (
@@ -271,7 +271,7 @@ export function CheckoutForm() {
       )}
 
       {closedMessage && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
           {closedMessage}
         </div>
       )}
@@ -284,12 +284,12 @@ export function CheckoutForm() {
               className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold ${
                 stepIndex[step] >= i
                   ? "bg-brand-red text-white"
-                  : "bg-gray-200 text-gray-500"
+                  : "bg-gray-700 text-gray-400"
               }`}
             >
               {i + 1}
             </div>
-            <span className="text-sm text-gray-600 hidden sm:inline">
+            <span className="text-sm text-gray-400 hidden sm:inline">
               {label}
             </span>
             {i < 2 && <div className="w-8 h-px bg-gray-300" />}
@@ -298,7 +298,7 @@ export function CheckoutForm() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
           {error}
         </div>
       )}
@@ -309,7 +309,7 @@ export function CheckoutForm() {
           <h2 className="font-display text-xl font-bold">Pickup Details</h2>
 
           {customerLookupMsg && (
-            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            <div className="p-3 bg-green-900/30 border border-green-800 rounded-lg text-green-400 text-sm">
               {customerLookupMsg}
             </div>
           )}
@@ -374,7 +374,7 @@ export function CheckoutForm() {
                   className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
                     pickupMode === "asap"
                       ? "border-brand-red bg-brand-red/5 text-brand-red"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      : "border-gray-600 text-gray-300 hover:border-gray-300"
                   }`}
                   onClick={() => setPickupMode("asap")}
                 >
@@ -385,7 +385,7 @@ export function CheckoutForm() {
                   className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
                     pickupMode === "scheduled"
                       ? "border-brand-red bg-brand-red/5 text-brand-red"
-                      : "border-gray-200 text-gray-700 hover:border-gray-300"
+                      : "border-gray-600 text-gray-300 hover:border-gray-300"
                   }`}
                   onClick={() => setPickupMode("scheduled")}
                 >
@@ -393,7 +393,7 @@ export function CheckoutForm() {
                 </button>
               </div>
               {pickupMode === "asap" && (
-                <p className="text-sm text-gray-500 mt-2">
+                <p className="text-sm text-gray-400 mt-2">
                   Estimated ready in 10-15 minutes
                 </p>
               )}
@@ -441,7 +441,7 @@ export function CheckoutForm() {
                       ))}
                     </select>
                   ) : (
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-400">
                       No available time slots for this date.
                     </p>
                   )}
@@ -480,7 +480,7 @@ export function CheckoutForm() {
       {step === "review" && (
         <div className="space-y-4">
           <h2 className="font-display text-xl font-bold">Review Order</h2>
-          <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+          <div className="bg-surface-alt rounded-lg p-4 space-y-2">
             {items.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
                 <div>
@@ -488,12 +488,12 @@ export function CheckoutForm() {
                     {item.quantity}x {item.menuItem.name}
                   </span>
                   {item.variationName !== "Regular" && (
-                    <span className="text-gray-500 ml-1">
+                    <span className="text-gray-400 ml-1">
                       ({item.variationName})
                     </span>
                   )}
                   {item.modifiers.length > 0 && (
-                    <div className="text-xs text-gray-500 ml-4">
+                    <div className="text-xs text-gray-400 ml-4">
                       {item.modifiers.map((m) => m.name).join(", ")}
                     </div>
                   )}
@@ -510,7 +510,7 @@ export function CheckoutForm() {
             </p>
           </div>
 
-          <div className="bg-gray-50 rounded-lg p-4 text-sm space-y-1">
+          <div className="bg-surface-alt rounded-lg p-4 text-sm space-y-1">
             <p>
               <strong>Name:</strong> {customerInfo.name}
             </p>
@@ -553,14 +553,14 @@ export function CheckoutForm() {
 
           {/* Loyalty section */}
           {loyalty?.account && loyalty.program && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 space-y-2">
+            <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Star className="h-4 w-4 text-yellow-500" />
                 Loyalty Points: {loyalty.account.balance}
               </div>
               {loyalty.program.rewardTiers.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-xs text-gray-600">Available rewards:</p>
+                  <p className="text-xs text-gray-400">Available rewards:</p>
                   {loyalty.program.rewardTiers
                     .filter(
                       (tier) => loyalty.account!.balance >= tier.points
@@ -582,7 +582,7 @@ export function CheckoutForm() {
                           className="accent-yellow-500"
                         />
                         <span>{tier.name}</span>
-                        <span className="text-gray-500 ml-auto">
+                        <span className="text-gray-400 ml-auto">
                           {tier.points} pts
                         </span>
                       </label>
@@ -590,7 +590,7 @@ export function CheckoutForm() {
                   {selectedRewardId && (
                     <button
                       onClick={() => setSelectedRewardId("")}
-                      className="text-xs text-gray-500 hover:text-gray-700"
+                      className="text-xs text-gray-400 hover:text-gray-700"
                     >
                       Don&apos;t use a reward
                     </button>
@@ -620,7 +620,7 @@ export function CheckoutForm() {
       {step === "payment" && (
         <div className="space-y-4">
           <h2 className="font-display text-xl font-bold">Payment</h2>
-          <div className="bg-gray-50 rounded-lg p-4 flex justify-between text-sm font-semibold">
+          <div className="bg-surface-alt rounded-lg p-4 flex justify-between text-sm font-semibold">
             <span>Order Total</span>
             <span className="text-brand-red">{formatPrice(total)}</span>
           </div>
@@ -653,7 +653,7 @@ export function CheckoutForm() {
               </div>
             </PaymentForm>
           ) : (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-400">
               Payment is not configured yet. Please contact us to place your
               order.
             </p>
@@ -674,7 +674,7 @@ export function CheckoutForm() {
       {step === "processing" && (
         <div className="text-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-brand-red mx-auto" />
-          <p className="mt-4 text-gray-600">Processing payment...</p>
+          <p className="mt-4 text-gray-400">Processing payment...</p>
         </div>
       )}
 
@@ -682,10 +682,10 @@ export function CheckoutForm() {
       {step === "success" && (
         <div className="text-center py-12">
           <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-          <h2 className="mt-4 font-display text-2xl font-bold text-brand-black">
+          <h2 className="mt-4 font-display text-2xl font-bold text-white">
             Payment Successful!
           </h2>
-          <p className="mt-2 text-gray-600">Redirecting to confirmation...</p>
+          <p className="mt-2 text-gray-400">Redirecting to confirmation...</p>
         </div>
       )}
     </div>
