@@ -221,11 +221,13 @@ export const getMenuCategories = unstable_cache(
         .filter((obj: any) => !allowedCategories?.length || allowedCategories.includes(obj.id))
         .map((obj: any, index: number) => {
           const catData = obj.categoryData;
+          // Use position in env var as ordinal if configured, otherwise API order
+          const envIndex = allowedCategories?.indexOf(obj.id) ?? -1;
           return {
             id: obj.id || "",
             name: catData?.name || "",
             slug: slugify(catData?.name || ""),
-            ordinal: index,
+            ordinal: envIndex >= 0 ? envIndex : index,
             items: [],
           };
         });
