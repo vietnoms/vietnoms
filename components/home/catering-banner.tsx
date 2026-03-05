@@ -12,7 +12,7 @@ export function CateringBanner() {
             </div>
           </div>
           <div className="order-1 md:order-2">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-white">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
               Catering for Your
               <br />
               Next Event

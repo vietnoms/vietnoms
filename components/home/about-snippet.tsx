@@ -13,7 +13,7 @@ export function AboutSnippet({ heading, text1, text2 }: AboutSnippetProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div>
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-white">
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
               {heading || "Our Story"}
             </h2>
             <div className="mt-1 h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
