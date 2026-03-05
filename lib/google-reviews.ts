@@ -48,7 +48,7 @@ export const getGoogleReviews = unstable_cache(
         return FALLBACK_REVIEWS;
       }
 
-      return place.reviews
+      const good = place.reviews
         .filter((r: any) => r.rating >= 4 && r.text?.text)
         .slice(0, 6)
         .map((r: any) => ({
@@ -58,6 +58,9 @@ export const getGoogleReviews = unstable_cache(
           relativeTimeDescription: r.relativePublishTimeDescription || "",
           profilePhotoUrl: r.authorAttribution?.photoUri || null,
         }));
+
+      // If fewer than 3 good reviews from Google, use curated fallbacks instead
+      return good.length >= 3 ? good : FALLBACK_REVIEWS;
     } catch (error) {
       console.error("Failed to fetch Google reviews:", error);
       return FALLBACK_REVIEWS;
