@@ -37,7 +37,7 @@ export function FeaturedDishes() {
     <section className="py-16 md:py-24 bg-surface-alt/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-white">
+          <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
             Signature Dishes
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
