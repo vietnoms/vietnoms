@@ -59,8 +59,11 @@ export const getGoogleReviews = unstable_cache(
           profilePhotoUrl: r.authorAttribution?.photoUri || null,
         }));
 
-      // If fewer than 3 good reviews from Google, use curated fallbacks instead
-      return good.length >= 3 ? good : FALLBACK_REVIEWS;
+      // Combine good Google reviews with fallback to ensure enough content
+      if (good.length >= 3) return good;
+      const googleNames = new Set(good.map((r) => r.authorName));
+      const extras = FALLBACK_REVIEWS.filter((r) => !googleNames.has(r.authorName));
+      return [...good, ...extras].slice(0, 6);
     } catch (error) {
       console.error("Failed to fetch Google reviews:", error);
       return FALLBACK_REVIEWS;
