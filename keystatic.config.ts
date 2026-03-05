@@ -1,7 +1,7 @@
 import { config, fields, collection, singleton } from "@keystatic/core";
 
 const storage =
-  process.env.NODE_ENV === "production"
+  process.env.NODE_ENV === "production" && process.env.KEYSTATIC_GITHUB_CLIENT_ID
     ? {
         kind: "github" as const,
         repo: "vietnoms/vietnoms" as const,
