@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 export const metadata: Metadata = {
   title: "Blog | Vietnamese Food Guides & Recipes",
   description:
-    "Explore Vietnamese food culture, recipes, and guides. Learn about pho, banh mi, Vietnamese coffee, and more from Vietnoms in San Jose.",
+    "Explore Vietnamese food culture, recipes, and guides. Learn about bun bowls, banh mi, Vietnamese coffee, and more from Vietnoms in San Jose.",
   openGraph: {
     title: "Vietnoms Blog | Vietnamese Food Guides & Recipes",
     description:

@@ -8,7 +8,7 @@ const REVIEWS = [
   {
     name: "Sarah M.",
     rating: 5,
-    text: "The best pho I've had outside of Vietnam! The broth is incredibly rich and flavorful. We come here every week.",
+    text: "The bun bowls here are incredible — fresh herbs, perfectly grilled chicken, and that house sauce is addictive. We come here every week.",
   },
   {
     name: "David L.",
@@ -18,12 +18,12 @@ const REVIEWS = [
   {
     name: "Jessica T.",
     rating: 5,
-    text: "The Vietnamese coffee here is addictive. And the spring rolls are so fresh. This place is a gem in San Jose.",
+    text: "The nuoc mam wings are the best wings in San Jose, hands down. And the Big Classic bun bowl is massive. This place is a gem.",
   },
   {
     name: "Mike R.",
     rating: 5,
-    text: "We used Vietnoms for our office catering and everyone loved it. The pho bar was a huge hit. Will definitely order again!",
+    text: "We used Vietnoms for our office catering and everyone loved it. The bun bowl bar was a huge hit. Will definitely order again!",
   },
 ];
 

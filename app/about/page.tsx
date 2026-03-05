@@ -50,7 +50,7 @@ export default async function AboutPage() {
                 {about?.originText1 || "Vietnoms was born from a deep love for Vietnamese food and a desire to share authentic flavors with the San Jose community. Our recipes have been passed down through generations, perfected over decades of family cooking."}
               </p>
               <p className="mt-4 text-gray-400 leading-relaxed">
-                {about?.originText2 || "What started as a dream became reality when we opened our doors, serving the same dishes that brought our family together around the dinner table — rich, slow-simmered pho, crispy banh mi, and refreshing Vietnamese coffee."}
+                {about?.originText2 || "What started as a dream became reality when we opened our doors, serving the same dishes that brought our family together around the dinner table — hearty bun bowls, crispy banh mi, and refreshing Vietnamese coffee."}
               </p>
             </div>
             <div className="aspect-[4/3] rounded-lg overflow-hidden bg-gray-800">
@@ -90,23 +90,6 @@ export default async function AboutPage() {
         </div>
       </section>
 
-      {/* DDD Mention */}
-      <section className="py-16 md:py-24">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="font-display text-3xl font-bold text-white">
-            As Seen On
-          </h2>
-          <div className="mt-2 mx-auto h-1 w-16 bg-brand-yellow rounded-full" />
-          <p className="mt-6 text-gray-400 max-w-xl mx-auto">
-            {about?.dddText || 'We were featured on Diners, Drive-Ins and Dives! Guy Fieri loved our classic pho and called our banh mi "out of bounds."'}
-          </p>
-          <div className="mt-8 aspect-video max-w-2xl mx-auto rounded-lg overflow-hidden bg-gray-800">
-            <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-              DDD Feature Photo / Video Embed
-            </div>
-          </div>
-        </div>
-      </section>
     </>
   );
 }

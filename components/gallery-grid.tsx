@@ -5,18 +5,18 @@ import { useState } from "react";
 const CATEGORIES = ["All", "Food", "Interior", "Events", "Team"] as const;
 
 const GALLERY_ITEMS = [
-  { src: "/images/gallery/pho-1.jpg", alt: "Classic Vietnamese pho with fresh herbs and lime", category: "Food" },
+  { src: "/images/gallery/bun-bowl-1.jpg", alt: "Vermicelli bun bowl with grilled lemongrass chicken", category: "Food" },
   { src: "/images/gallery/banh-mi-1.jpg", alt: "Crispy banh mi sandwich with grilled pork", category: "Food" },
-  { src: "/images/gallery/coffee-1.jpg", alt: "Vietnamese iced coffee with condensed milk", category: "Food" },
+  { src: "/images/gallery/wings-1.jpg", alt: "Nuoc mam chicken wings with fresh herbs", category: "Food" },
   { src: "/images/gallery/interior-1.jpg", alt: "Vietnoms restaurant dining area", category: "Interior" },
   { src: "/images/gallery/interior-2.jpg", alt: "Vietnoms restaurant bar area", category: "Interior" },
-  { src: "/images/gallery/spring-rolls-1.jpg", alt: "Fresh spring rolls with peanut dipping sauce", category: "Food" },
+  { src: "/images/gallery/big-classic-1.jpg", alt: "The Big Classic double-meat bun bowl", category: "Food" },
   { src: "/images/gallery/catering-1.jpg", alt: "Vietnoms catering setup for corporate event", category: "Events" },
   { src: "/images/gallery/team-1.jpg", alt: "Vietnoms kitchen team preparing dishes", category: "Team" },
-  { src: "/images/gallery/rice-plate-1.jpg", alt: "Broken rice plate with grilled pork chop", category: "Food" },
-  { src: "/images/gallery/catering-2.jpg", alt: "Pho bar catering station at wedding", category: "Events" },
+  { src: "/images/gallery/rice-bowl-1.jpg", alt: "Rice bowl with grilled lemongrass pork", category: "Food" },
+  { src: "/images/gallery/catering-2.jpg", alt: "Bun bowl bar catering station at wedding", category: "Events" },
   { src: "/images/gallery/team-2.jpg", alt: "Vietnoms front of house team", category: "Team" },
-  { src: "/images/gallery/noodle-1.jpg", alt: "Bun bo Hue spicy noodle soup", category: "Food" },
+  { src: "/images/gallery/coffee-1.jpg", alt: "Vietnamese iced coffee with condensed milk", category: "Food" },
 ];
 
 export function GalleryGrid() {

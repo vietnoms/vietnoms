@@ -79,6 +79,23 @@ export interface CateringInquiry {
   notes?: string;
 }
 
+export interface CateringWizardData {
+  eventDate: string;
+  guestCount: number;
+  eventType: string;
+  deliveryType: "pickup" | "delivery";
+  deliveryAddress: string;
+  deliveryDistance: number;
+  packageType: "buffet" | "premade" | "";
+  proteins: { name: string; quantity: number }[];
+  eggRollType: "pork-shrimp" | "vegan";
+  dietaryNotes: string;
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  notes: string;
+}
+
 export interface GiftCardOrder {
   amount: number;
   senderName: string;

@@ -9,7 +9,7 @@ import { RESTAURANT } from "@/lib/constants";
 
 export const metadata: Metadata = {
   title: "Order Online | Vietnamese Food Pickup",
-  description: `Order Vietnamese food online from Vietnoms for pickup. Fresh pho, banh mi, and more in San Jose. Call ${RESTAURANT.phone}.`,
+  description: `Order Vietnamese food online from Vietnoms for pickup. Bun bowls, banh mi, wings & more in San Jose. Call ${RESTAURANT.phone}.`,
   openGraph: {
     title: "Order Online | Vietnoms",
     description: "Order authentic Vietnamese food online for pickup in San Jose.",

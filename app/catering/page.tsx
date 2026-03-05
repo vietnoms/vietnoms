@@ -1,77 +1,60 @@
 import type { Metadata } from "next";
-import { ServiceSchema, BreadcrumbSchema } from "@/components/schema-markup";
+import { ServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
-import { CateringForm } from "@/components/catering-form";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { reader } from "@/lib/keystatic";
+import { CateringWizard } from "@/components/catering/catering-wizard";
+import { PartnersSection } from "@/components/catering/partners-section";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 export const metadata: Metadata = {
-  title: "Vietnamese Catering San Jose | Pho Bar, Banh Mi & More",
+  title: "Vietnamese Catering San Jose | Bun Bowl Bar, Party Platters & More",
   description:
-    "Book Vietnamese catering for your next event in San Jose. Pho bars, banh mi spreads, and full Vietnamese feasts. Perfect for corporate events, weddings, and parties.",
+    "Book Vietnamese catering for your next event in San Jose. Bun bowl bars, party platters, and pre-made bowls. $20/person. Perfect for corporate events, weddings, and parties.",
   openGraph: {
     title: "Vietnamese Catering | Vietnoms",
     description:
-      "Book Vietnamese catering for your next event. Pho bars, banh mi spreads, and more.",
+      "Book Vietnamese catering for your next event. Bun bowl bars, party platters, and more. $20/person.",
   },
 };
 
-const PACKAGES = [
+const FAQ = [
   {
-    name: "Banh Mi Spread",
-    price: "From $15/person",
-    minGuests: 20,
-    description:
-      "A variety of our signature banh mi sandwiches with all the fixings.",
-    includes: [
-      "Choice of 3 banh mi varieties",
-      "Pickled vegetables & fresh herbs",
-      "Vietnamese-style coleslaw",
-      "Chips & drinks",
-    ],
+    question: "What is included with each serving?",
+    answer:
+      "Every serving includes lettuce, pickled daikon & carrots, cucumbers, mint, cilantro, bean sprouts, peanuts, house sauce (GF fish sauce blend), soy sauce, Vietnoms vinaigrette, and 1 egg roll (pork & shrimp or vegan).",
   },
   {
-    name: "Pho Bar",
-    price: "From $22/person",
-    minGuests: 25,
-    description:
-      "An interactive pho station where guests build their own bowls.",
-    includes: [
-      "24-hour simmered bone broth",
-      "Rice noodles",
-      "Choice of proteins (beef, chicken, tofu)",
-      "Full herb & condiment bar",
-      "Spring rolls appetizer",
-    ],
+    question: "Do you offer vegan options?",
+    answer:
+      "Yes! Our stir-fried tofu comes with a vegan egg roll and vegan soy sauce. All our vermicelli noodles, rice, and fresh toppings are naturally vegan.",
   },
   {
-    name: "Full Vietnamese Feast",
-    price: "From $35/person",
-    minGuests: 30,
-    description:
-      "A complete Vietnamese dining experience with multiple courses.",
-    includes: [
-      "Fresh spring rolls",
-      "Pho bar station",
-      "Banh mi selection",
-      "Rice plates with grilled meats",
-      "Vietnamese coffee & dessert",
-      "Full service staff",
-    ],
+    question: "What is the minimum order?",
+    answer:
+      "We require a minimum of 10 guests for catering. For buffet style, each protein requires a minimum of 10 orders.",
+  },
+  {
+    question: "How far in advance should I order?",
+    answer:
+      "We require at least 7 days advance notice. For large events (100+ guests), 2-3 weeks is recommended.",
+  },
+  {
+    question: "Do you deliver?",
+    answer:
+      "Yes! Pickup is free from our location at 387 S 1st St, San Jose. Delivery is available within 20 miles for a flat fee ($10-$20 depending on distance). For locations beyond 20 miles, contact us for a custom quote.",
+  },
+  {
+    question: "What is the difference between Buffet Style and Pre-made Bowls?",
+    answer:
+      "Buffet Style serves party trays of noodles, rice, salad, proteins, and egg rolls for guests to serve themselves — best for 40+ guests. Pre-made Bowls are individually assembled and labeled — ideal for under 40 guests.",
   },
 ];
 
-export default async function CateringPage() {
-  const catering = await reader.singletons.cateringPage.read().catch(() => null);
-  const packages = catering?.packages && catering.packages.length > 0
-    ? catering.packages.map((p) => ({
-        name: p.name,
-        price: p.price,
-        minGuests: p.minGuests ?? 20,
-        description: p.description,
-        includes: p.includes,
-      }))
-    : PACKAGES;
+export default function CateringPage() {
   return (
     <>
       <ServiceSchema />
@@ -81,6 +64,12 @@ export default async function CateringPage() {
           { name: "Catering", url: `${RESTAURANT.url}/catering` },
         ]}
       />
+      <FAQSchema
+        questions={FAQ.map((f) => ({
+          question: f.question,
+          answer: f.answer,
+        }))}
+      />
 
       {/* Hero */}
       <section className="bg-brand-black text-white py-20 md:py-28">
@@ -89,71 +78,122 @@ export default async function CateringPage() {
             Catering
           </h1>
           <p className="mt-4 text-lg text-gray-300 max-w-2xl">
-            {catering?.heroSubtitle || "Bring the bold flavors of Vietnam to your next event. From corporate lunches to weddings, we've got you covered."}
+            Bring the bold flavors of Vietnam to your next event. Bun bowl bars,
+            party platters, and individually prepared bowls — all at $20 per
+            person.
           </p>
         </div>
       </section>
 
-      {/* Packages */}
+      {/* Two Styles Explainer */}
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="font-display text-3xl font-bold text-white text-center">
-            Our Packages
+            Two Ways to Cater
+          </h2>
+          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
+          <p className="mt-4 text-center text-gray-400 max-w-xl mx-auto">
+            Choose the style that fits your event. Both include all our fresh
+            toppings, sauces, and egg rolls.
+          </p>
+
+          <div className="mt-12 grid md:grid-cols-2 gap-8">
+            <div className="bg-surface-alt/50 rounded-xl p-6">
+              <h3 className="font-display text-xl font-bold text-white">
+                Buffet Style
+              </h3>
+              <p className="text-sm text-brand-yellow mt-1">
+                Best for 40+ guests
+              </p>
+              <p className="mt-3 text-gray-400 text-sm">
+                Party trays of vermicelli noodles, white rice, salad, protein
+                trays, egg rolls, and all the toppings. Guests serve themselves.
+              </p>
+              <ul className="mt-3 space-y-1 text-sm text-gray-400">
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Self-serve trays
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Min 10 orders per protein
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Great for large groups
+                </li>
+              </ul>
+            </div>
+            <div className="bg-surface-alt/50 rounded-xl p-6">
+              <h3 className="font-display text-xl font-bold text-white">
+                Pre-made Bowls
+              </h3>
+              <p className="text-sm text-brand-yellow mt-1">
+                Best for under 40 guests
+              </p>
+              <p className="mt-3 text-gray-400 text-sm">
+                Individually assembled bowls with noodles or rice, protein, all
+                toppings, and sauce on the side. Each bowl is labeled.
+              </p>
+              <ul className="mt-3 space-y-1 text-sm text-gray-400">
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Individual portions
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Labeled per person
+                </li>
+                <li className="flex gap-2">
+                  <span className="text-brand-red">&#10003;</span>
+                  Easy distribution
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Wizard */}
+      <section className="py-16 md:py-24 bg-surface-alt/50" id="order">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-display text-3xl font-bold text-white text-center">
+            Build Your Catering Order
+          </h2>
+          <p className="mt-2 text-center text-gray-400">
+            Pay online or submit an inquiry — we&apos;ll handle the rest.
+          </p>
+          <div className="mt-8">
+            <CateringWizard />
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="py-16 md:py-24">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <h2 className="font-display text-3xl font-bold text-white text-center">
+            Frequently Asked Questions
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
 
-          <div className="mt-12 grid md:grid-cols-3 gap-6">
-            {packages.map((pkg) => (
-              <Card
-                key={pkg.name}
-                className="flex flex-col hover:shadow-md transition-shadow"
-              >
-                <CardHeader>
-                  <CardTitle className="font-display text-xl">
-                    {pkg.name}
-                  </CardTitle>
-                  <p className="text-brand-red font-semibold text-lg">
-                    {pkg.price}
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    Minimum {pkg.minGuests} guests
-                  </p>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-gray-400 text-sm">{pkg.description}</p>
-                  <ul className="mt-4 space-y-1.5">
-                    {pkg.includes.map((item) => (
-                      <li
-                        key={item}
-                        className="text-sm text-gray-400 flex items-start gap-2"
-                      >
-                        <span className="text-brand-red mt-1">&#10003;</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
+          <Accordion type="single" collapsible className="mt-8">
+            {FAQ.map((faq, i) => (
+              <AccordionItem key={i} value={`faq-${i}`}>
+                <AccordionTrigger className="text-left text-white">
+                  {faq.question}
+                </AccordionTrigger>
+                <AccordionContent className="text-gray-400">
+                  {faq.answer}
+                </AccordionContent>
+              </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         </div>
       </section>
 
-      {/* Inquiry Form */}
-      <section className="py-16 md:py-24 bg-surface-alt/50">
-        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
-          <h2 className="font-display text-3xl font-bold text-white text-center">
-            Request a Quote
-          </h2>
-          <p className="mt-2 text-center text-gray-400">
-            Tell us about your event and we&apos;ll put together a custom
-            proposal.
-          </p>
-          <div className="mt-8">
-            <CateringForm />
-          </div>
-        </div>
-      </section>
+      {/* Partners */}
+      <PartnersSection />
     </>
   );
 }

@@ -21,7 +21,7 @@ export function AboutSnippet({ heading, text1, text2 }: AboutSnippetProps) {
               {text1 || "At Vietnoms, we bring the vibrant flavors of Vietnam to San Jose. Every dish is crafted with authentic recipes passed down through generations, using the freshest ingredients we can source."}
             </p>
             <p className="mt-4 text-gray-400 leading-relaxed">
-              {text2 || "From our signature pho to our crispy banh mi, each bite tells a story of tradition, passion, and the warmth of Vietnamese hospitality."}
+              {text2 || "From our signature bun bowls to our crispy banh mi, each bite tells a story of tradition, passion, and the warmth of Vietnamese hospitality."}
             </p>
             <Button asChild variant="link" className="mt-4 px-0 text-base">
               <Link href="/about">Read Our Full Story &rarr;</Link>

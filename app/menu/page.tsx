@@ -8,11 +8,11 @@ import { MenuPageSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Menu | Pho, Banh Mi, Vietnamese Coffee",
+  title: "Menu | Bun Bowls, Wings, Banh Mi & Vietnamese Coffee",
   description:
-    "Explore the full Vietnoms menu — pho, banh mi, rice plates, Vietnamese coffee, and more. Fresh, authentic Vietnamese cuisine in San Jose.",
+    "Explore the full Vietnoms menu — bun bowls, wings, banh mi, rice bowls, Vietnamese coffee, and more. Fresh, authentic Vietnamese cuisine in San Jose.",
   openGraph: {
-    title: "Vietnoms Menu | Pho, Banh Mi, Vietnamese Coffee | San Jose",
+    title: "Vietnoms Menu | Bun Bowls, Wings, Banh Mi | San Jose",
     description:
       "Explore our full menu of authentic Vietnamese dishes. Order online for pickup.",
   },

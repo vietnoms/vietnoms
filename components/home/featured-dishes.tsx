@@ -3,11 +3,25 @@ import { Card, CardContent } from "@/components/ui/card";
 
 const FEATURED = [
   {
-    name: "Classic Pho",
-    description: "Rich bone broth simmered for 24 hours with rice noodles and fresh herbs.",
+    name: "Bun Bowl",
+    description: "Vermicelli noodles with fresh herbs, pickled veggies, peanuts, and your choice of protein.",
     price: "$14.99",
-    slug: "classic-pho",
-    image: "/images/menu/classic-pho.jpg",
+    slug: "bun-bowl",
+    image: "/images/menu/bun-bowl.jpg",
+  },
+  {
+    name: "Nuoc Mam Wings",
+    description: "Crispy chicken wings tossed in our house fish sauce glaze with fresh herbs.",
+    price: "$12.99",
+    slug: "nuoc-mam-wings",
+    image: "/images/menu/nuoc-mam-wings.jpg",
+  },
+  {
+    name: "The Big Classic",
+    description: "Our signature double-meat bun bowl loaded with two proteins and all the fixings.",
+    price: "$18.99",
+    slug: "the-big-classic",
+    image: "/images/menu/the-big-classic.jpg",
   },
   {
     name: "Banh Mi",
@@ -15,20 +29,6 @@ const FEATURED = [
     price: "$12.99",
     slug: "banh-mi",
     image: "/images/menu/banh-mi.jpg",
-  },
-  {
-    name: "Vietnamese Coffee",
-    description: "Slow-dripped dark roast with sweetened condensed milk, served over ice.",
-    price: "$5.99",
-    slug: "vietnamese-coffee",
-    image: "/images/menu/vietnamese-coffee.jpg",
-  },
-  {
-    name: "Spring Rolls",
-    description: "Fresh rice paper rolls with shrimp, herbs, and vermicelli with peanut sauce.",
-    price: "$9.99",
-    slug: "spring-rolls",
-    image: "/images/menu/spring-rolls.jpg",
   },
 ];
 

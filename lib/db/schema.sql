@@ -36,3 +36,37 @@ CREATE TABLE IF NOT EXISTS item_likes (
 );
 
 CREATE INDEX IF NOT EXISTS idx_likes_item ON item_likes(square_item_id);
+
+-- Catering
+
+CREATE TABLE IF NOT EXISTS catering_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  status TEXT NOT NULL DEFAULT 'draft',  -- draft|submitted|paid|cancelled|completed
+  event_date TEXT NOT NULL,
+  guest_count INTEGER NOT NULL,
+  package_type TEXT NOT NULL,
+  customizations TEXT,                    -- JSON
+  contact_name TEXT NOT NULL,
+  contact_email TEXT NOT NULL,
+  contact_phone TEXT NOT NULL,
+  delivery_type TEXT NOT NULL DEFAULT 'pickup',  -- pickup|delivery
+  delivery_address TEXT,
+  delivery_distance REAL,                 -- miles
+  delivery_fee INTEGER DEFAULT 0,         -- cents
+  total_amount INTEGER,                   -- cents, NULL for email-only
+  square_order_id TEXT,
+  square_payment_id TEXT,
+  notes TEXT,
+  fulfillment_type TEXT NOT NULL DEFAULT 'email',  -- payment|email
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS catering_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  catering_request_id INTEGER NOT NULL REFERENCES catering_requests(id) ON DELETE CASCADE,
+  item_name TEXT NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price INTEGER,                     -- cents
+  notes TEXT
+);

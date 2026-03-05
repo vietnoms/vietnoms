@@ -2,7 +2,7 @@ export const RESTAURANT = {
   name: "Vietnoms",
   tagline: "Authentic Vietnamese Cuisine",
   description:
-    "Fresh pho, banh mi, Vietnamese coffee & more. Order online for pickup or delivery.",
+    "Bun bowls, banh mi, wings, Vietnamese coffee & more. Order online for pickup or delivery.",
   phone: "(408) 827-5812",
   email: "hello@vietnoms.com",
   address: {
@@ -34,9 +34,9 @@ export const RESTAURANT = {
 } as const;
 
 export const SEO_DEFAULTS = {
-  title: "Vietnoms | Vietnamese Restaurant in San Jose | Pho, Banh Mi & More",
+  title: "Vietnoms | Vietnamese Restaurant in San Jose | Bun Bowls, Banh Mi & More",
   description:
-    "Authentic Vietnamese cuisine in San Jose. Fresh pho, banh mi, Vietnamese coffee & more. Order online for pickup or delivery.",
+    "Authentic Vietnamese cuisine in San Jose. Bun bowls, banh mi, wings, Vietnamese coffee & more. Order online for pickup or delivery.",
   ogImage: "/images/og-image.jpg",
   twitterHandle: "@vietnoms",
 } as const;

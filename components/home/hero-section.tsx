@@ -34,7 +34,7 @@ export function HeroSection({ subtitle }: HeroSectionProps) {
             Cuisine
           </h1>
           <p className="mt-6 text-lg sm:text-xl text-gray-200 max-w-lg">
-            {subtitle || "Fresh pho, crispy banh mi, rich Vietnamese coffee, and so much more. Made with love in San Jose."}
+            {subtitle || "Bun bowls, crispy banh mi, nuoc mam wings, and Vietnamese coffee. Made with love in San Jose."}
           </p>
           <div className="mt-8 flex flex-col sm:flex-row gap-4">
             <Button asChild size="xl">

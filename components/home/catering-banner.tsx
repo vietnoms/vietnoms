@@ -20,8 +20,8 @@ export function CateringBanner() {
             <div className="mt-2 h-1 w-16 bg-brand-yellow rounded-full" />
             <p className="mt-6 text-gray-400 leading-relaxed">
               From corporate lunches to wedding celebrations, our Vietnamese
-              catering brings bold flavors to any occasion. Choose from our pho
-              bar, banh mi spread, or full Vietnamese feast packages.
+              catering brings bold flavors to any occasion. Choose from our bun
+              bowl bar, party platters, or pre-made bowl packages.
             </p>
             <Button asChild size="lg" className="mt-6">
               <Link href="/catering">Explore Catering</Link>

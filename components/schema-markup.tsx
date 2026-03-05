@@ -160,7 +160,7 @@ export function ServiceSchema() {
     "@type": "Service",
     name: "Vietnoms Catering",
     description:
-      "Vietnamese catering for events in San Jose. Pho bars, banh mi spreads, and full Vietnamese feasts.",
+      "Vietnamese catering for events in San Jose. Bun bowl bars, party platters, banh mi, and more.",
     provider: {
       "@type": "Restaurant",
       name: RESTAURANT.name,

@@ -18,7 +18,7 @@ export default config({
         heroTitle: fields.text({ label: "Hero Title", defaultValue: "Authentic Vietnamese Cuisine" }),
         heroSubtitle: fields.text({
           label: "Hero Subtitle",
-          defaultValue: "Fresh pho, crispy banh mi, rich Vietnamese coffee, and so much more. Made with love in San Jose.",
+          defaultValue: "Bun bowls, crispy banh mi, nuoc mam wings, and Vietnamese coffee. Made with love in San Jose.",
           multiline: true,
         }),
         aboutHeading: fields.text({ label: "About Heading", defaultValue: "Our Story" }),
@@ -31,7 +31,7 @@ export default config({
         aboutText2: fields.text({
           label: "About Paragraph 2",
           defaultValue:
-            "From our signature pho to our crispy banh mi, each bite tells a story of tradition, passion, and the warmth of Vietnamese hospitality.",
+            "From our signature bun bowls to our crispy banh mi, each bite tells a story of tradition, passion, and the warmth of Vietnamese hospitality.",
           multiline: true,
         }),
       },
@@ -55,7 +55,7 @@ export default config({
         originText2: fields.text({
           label: "Origin Paragraph 2",
           defaultValue:
-            'What started as a dream became reality when we opened our doors, serving the same dishes that brought our family together around the dinner table — rich, slow-simmered pho, crispy banh mi, and refreshing Vietnamese coffee.',
+            'What started as a dream became reality when we opened our doors, serving the same dishes that brought our family together around the dinner table — hearty bun bowls, crispy banh mi, and refreshing Vietnamese coffee.',
           multiline: true,
         }),
         values: fields.array(
@@ -68,12 +68,6 @@ export default config({
             itemLabel: (props) => props.fields.title.value,
           }
         ),
-        dddText: fields.text({
-          label: "Diners, Drive-Ins & Dives Text",
-          defaultValue:
-            'We were featured on Diners, Drive-Ins and Dives! Guy Fieri loved our classic pho and called our banh mi "out of bounds."',
-          multiline: true,
-        }),
       },
     }),
     cateringPage: singleton({
@@ -112,8 +106,6 @@ export default config({
       schema: {
         squareItemId: fields.text({ label: "Square Item ID", validation: { isRequired: true } }),
         story: fields.text({ label: "Story/Origin", multiline: true }),
-        dddFeatured: fields.checkbox({ label: "Featured on DDD?" }),
-        dddQuote: fields.text({ label: "Guy Fieri Quote", multiline: true }),
         seoDescription: fields.text({ label: "SEO Description", multiline: true }),
       },
     }),

@@ -150,21 +150,6 @@ export default async function MenuItemPage({
                 </div>
               )}
 
-              {content?.dddFeatured && (
-                <div className="mt-4 p-4 bg-red-50 border border-red-100 rounded-lg flex items-start gap-3">
-                  <span className="text-2xl flex-shrink-0">🔥</span>
-                  <div>
-                    <p className="font-display text-sm font-bold text-red-900">
-                      As Seen on Diners, Drive-Ins &amp; Dives!
-                    </p>
-                    {content.dddQuote && (
-                      <p className="text-sm text-red-800 mt-1 italic">
-                        &ldquo;{content.dddQuote}&rdquo; — Guy Fieri
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               <div className="mt-8 border-t border-gray-100 pt-6">
                 <ItemReviews itemId={item.id} initialStats={itemStats} />
