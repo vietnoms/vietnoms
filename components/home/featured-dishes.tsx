@@ -1,38 +1,23 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
+import type { MenuItem } from "@/lib/types";
 
-const FEATURED = [
-  {
-    name: "Bun Bowl",
-    description: "Vermicelli noodles with fresh herbs, pickled veggies, peanuts, and your choice of protein.",
-    price: "$14.99",
-    slug: "bun-bowl",
-    image: "/images/menu/bun-bowl.jpg",
-  },
-  {
-    name: "Nuoc Mam Wings",
-    description: "Crispy chicken wings tossed in our house fish sauce glaze with fresh herbs.",
-    price: "$12.99",
-    slug: "nuoc-mam-wings",
-    image: "/images/menu/nuoc-mam-wings.jpg",
-  },
-  {
-    name: "The Big Classic",
-    description: "Our signature double-meat bun bowl loaded with two proteins and all the fixings.",
-    price: "$18.99",
-    slug: "the-big-classic",
-    image: "/images/menu/the-big-classic.jpg",
-  },
-  {
-    name: "Banh Mi",
-    description: "Crispy baguette with grilled pork, pickled vegetables, and fresh cilantro.",
-    price: "$12.99",
-    slug: "banh-mi",
-    image: "/images/menu/banh-mi.jpg",
-  },
+/** Target dish names to feature — matched case-insensitively against Square catalog. */
+export const FEATURED_NAMES = [
+  "Bun Bowl",
+  "Nuoc Mam Wings",
+  "The Big Classic",
+  "Banh Mi",
 ];
 
-export function FeaturedDishes() {
+interface FeaturedDishesProps {
+  items: MenuItem[];
+}
+
+export function FeaturedDishes({ items }: FeaturedDishesProps) {
+  if (items.length === 0) return null;
+
   return (
     <section className="py-16 md:py-24 bg-surface-alt/50">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -48,23 +33,33 @@ export function FeaturedDishes() {
         </div>
 
         <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {FEATURED.map((dish) => (
-            <Link key={dish.slug} href={`/menu/${dish.slug}`}>
+          {items.map((item) => (
+            <Link key={item.slug} href={`/menu/${item.slug}`}>
               <Card className="group overflow-hidden hover:shadow-md hover:-translate-y-0.5 h-full">
                 <div className="aspect-square bg-gray-800 relative overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                    {dish.name}
-                  </div>
+                  {item.imageUrl ? (
+                    <Image
+                      src={item.imageUrl}
+                      alt={item.name}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                      {item.name}
+                    </div>
+                  )}
                 </div>
                 <CardContent className="p-4">
                   <h3 className="font-display text-lg font-semibold group-hover:text-brand-red transition-colors">
-                    {dish.name}
+                    {item.name}
                   </h3>
                   <p className="mt-1 text-sm text-gray-400 line-clamp-2">
-                    {dish.description}
+                    {item.description}
                   </p>
                   <p className="mt-2 font-semibold text-brand-red">
-                    {dish.price}
+                    {item.formattedPrice}
                   </p>
                 </CardContent>
               </Card>

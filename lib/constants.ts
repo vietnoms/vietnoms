@@ -4,7 +4,7 @@ export const RESTAURANT = {
   description:
     "Bun bowls, banh mi, wings, Vietnamese coffee & more. Order online for pickup or delivery.",
   phone: "(408) 827-5812",
-  email: "hello@vietnoms.com",
+  email: "catering@vietnoms.com",
   address: {
     street: "387 S 1st St, Ste 121",
     city: "San Jose",
@@ -21,9 +21,9 @@ export const RESTAURANT = {
   cuisine: "Vietnamese",
   url: "https://vietnoms.com",
   hours: [
-    { days: "Monday - Thursday", open: "11:00 AM", close: "9:00 PM" },
-    { days: "Friday - Saturday", open: "11:00 AM", close: "10:00 PM" },
-    { days: "Sunday", open: "11:00 AM", close: "9:00 PM" },
+    { days: "Monday - Thursday", open: "11:30 AM", close: "7:00 PM" },
+    { days: "Friday - Saturday", open: "11:30 AM", close: "8:00 PM" },
+    { days: "Sunday", open: "11:30 AM", close: "7:00 PM" },
   ],
   social: {
     instagram: "https://instagram.com/vietnoms",
