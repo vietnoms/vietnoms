@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 import { getMenuItems, getMenuItemBySlug } from "@/lib/menu-data";
 import { getItemStats } from "@/lib/db/reviews";
@@ -9,7 +8,7 @@ import { MenuItemSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RESTAURANT } from "@/lib/constants";
-import { ItemAddToCart } from "@/components/order/item-add-to-cart";
+import { ItemPageClient } from "@/components/order/item-page-client";
 import { ItemReviews } from "@/components/order/item-reviews";
 import { reader } from "@/lib/keystatic";
 
@@ -112,33 +111,7 @@ export default async function MenuItemPage({
           </nav>
 
           <div className="grid md:grid-cols-2 gap-8 lg:gap-12">
-            {/* Image */}
-            <div className="aspect-square rounded-lg overflow-hidden bg-gray-200 relative">
-              {item.imageUrl ? (
-                <Image
-                  src={item.imageUrl}
-                  alt={item.name}
-                  fill
-                  sizes="(max-width: 768px) 100vw, 50vw"
-                  className="object-cover"
-                  priority
-                />
-              ) : (
-                <div className="h-full flex items-center justify-center text-gray-400">
-                  {item.name}
-                </div>
-              )}
-              {item.soldOut && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <span className="bg-white text-brand-black font-semibold px-4 py-2 rounded-full">
-                    Sold Out
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Details */}
-            <div>
+            <ItemPageClient item={item}>
               <h1 className="font-display text-3xl md:text-4xl font-bold text-brand-black">
                 {item.name}
               </h1>
@@ -193,10 +166,6 @@ export default async function MenuItemPage({
                 </div>
               )}
 
-              <div className="mt-8">
-                <ItemAddToCart item={item} />
-              </div>
-
               <div className="mt-8 border-t border-gray-100 pt-6">
                 <ItemReviews itemId={item.id} initialStats={itemStats} />
               </div>
@@ -212,7 +181,7 @@ export default async function MenuItemPage({
                   Category: {item.categoryName}
                 </p>
               )}
-            </div>
+            </ItemPageClient>
           </div>
         </div>
       </section>

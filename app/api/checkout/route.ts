@@ -18,6 +18,7 @@ interface CheckoutRequest {
     email: string;
     phone: string;
     pickupTime?: string;
+    pickupDate?: string;
     notes?: string;
   };
   paymentToken: string;
@@ -43,13 +44,20 @@ export async function POST(request: Request) {
     // Build pickup time
     let pickupAt: string | undefined;
     if (customerInfo.pickupTime) {
-      const today = new Date();
-      const [hours, minutes] = customerInfo.pickupTime.split(":");
-      today.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-      if (today < new Date()) {
-        today.setDate(today.getDate() + 1);
+      let date: Date;
+      if (customerInfo.pickupDate) {
+        const [year, month, day] = customerInfo.pickupDate.split("-").map(Number);
+        date = new Date(year, month - 1, day);
+      } else {
+        date = new Date();
       }
-      pickupAt = today.toISOString();
+      const [hours, minutes] = customerInfo.pickupTime.split(":");
+      date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      // Safety fallback: bump to tomorrow if time has passed
+      if (date < new Date()) {
+        date.setDate(date.getDate() + 1);
+      }
+      pickupAt = date.toISOString();
     }
 
     // Step 1: Create the order

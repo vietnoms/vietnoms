@@ -251,16 +251,19 @@ export function ItemDetailModal({
         <DialogTitle className="sr-only">{item.name}</DialogTitle>
 
         {/* Image */}
-        {item.imageUrl && (
-          <div className="w-full aspect-[16/10] bg-gray-200 relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={item.imageUrl}
-              alt={item.name}
-              className="w-full h-full object-cover"
-            />
-          </div>
-        )}
+        {(() => {
+          const displayImageUrl = selectedVariation?.imageUrl || item.imageUrl;
+          return displayImageUrl ? (
+            <div className="w-full aspect-[16/10] bg-gray-200 relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={displayImageUrl}
+                alt={item.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : null;
+        })()}
 
         <div className="p-5 space-y-4">
           {/* Name, price, badges */}

@@ -10,9 +10,10 @@ import { ShoppingCart, Check, Minus, Plus } from "lucide-react";
 
 interface ItemAddToCartProps {
   item: MenuItem;
+  onVariationChange?: (variationId: string) => void;
 }
 
-export function ItemAddToCart({ item }: ItemAddToCartProps) {
+export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
   const { addItem, openCart } = useCart();
   const router = useRouter();
 
@@ -161,7 +162,10 @@ export function ItemAddToCart({ item }: ItemAddToCartProps) {
             {item.variations.map((v) => (
               <button
                 key={v.id}
-                onClick={() => setSelectedVariationId(v.id)}
+                onClick={() => {
+                  setSelectedVariationId(v.id);
+                  onVariationChange?.(v.id);
+                }}
                 className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
                   selectedVariationId === v.id
                     ? "border-brand-red bg-brand-red/5 text-brand-red"

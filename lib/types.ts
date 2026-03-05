@@ -20,6 +20,7 @@ export interface MenuVariation {
   name: string;
   price: number;
   formattedPrice: string;
+  imageUrl?: string | null;
 }
 
 export interface ModifierList {

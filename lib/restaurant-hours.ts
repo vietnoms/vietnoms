@@ -85,6 +85,53 @@ export function getTodayHoursDisplay(date: Date = new Date()): string | null {
   return `${hours.open} - ${hours.close}`;
 }
 
+export const MAX_ADVANCE_DAYS = 7;
+
+export function getDateHoursDisplay(date: Date): string | null {
+  const hours = getTodayHours(date);
+  if (!hours) return null;
+  return `${hours.open} - ${hours.close}`;
+}
+
+export function generatePickupSlotsForDate(
+  targetDate: Date,
+  intervalMinutes: number = 15
+): { label: string; value: string }[] {
+  const now = new Date();
+  const isToday =
+    targetDate.getFullYear() === now.getFullYear() &&
+    targetDate.getMonth() === now.getMonth() &&
+    targetDate.getDate() === now.getDate();
+
+  if (isToday) {
+    return generatePickupSlots(now, intervalMinutes);
+  }
+
+  // Future date: generate slots from opening time to cutoff
+  const opening = getOpeningTime(targetDate);
+  const cutoff = getOrderCutoff(targetDate);
+  if (!opening || !cutoff) return [];
+
+  const slots: { label: string; value: string }[] = [];
+  const current = new Date(opening);
+
+  while (current <= cutoff) {
+    const label = current.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    const value = `${current.getHours().toString().padStart(2, "0")}:${current
+      .getMinutes()
+      .toString()
+      .padStart(2, "0")}`;
+    slots.push({ label, value });
+    current.setMinutes(current.getMinutes() + intervalMinutes);
+  }
+
+  return slots;
+}
+
 export function generatePickupSlots(
   date: Date = new Date(),
   intervalMinutes: number = 15

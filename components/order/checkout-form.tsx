@@ -22,7 +22,10 @@ import {
   canAcceptOrders,
   getTodayHoursDisplay,
   generatePickupSlots,
+  generatePickupSlotsForDate,
   getOrderCutoff,
+  getDateHoursDisplay,
+  MAX_ADVANCE_DAYS,
 } from "@/lib/restaurant-hours";
 
 type Step = "info" | "review" | "payment" | "processing" | "success";
@@ -48,6 +51,7 @@ export function CheckoutForm() {
     email: "",
     phone: "",
     pickupTime: "",
+    pickupDate: "",
     notes: "",
   });
 
@@ -65,14 +69,33 @@ export function CheckoutForm() {
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [pickupSlots, setPickupSlots] = useState<{ label: string; value: string }[]>([]);
 
-  // Check restaurant hours
+  // Set initial pickupDate to today
+  useEffect(() => {
+    if (!customerInfo.pickupDate) {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, "0");
+      const dd = String(now.getDate()).padStart(2, "0");
+      setCustomerInfo((prev) => ({ ...prev, pickupDate: `${yyyy}-${mm}-${dd}` }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Check restaurant hours and regenerate pickup slots
   useEffect(() => {
     const now = new Date();
     setHoursDisplay(getTodayHoursDisplay(now));
     setRestaurantOpen(isOpenNow(now));
     setAcceptingOrders(canAcceptOrders(now));
-    setPickupSlots(generatePickupSlots(now));
-  }, [step]);
+
+    if (customerInfo.pickupDate) {
+      const [y, m, d] = customerInfo.pickupDate.split("-").map(Number);
+      const targetDate = new Date(y, m - 1, d);
+      setPickupSlots(generatePickupSlotsForDate(targetDate));
+    } else {
+      setPickupSlots(generatePickupSlots(now));
+    }
+  }, [step, customerInfo.pickupDate]);
 
   // Pre-fill from auth
   useEffect(() => {
@@ -183,6 +206,8 @@ export function CheckoutForm() {
             ...customerInfo,
             pickupTime:
               pickupMode === "asap" ? "" : customerInfo.pickupTime,
+            pickupDate:
+              pickupMode === "asap" ? "" : customerInfo.pickupDate,
           },
           paymentToken: token.token,
           rewardId: selectedRewardId || undefined,
@@ -373,7 +398,29 @@ export function CheckoutForm() {
                 </p>
               )}
               {pickupMode === "scheduled" && (
-                <div className="mt-2">
+                <div className="mt-2 space-y-2">
+                  <input
+                    type="date"
+                    value={customerInfo.pickupDate}
+                    onChange={(e) => {
+                      setCustomerInfo((prev) => ({
+                        ...prev,
+                        pickupDate: e.target.value,
+                        pickupTime: "",
+                      }));
+                    }}
+                    min={(() => {
+                      const d = new Date();
+                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                    })()}
+                    max={(() => {
+                      const d = new Date();
+                      d.setDate(d.getDate() + MAX_ADVANCE_DAYS);
+                      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+                    })()}
+                    required
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                  />
                   {pickupSlots.length > 0 ? (
                     <select
                       value={customerInfo.pickupTime}
@@ -395,7 +442,7 @@ export function CheckoutForm() {
                     </select>
                   ) : (
                     <p className="text-sm text-gray-500">
-                      No available time slots today.
+                      No available time slots for this date.
                     </p>
                   )}
                 </div>
@@ -479,7 +526,23 @@ export function CheckoutForm() {
               <strong>Pickup:</strong>{" "}
               {pickupMode === "asap"
                 ? "ASAP (10-15 min)"
-                : customerInfo.pickupTime || "Scheduled"}
+                : (() => {
+                    if (!customerInfo.pickupTime) return "Scheduled";
+                    const [y, mo, d] = customerInfo.pickupDate.split("-").map(Number);
+                    const [h, mi] = customerInfo.pickupTime.split(":").map(Number);
+                    const dt = new Date(y, mo - 1, d, h, mi);
+                    return dt.toLocaleDateString("en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                    }) +
+                      " at " +
+                      dt.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: true,
+                      });
+                  })()}
             </p>
             {customerInfo.notes && (
               <p>

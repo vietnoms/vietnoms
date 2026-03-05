@@ -88,11 +88,14 @@ export const getMenuItems = unstable_cache(
             const validUntil = locationOverride?.soldOutValidUntil;
             const overrideExpired = validUntil && new Date(validUntil) < new Date();
 
+            const varImageId = v.imageIds?.[0];
+
             return {
               id: v.id || "",
               name: varData?.name || "Regular",
               price: toNumber(price),
               formattedPrice: toDollars(price),
+              imageUrl: varImageId ? (imageMap.get(varImageId) || null) : null,
               _soldOutOverride: soldOutOverride && !overrideExpired,
             } as MenuVariation & { _soldOutOverride: boolean };
           });
