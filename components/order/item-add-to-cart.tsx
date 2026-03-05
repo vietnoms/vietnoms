@@ -125,16 +125,34 @@ export function ItemAddToCart({ item }: ItemAddToCartProps) {
     }, 1000);
   }
 
+  // Compute the displayed price based on selected variation
+  const displayPrice = selectedVariation?.formattedPrice || item.formattedPrice;
+  const hasMultiplePrices = useMemo(() => {
+    if (item.variations.length <= 1) return false;
+    const prices = new Set(item.variations.map((v) => v.price));
+    return prices.size > 1;
+  }, [item.variations]);
+
   if (item.soldOut) {
     return (
-      <Button size="xl" disabled className="opacity-50 cursor-not-allowed">
-        Sold Out
-      </Button>
+      <>
+        <p className="text-2xl font-bold text-gray-400 mb-5">Sold Out</p>
+        <Button size="xl" disabled className="opacity-50 cursor-not-allowed">
+          Sold Out
+        </Button>
+      </>
     );
   }
 
   return (
     <div className="space-y-5">
+      {/* Dynamic price */}
+      <p className="text-2xl font-bold text-brand-red">
+        {hasMultiplePrices && item.variations.length > 1 && selectedVariationId === item.variations[0]?.id
+          ? `From ${displayPrice}`
+          : displayPrice}
+      </p>
+
       {/* Variation selector */}
       {item.variations.length > 1 && (
         <div>

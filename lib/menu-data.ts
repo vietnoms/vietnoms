@@ -139,8 +139,21 @@ export const getMenuItems = unstable_cache(
         }
       }
 
+      // Filter by allowed category IDs if configured
+      const allowedCategories = process.env.SQUARE_MENU_CATEGORY_IDS
+        ?.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      const filteredRawItems = allowedCategories?.length
+        ? rawItems.filter(({ item }) => {
+            const catId = item.categoryId || item.categories?.[0]?.id || "";
+            return allowedCategories.includes(catId);
+          })
+        : rawItems;
+
       // Build final items
-      const items: MenuItem[] = rawItems.map(({ item, obj, variations }) => {
+      const items: MenuItem[] = filteredRawItems.map(({ item, obj, variations }) => {
         const cleanVariations = variations.map(
           ({ _soldOutOverride, ...v }: any) => v as MenuVariation
         );
@@ -198,8 +211,14 @@ export const getMenuCategories = unstable_cache(
 
       const allObjects = page?.data || [];
 
+      const allowedCategories = process.env.SQUARE_MENU_CATEGORY_IDS
+        ?.split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const categories = allObjects
         .filter((obj: any) => obj.type === "CATEGORY")
+        .filter((obj: any) => !allowedCategories?.length || allowedCategories.includes(obj.id))
         .map((obj: any, index: number) => {
           const catData = obj.categoryData;
           return {

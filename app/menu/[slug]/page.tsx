@@ -164,10 +164,6 @@ export default async function MenuItemPage({
                 </div>
               )}
 
-              <p className={`mt-4 text-2xl font-bold ${item.soldOut ? "text-gray-400" : "text-brand-red"}`}>
-                {item.soldOut ? "Sold Out" : item.formattedPrice}
-              </p>
-
               {item.description && (
                 <p className="mt-4 text-gray-600 leading-relaxed">
                   {item.description}
