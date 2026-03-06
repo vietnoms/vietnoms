@@ -61,8 +61,8 @@ export const getGoogleReviews = unstable_cache(
 
       // Combine good Google reviews with fallback to ensure enough content
       if (good.length >= 3) return good;
-      const googleNames = new Set(good.map((r) => r.authorName));
-      const extras = FALLBACK_REVIEWS.filter((r) => !googleNames.has(r.authorName));
+      const googleNames = new Set(good.map((r: GoogleReview) => r.authorName));
+      const extras = FALLBACK_REVIEWS.filter((r: GoogleReview) => !googleNames.has(r.authorName));
       return [...good, ...extras].slice(0, 6);
     } catch (error) {
       console.error("Failed to fetch Google reviews:", error);
