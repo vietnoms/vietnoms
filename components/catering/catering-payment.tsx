@@ -4,6 +4,9 @@ import { useState } from "react";
 import {
   PaymentForm,
   CreditCard,
+  ApplePay,
+  GooglePay,
+  CashAppPay,
 } from "react-square-web-payments-sdk";
 import { Loader2 } from "lucide-react";
 
@@ -61,6 +64,14 @@ export function CateringPayment({
       })}
     >
       <CreditCard />
+      <div className="my-3 text-center text-sm text-gray-400">
+        or pay with
+      </div>
+      <div className="space-y-2">
+        <ApplePay />
+        <GooglePay />
+        <CashAppPay />
+      </div>
     </PaymentForm>
   );
 }

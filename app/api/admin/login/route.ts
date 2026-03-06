@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { verifyAdminCredentials, setAdminSession } from "@/lib/admin";
+import { verifyAdminCredentials, setAdminSession, clearAdminSession } from "@/lib/admin";
 
 export async function POST(request: Request) {
   try {
@@ -19,4 +19,9 @@ export async function POST(request: Request) {
     console.error("Admin login error:", error);
     return NextResponse.json({ error: "Login failed" }, { status: 500 });
   }
+}
+
+export async function DELETE() {
+  await clearAdminSession();
+  return NextResponse.json({ success: true });
 }

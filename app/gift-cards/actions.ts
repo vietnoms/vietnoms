@@ -11,6 +11,11 @@ export async function createGiftCard(
   const square = getSquare();
 
   try {
+    // Validate amount bounds ($5–$500)
+    if (data.amount < 500 || data.amount > 50000) {
+      return { success: false, error: "Gift card amount must be between $5 and $500." };
+    }
+
     // 1. Create the gift card
     const gcResponse = await square.giftCards.create({
       idempotencyKey: crypto.randomUUID(),

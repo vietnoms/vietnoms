@@ -1,61 +1,36 @@
 import type { Metadata } from "next";
-import { getFullMenu } from "@/lib/menu-data";
-import { getBulkItemStats } from "@/lib/db/reviews";
-
-export const revalidate = 3600;
-import { OrderMenu } from "@/components/order/order-menu";
-import { MobileCartBar } from "@/components/order/mobile-cart-bar";
-import { RESTAURANT } from "@/lib/constants";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Order Online | Vietnamese Food Pickup",
-  description: `Order Vietnamese food online from Vietnoms for pickup. Bun bowls, banh mi, wings & more in San Jose. Call ${RESTAURANT.phone}.`,
-  openGraph: {
-    title: "Order Online | Vietnoms",
-    description: "Order authentic Vietnamese food online for pickup in San Jose.",
-  },
+  description: "Order Vietnamese food online from Vietnoms for pickup. Bun bowls, banh mi, wings & more in San Jose.",
 };
 
-export default async function OrderPage() {
-  const categories = await getFullMenu();
-
-  // Collect all item IDs for bulk stats fetch
-  const allItemIds = categories.flatMap((cat) => cat.items.map((item) => item.id));
-
-  // Fetch item stats (reviews + likes) — gracefully handle if Turso isn't configured
-  let itemStats: Record<string, { averageRating: number; reviewCount: number; likeCount: number }> = {};
-  try {
-    const statsMap = await getBulkItemStats(allItemIds);
-    itemStats = Object.fromEntries(statsMap);
-  } catch {
-    // Turso not configured yet — continue without stats
-  }
-
-  // Serialize menu data to pass to client components (BigInt already converted)
-  const menuData = categories.map((cat) => ({
-    ...cat,
-    items: cat.items.map((item) => ({
-      ...item,
-    })),
-  }));
-
+export default function OrderPage() {
   return (
     <section className="py-8 md:py-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 text-center">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-white">
           Order Online
         </h1>
-        <p className="mt-2 text-gray-400">
-          Build your order and pick it up fresh.
-        </p>
-
-        <div className="mt-8">
-          <OrderMenu categories={menuData} itemStats={itemStats} />
+        <div className="mt-8 rounded-lg border border-yellow-500/30 bg-yellow-500/10 p-6">
+          <p className="text-lg text-yellow-200 font-semibold">
+            Online ordering is temporarily disabled.
+          </p>
+          <p className="mt-2 text-gray-400">
+            Our website is currently undergoing construction. Please call us to place an order.
+          </p>
+          <a
+            href="tel:+14088275812"
+            className="mt-4 inline-block rounded-lg bg-brand-red px-6 py-3 font-semibold text-white hover:bg-red-700 transition-colors"
+          >
+            Call (408) 827-5812
+          </a>
         </div>
+        <Link href="/" className="mt-6 inline-block text-sm text-gray-400 hover:text-white transition-colors">
+          Back to Home
+        </Link>
       </div>
-
-      {/* Mobile sticky cart bar */}
-      <MobileCartBar />
     </section>
   );
 }

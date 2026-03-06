@@ -7,6 +7,12 @@ import {
 } from "@/lib/db/catering";
 import { sendCateringOrderEmails } from "@/lib/email";
 import crypto from "crypto";
+import {
+  calculateEstimate,
+  MAX_DELIVERY_MILES,
+  type ProteinSelection,
+  type SideSelection,
+} from "@/lib/catering-pricing";
 
 interface CateringCheckoutRequest {
   eventDate: string;
@@ -38,6 +44,37 @@ export async function POST(request: Request) {
     }
     if (!body.totalAmount || body.totalAmount <= 0) {
       return NextResponse.json({ error: "Invalid total" }, { status: 400 });
+    }
+
+    // Server-side price verification
+    if (body.deliveryDistance != null && body.deliveryDistance > MAX_DELIVERY_MILES) {
+      return NextResponse.json(
+        { error: "Delivery distance exceeds maximum. Please use the email inquiry option." },
+        { status: 400 }
+      );
+    }
+
+    const proteins: ProteinSelection[] = Array.isArray(body.customizations?.proteins)
+      ? (body.customizations!.proteins as ProteinSelection[])
+      : [];
+    const sides: SideSelection[] = Array.isArray(body.customizations?.sides)
+      ? (body.customizations!.sides as SideSelection[])
+      : [];
+
+    const serverEstimate = calculateEstimate(
+      body.guestCount,
+      proteins,
+      body.deliveryDistance ?? 0,
+      !!body.customizations?.bigUpActive,
+      sides,
+      body.packageType as "buffet" | "premade" | ""
+    );
+
+    if (body.totalAmount !== serverEstimate.total) {
+      return NextResponse.json(
+        { error: "Price verification failed. Please refresh and try again." },
+        { status: 400 }
+      );
     }
 
     // 1. Save to DB as draft first

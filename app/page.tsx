@@ -25,6 +25,9 @@ export default async function HomePage() {
 
   return (
     <>
+      <div className="bg-yellow-500 text-black text-center px-4 py-3 text-sm font-semibold sm:text-base">
+        Our website is currently undergoing construction. Online ordering is temporarily disabled. Please call us at (408) 827-5812 if you would like to place an order.
+      </div>
       <HeroSection
         subtitle={homePage?.heroSubtitle}
       />

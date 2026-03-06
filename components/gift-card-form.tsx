@@ -8,6 +8,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { createGiftCard } from "@/app/gift-cards/actions";
 import { formatPrice } from "@/lib/utils";
 import { CheckCircle, Gift } from "lucide-react";
+import {
+  PaymentForm,
+  CreditCard,
+  ApplePay,
+  GooglePay,
+  CashAppPay,
+} from "react-square-web-payments-sdk";
 
 const PRESET_AMOUNTS = [2500, 5000, 7500, 10000]; // in cents
 
@@ -260,9 +267,43 @@ export function GiftCardForm() {
           <h2 className="font-display text-xl font-bold">
             Pay {formatPrice(effectiveAmount)}
           </h2>
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-800 text-sm">
-            Gift card purchasing is being updated. Please call the restaurant to purchase gift cards.
-          </div>
+
+          {process.env.NEXT_PUBLIC_SQUARE_APP_ID && process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID ? (
+            <PaymentForm
+              applicationId={process.env.NEXT_PUBLIC_SQUARE_APP_ID}
+              locationId={process.env.NEXT_PUBLIC_SQUARE_LOCATION_ID}
+              cardTokenizeResponseReceived={(token) => {
+                if (token.status === "OK" && token.token) {
+                  handlePaymentSuccess(token.token);
+                } else {
+                  setError("Payment failed. Please try again.");
+                }
+              }}
+              createPaymentRequest={() => ({
+                countryCode: "US",
+                currencyCode: "USD",
+                total: {
+                  amount: (effectiveAmount / 100).toFixed(2),
+                  label: "Vietnoms Gift Card",
+                },
+              })}
+            >
+              <CreditCard />
+              <div className="my-3 text-center text-sm text-gray-400">
+                or pay with
+              </div>
+              <div className="space-y-2">
+                <ApplePay />
+                <GooglePay />
+                <CashAppPay />
+              </div>
+            </PaymentForm>
+          ) : (
+            <p className="text-sm text-gray-400">
+              Payment is not configured. Please contact us to purchase gift cards.
+            </p>
+          )}
+
           <Button
             variant="outline"
             onClick={() => setStep("details")}
