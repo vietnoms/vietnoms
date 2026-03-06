@@ -88,10 +88,12 @@ export interface CateringWizardData {
   deliveryDistance: number;
   deliveryPlaceId: string;
   packageType: "buffet" | "premade" | "";
-  proteins: { name: string; quantity: number }[];
+  proteins: { name: string; quantity: number; selected: boolean }[];
   bases: { name: string; quantity: number }[];
-  sides: { baseName: string; side: string }[];
-  sauces: { baseName: string; sauce: string }[];
+  sides: { name: string; quantity: number }[];
+  bigUpActive: boolean;
+  noPeanuts: boolean;
+  eggRollCut: "1/2" | "1/4" | "Uncut";
   dietaryNotes: string;
   contactName: string;
   contactEmail: string;

@@ -23,8 +23,10 @@ interface CateringEmailData {
   notes?: string | null;
   customizations?: {
     bases?: { name: string; quantity: number }[];
-    sides?: { baseName: string; side: string }[];
-    sauces?: { baseName: string; sauce: string }[];
+    sides?: { name: string; quantity: number }[];
+    bigUpActive?: boolean;
+    noPeanuts?: boolean;
+    eggRollCut?: string;
   } | null;
 }
 
@@ -58,15 +60,35 @@ function buildDetailsBlock(data: CateringEmailData): string {
   if (data.customizations?.sides?.length) {
     lines.push("", "Sides:");
     for (const s of data.customizations.sides) {
-      lines.push(`  - ${s.baseName}: ${s.side}`);
+      lines.push(`  - ${s.name} x${s.quantity}`);
     }
   }
-  if (data.customizations?.sauces?.length) {
-    lines.push("", "Sauces:");
-    for (const s of data.customizations.sauces) {
-      lines.push(`  - ${s.baseName}: ${s.sauce}`);
+
+  // Computed sauces from bases
+  if (data.customizations?.bases?.length) {
+    const riceQty = data.customizations.bases.find((b) => b.name === "Rice")?.quantity ?? 0;
+    const vermicelliQty = data.customizations.bases.find((b) => b.name === "Vermicelli Noodles")?.quantity ?? 0;
+    const saladQty = data.customizations.bases.find((b) => b.name === "Salad")?.quantity ?? 0;
+    const houseSauce = riceQty + vermicelliQty;
+    const vinaigrette = saladQty;
+    const sauceParts: string[] = [];
+    if (houseSauce > 0) sauceParts.push(`House Sauce x${houseSauce}`);
+    if (vinaigrette > 0) sauceParts.push(`Vietnoms Vinaigrette x${vinaigrette}`);
+    if (sauceParts.length > 0) {
+      lines.push("", `Sauces: ${sauceParts.join(", ")}`);
     }
   }
+
+  if (data.customizations?.bigUpActive) {
+    lines.push("", "Big Up: Yes");
+  }
+  if (data.customizations?.noPeanuts) {
+    lines.push("No Peanuts: Yes");
+  }
+  if (data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut") {
+    lines.push(`Egg Roll Cut: ${data.customizations.eggRollCut}`);
+  }
+
   if (data.totalAmount != null) {
     lines.push("", `Total: ${formatMoney(data.totalAmount)}`);
   }
