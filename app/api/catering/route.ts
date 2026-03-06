@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       totalAmount,
       items: items || [],
       notes,
+      customizations: customizations ?? undefined,
     }).catch((err) => console.error("Failed to send catering inquiry emails:", err));
 
     return NextResponse.json({ success: true, id });

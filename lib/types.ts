@@ -86,9 +86,12 @@ export interface CateringWizardData {
   deliveryType: "pickup" | "delivery";
   deliveryAddress: string;
   deliveryDistance: number;
+  deliveryPlaceId: string;
   packageType: "buffet" | "premade" | "";
   proteins: { name: string; quantity: number }[];
-  eggRollType: "pork-shrimp" | "vegan";
+  bases: { name: string; quantity: number }[];
+  sides: { baseName: string; side: string }[];
+  sauces: { baseName: string; sauce: string }[];
   dietaryNotes: string;
   contactName: string;
   contactEmail: string;

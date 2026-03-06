@@ -21,6 +21,11 @@ interface CateringEmailData {
   totalAmount?: number | null; // cents
   items: { itemName: string; quantity: number; unitPrice?: number | null }[];
   notes?: string | null;
+  customizations?: {
+    bases?: { name: string; quantity: number }[];
+    sides?: { baseName: string; side: string }[];
+    sauces?: { baseName: string; sauce: string }[];
+  } | null;
 }
 
 function formatMoney(cents: number): string {
@@ -38,10 +43,28 @@ function buildDetailsBlock(data: CateringEmailData): string {
     `Delivery: ${data.deliveryType}${data.deliveryAddress ? ` — ${data.deliveryAddress}` : ""}`,
   ];
   if (data.items.length > 0) {
-    lines.push("", "Items:");
+    lines.push("", "Proteins:");
     for (const item of data.items) {
       const price = item.unitPrice != null ? ` (${formatMoney(item.unitPrice)} ea)` : "";
       lines.push(`  - ${item.itemName} x${item.quantity}${price}`);
+    }
+  }
+  if (data.customizations?.bases?.length) {
+    lines.push("", "Bases:");
+    for (const b of data.customizations.bases) {
+      lines.push(`  - ${b.name} x${b.quantity}`);
+    }
+  }
+  if (data.customizations?.sides?.length) {
+    lines.push("", "Sides:");
+    for (const s of data.customizations.sides) {
+      lines.push(`  - ${s.baseName}: ${s.side}`);
+    }
+  }
+  if (data.customizations?.sauces?.length) {
+    lines.push("", "Sauces:");
+    for (const s of data.customizations.sauces) {
+      lines.push(`  - ${s.baseName}: ${s.sauce}`);
     }
   }
   if (data.totalAmount != null) {

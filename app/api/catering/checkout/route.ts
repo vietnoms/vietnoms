@@ -91,7 +91,14 @@ export async function POST(request: Request) {
                 phoneNumber: body.contactPhone,
                 emailAddress: body.contactEmail,
               },
-              note: `Catering for ${body.guestCount} guests on ${body.eventDate}. ${body.notes || ""}`,
+              note: `Catering for ${body.guestCount} guests on ${body.eventDate}.${
+                body.customizations?.bases
+                  ? " Bases: " + (body.customizations.bases as { name: string; quantity: number }[])
+                      .filter((b: { quantity: number }) => b.quantity > 0)
+                      .map((b: { name: string; quantity: number }) => `${b.name} x${b.quantity}`)
+                      .join(", ")
+                  : ""
+              }${body.notes ? " " + body.notes : ""}`,
               scheduleType: "SCHEDULED",
               pickupAt: new Date(body.eventDate + "T10:00:00").toISOString(),
             },
@@ -142,6 +149,7 @@ export async function POST(request: Request) {
       totalAmount: body.totalAmount,
       items: body.items || [],
       notes: body.notes,
+      customizations: body.customizations ?? undefined,
     }).catch((err) => console.error("Failed to send catering order emails:", err));
 
     return NextResponse.json({

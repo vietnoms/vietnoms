@@ -25,7 +25,7 @@ const FAQ = [
   {
     question: "What is included with each serving?",
     answer:
-      "Every serving includes lettuce, pickled daikon & carrots, cucumbers, mint, cilantro, bean sprouts, peanuts, house sauce (GF fish sauce blend), soy sauce, Vietnoms vinaigrette, and 1 egg roll (pork & shrimp or vegan).",
+      "Every serving includes your choice of base (rice, vermicelli noodles, or salad), a protein, fresh toppings (lettuce, pickled daikon & carrots, cucumbers, mint, cilantro, bean sprouts, peanuts), a side (egg rolls or shredded pork depending on base), and sauce. You choose your bases, sides, and sauces during the order process.",
   },
   {
     question: "Do you offer vegan options?",
@@ -50,7 +50,7 @@ const FAQ = [
   {
     question: "What is the difference between Buffet Style and Pre-made Bowls?",
     answer:
-      "Buffet Style serves party trays of noodles, rice, salad, proteins, and egg rolls for guests to serve themselves — best for 40+ guests. Pre-made Bowls are individually assembled and labeled — ideal for under 40 guests.",
+      "Buffet Style serves party trays of your chosen bases, proteins, sides, and sauces for guests to serve themselves — best for 40+ guests. Pre-made Bowls are individually assembled with a base, protein, and the matching side and sauce — ideal for under 40 guests.",
   },
 ];
 
@@ -93,8 +93,8 @@ export default function CateringPage() {
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
           <p className="mt-4 text-center text-gray-400 max-w-xl mx-auto">
-            Choose the style that fits your event. Both include all our fresh
-            toppings, sauces, and egg rolls.
+            Choose the style that fits your event. Both include your choice of
+            base, protein, sides, sauces, and all our fresh toppings.
           </p>
 
           <div className="mt-12 grid md:grid-cols-2 gap-8">
@@ -106,8 +106,9 @@ export default function CateringPage() {
                 Best for 40+ guests
               </p>
               <p className="mt-3 text-gray-400 text-sm">
-                Party trays of vermicelli noodles, white rice, salad, protein
-                trays, egg rolls, and all the toppings. Guests serve themselves.
+                Party trays of your chosen bases (rice, vermicelli noodles, or
+                salad), proteins, sides, sauces, and all the toppings. Guests
+                serve themselves.
               </p>
               <ul className="mt-3 space-y-1 text-sm text-gray-400">
                 <li className="flex gap-2">
@@ -116,11 +117,11 @@ export default function CateringPage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-brand-red">&#10003;</span>
-                  Min 10 orders per protein
+                  Choose your bases, sides &amp; sauces
                 </li>
                 <li className="flex gap-2">
                   <span className="text-brand-red">&#10003;</span>
-                  Great for large groups
+                  Min 10 orders per protein
                 </li>
               </ul>
             </div>
@@ -132,8 +133,9 @@ export default function CateringPage() {
                 Best for under 40 guests
               </p>
               <p className="mt-3 text-gray-400 text-sm">
-                Individually assembled bowls with noodles or rice, protein, all
-                toppings, and sauce on the side. Each bowl is labeled.
+                Individually assembled bowls with your chosen base and protein.
+                Side and sauce are matched to each bowl type. Each bowl is
+                labeled.
               </p>
               <ul className="mt-3 space-y-1 text-sm text-gray-400">
                 <li className="flex gap-2">
@@ -142,7 +144,7 @@ export default function CateringPage() {
                 </li>
                 <li className="flex gap-2">
                   <span className="text-brand-red">&#10003;</span>
-                  Labeled per person
+                  Choose base + protein per bowl
                 </li>
                 <li className="flex gap-2">
                   <span className="text-brand-red">&#10003;</span>

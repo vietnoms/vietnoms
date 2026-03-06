@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { PackageCard } from "./package-card";
 import { CateringPayment } from "./catering-payment";
+import { AddressAutocomplete } from "./address-autocomplete";
+import { CustomizeStep } from "./customize-step";
 import {
   ArrowLeft,
   CheckCircle,
@@ -18,15 +20,31 @@ import {
 } from "lucide-react";
 import {
   PROTEINS,
+  BASES,
   BASE_PRICE_PER_PERSON,
-  BUFFET_MIN_PER_PROTEIN,
   MAX_DELIVERY_MILES,
+  PREMADE_BOWL_DEFAULTS,
   calculateEstimate,
   getDeliveryFee,
   type ProteinSelection,
 } from "@/lib/catering-pricing";
 
 type Step = "event" | "style" | "customize" | "contact" | "checkout";
+
+interface BaseSelection {
+  name: string;
+  quantity: number;
+}
+
+interface SideSelection {
+  baseName: string;
+  side: string;
+}
+
+interface SauceSelection {
+  baseName: string;
+  sauce: string;
+}
 
 interface WizardState {
   // Step 1
@@ -36,11 +54,16 @@ interface WizardState {
   deliveryType: "pickup" | "delivery";
   deliveryAddress: string;
   deliveryDistance: number;
+  deliveryPlaceId: string;
+  distanceLoading: boolean;
+  distanceError: string;
   // Step 2
   packageType: "buffet" | "premade" | "";
   // Step 3
   proteins: ProteinSelection[];
-  eggRollType: "pork-shrimp" | "vegan";
+  bases: BaseSelection[];
+  sides: SideSelection[];
+  sauces: SauceSelection[];
   dietaryNotes: string;
   // Step 4
   contactName: string;
@@ -67,9 +90,14 @@ export function CateringWizard() {
     deliveryType: "pickup",
     deliveryAddress: "",
     deliveryDistance: 0,
+    deliveryPlaceId: "",
+    distanceLoading: false,
+    distanceError: "",
     packageType: "",
     proteins: PROTEINS.map((p) => ({ name: p.name, quantity: 0 })),
-    eggRollType: "pork-shrimp",
+    bases: BASES.map((b) => ({ name: b.name, quantity: 0 })),
+    sides: [],
+    sauces: [],
     dietaryNotes: "",
     contactName: "",
     contactEmail: "",
@@ -93,10 +121,58 @@ export function CateringWizard() {
     }));
   }, []);
 
-  const totalProteinServings = useMemo(
-    () => state.proteins.reduce((s, p) => s + p.quantity, 0),
-    [state.proteins]
-  );
+  const updateBase = useCallback((name: string, quantity: number) => {
+    setState((prev) => {
+      const clamped = Math.max(0, quantity);
+      const oldBase = prev.bases.find((b) => b.name === name);
+      const wasZero = (oldBase?.quantity ?? 0) === 0;
+      const nowPositive = clamped > 0;
+
+      const newBases = prev.bases.map((b) =>
+        b.name === name ? { ...b, quantity: clamped } : b
+      );
+
+      let newSides = [...prev.sides];
+      let newSauces = [...prev.sauces];
+
+      // Auto-add default side+sauce when going from 0 to positive
+      if (wasZero && nowPositive) {
+        const baseDef = BASES.find((b) => b.name === name);
+        if (baseDef && baseDef.defaultSide !== "None") {
+          newSides = [...newSides.filter((s) => s.baseName !== name), { baseName: name, side: baseDef.defaultSide }];
+        }
+        if (baseDef) {
+          newSauces = [...newSauces.filter((s) => s.baseName !== name), { baseName: name, sauce: baseDef.defaultSauce }];
+        }
+      }
+
+      // Remove entries when quantity goes to 0
+      if (!nowPositive) {
+        newSides = newSides.filter((s) => s.baseName !== name);
+        newSauces = newSauces.filter((s) => s.baseName !== name);
+      }
+
+      return { ...prev, bases: newBases, sides: newSides, sauces: newSauces };
+    });
+  }, []);
+
+  const updateSide = useCallback((baseName: string, side: string) => {
+    setState((prev) => ({
+      ...prev,
+      sides: prev.sides.map((s) =>
+        s.baseName === baseName ? { ...s, side } : s
+      ),
+    }));
+  }, []);
+
+  const updateSauce = useCallback((baseName: string, sauce: string) => {
+    setState((prev) => ({
+      ...prev,
+      sauces: prev.sauces.map((s) =>
+        s.baseName === baseName ? { ...s, sauce } : s
+      ),
+    }));
+  }, []);
 
   const deliveryFee = useMemo(
     () =>
@@ -125,47 +201,55 @@ export function CateringWizard() {
     return d.toISOString().split("T")[0];
   }, []);
 
-  // Save draft when user reaches step 4 (contact) and fills info
+  // Build payload helper — eliminates duplication across saveDraft, email, payment
+  const buildPayload = useCallback(
+    (extra?: Record<string, unknown>) => ({
+      eventDate: state.eventDate,
+      guestCount: state.guestCount,
+      packageType: state.packageType,
+      customizations: {
+        eventType: state.eventType,
+        proteins: state.proteins.filter((p) => p.quantity > 0),
+        bases: state.bases.filter((b) => b.quantity > 0),
+        sides: state.sides,
+        sauces: state.sauces,
+      },
+      contactName: state.contactName,
+      contactEmail: state.contactEmail,
+      contactPhone: state.contactPhone,
+      deliveryType: state.deliveryType,
+      deliveryAddress: state.deliveryAddress || undefined,
+      deliveryDistance: state.deliveryDistance || undefined,
+      deliveryFee: deliveryFee ?? 0,
+      totalAmount: estimate.total,
+      notes: [state.dietaryNotes, state.notes].filter(Boolean).join(". "),
+      items: state.proteins
+        .filter((p) => p.quantity > 0)
+        .map((p) => ({
+          itemName: p.name,
+          quantity: p.quantity,
+          unitPrice:
+            BASE_PRICE_PER_PERSON +
+            (PROTEINS.find((pr) => pr.name === p.name)?.upcharge ?? 0),
+        })),
+      ...extra,
+    }),
+    [state, deliveryFee, estimate.total]
+  );
+
   const saveDraft = useCallback(async () => {
     if (draftSaved) return;
     try {
       await fetch("/api/catering/save-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventDate: state.eventDate,
-          guestCount: state.guestCount,
-          packageType: state.packageType,
-          customizations: {
-            eventType: state.eventType,
-            proteins: state.proteins.filter((p) => p.quantity > 0),
-            eggRollType: state.eggRollType,
-          },
-          contactName: state.contactName,
-          contactEmail: state.contactEmail,
-          contactPhone: state.contactPhone,
-          deliveryType: state.deliveryType,
-          deliveryAddress: state.deliveryAddress || undefined,
-          deliveryDistance: state.deliveryDistance || undefined,
-          deliveryFee: deliveryFee ?? 0,
-          totalAmount: estimate.total,
-          notes: [state.dietaryNotes, state.notes].filter(Boolean).join(". "),
-          items: state.proteins
-            .filter((p) => p.quantity > 0)
-            .map((p) => ({
-              itemName: p.name,
-              quantity: p.quantity,
-              unitPrice:
-                BASE_PRICE_PER_PERSON +
-                (PROTEINS.find((pr) => pr.name === p.name)?.upcharge ?? 0),
-            })),
-        }),
+        body: JSON.stringify(buildPayload()),
       });
       setDraftSaved(true);
     } catch {
       // non-critical
     }
-  }, [state, draftSaved, deliveryFee, estimate.total]);
+  }, [buildPayload, draftSaved]);
 
   const handleEmailSubmit = async () => {
     setSubmitting(true);
@@ -174,34 +258,7 @@ export function CateringWizard() {
       const res = await fetch("/api/catering", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventDate: state.eventDate,
-          guestCount: state.guestCount,
-          packageType: state.packageType,
-          customizations: {
-            eventType: state.eventType,
-            proteins: state.proteins.filter((p) => p.quantity > 0),
-            eggRollType: state.eggRollType,
-          },
-          contactName: state.contactName,
-          contactEmail: state.contactEmail,
-          contactPhone: state.contactPhone,
-          deliveryType: state.deliveryType,
-          deliveryAddress: state.deliveryAddress || undefined,
-          deliveryDistance: state.deliveryDistance || undefined,
-          deliveryFee: deliveryFee ?? 0,
-          totalAmount: estimate.total,
-          notes: [state.dietaryNotes, state.notes].filter(Boolean).join(". "),
-          items: state.proteins
-            .filter((p) => p.quantity > 0)
-            .map((p) => ({
-              itemName: p.name,
-              quantity: p.quantity,
-              unitPrice:
-                BASE_PRICE_PER_PERSON +
-                (PROTEINS.find((pr) => pr.name === p.name)?.upcharge ?? 0),
-            })),
-        }),
+        body: JSON.stringify(buildPayload()),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit");
@@ -220,35 +277,7 @@ export function CateringWizard() {
       const res = await fetch("/api/catering/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          eventDate: state.eventDate,
-          guestCount: state.guestCount,
-          packageType: state.packageType,
-          customizations: {
-            eventType: state.eventType,
-            proteins: state.proteins.filter((p) => p.quantity > 0),
-            eggRollType: state.eggRollType,
-          },
-          contactName: state.contactName,
-          contactEmail: state.contactEmail,
-          contactPhone: state.contactPhone,
-          deliveryType: state.deliveryType,
-          deliveryAddress: state.deliveryAddress || undefined,
-          deliveryDistance: state.deliveryDistance || undefined,
-          deliveryFee: deliveryFee ?? 0,
-          totalAmount: estimate.total,
-          notes: [state.dietaryNotes, state.notes].filter(Boolean).join(". "),
-          items: state.proteins
-            .filter((p) => p.quantity > 0)
-            .map((p) => ({
-              itemName: p.name,
-              quantity: p.quantity,
-              unitPrice:
-                BASE_PRICE_PER_PERSON +
-                (PROTEINS.find((pr) => pr.name === p.name)?.upcharge ?? 0),
-            })),
-          paymentToken: token,
-        }),
+        body: JSON.stringify(buildPayload({ paymentToken: token })),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Payment failed");
@@ -260,6 +289,34 @@ export function CateringWizard() {
     }
   };
 
+  // Reset Step 3 state when switching package type
+  const handlePackageSelect = useCallback(
+    (pkg: "buffet" | "premade") => {
+      setState((prev) => ({
+        ...prev,
+        packageType: pkg,
+        proteins: PROTEINS.map((p) => ({ name: p.name, quantity: 0 })),
+        bases: BASES.map((b) => ({ name: b.name, quantity: 0 })),
+        sides: [],
+        sauces: [],
+      }));
+    },
+    []
+  );
+
+  const handleAddressResult = useCallback(
+    (result: { address: string; placeId: string; distanceMiles: number }) => {
+      setState((prev) => ({
+        ...prev,
+        deliveryAddress: result.address,
+        deliveryPlaceId: result.placeId,
+        deliveryDistance: result.distanceMiles,
+        distanceError: "",
+      }));
+    },
+    []
+  );
+
   // Step indicator
   const steps: { key: Step; label: string }[] = [
     { key: "event", label: "Event" },
@@ -270,6 +327,10 @@ export function CateringWizard() {
   ];
 
   const stepIndex = steps.findIndex((s) => s.key === step);
+
+  // Checkout summary helpers
+  const activeBases = state.bases.filter((b) => b.quantity > 0);
+  const isBuffet = state.packageType === "buffet";
 
   if (success) {
     return (
@@ -326,6 +387,13 @@ export function CateringWizard() {
             setError("");
             if (state.guestCount < 10) {
               setError("Minimum 10 guests required for catering.");
+              return;
+            }
+            if (
+              state.deliveryType === "delivery" &&
+              !state.deliveryAddress
+            ) {
+              setError("Please select a delivery address.");
               return;
             }
             setStep("style");
@@ -412,33 +480,16 @@ export function CateringWizard() {
 
           {state.deliveryType === "delivery" && (
             <div className="space-y-3">
-              <div>
-                <Label htmlFor="deliveryAddress">Delivery Address *</Label>
-                <Input
-                  id="deliveryAddress"
-                  required
-                  value={state.deliveryAddress}
-                  onChange={(e) => update("deliveryAddress", e.target.value)}
-                  placeholder="Enter full address"
-                />
-              </div>
-              <div>
-                <Label htmlFor="deliveryDistance">
-                  Approximate Distance (miles from San Jose) *
-                </Label>
-                <Input
-                  id="deliveryDistance"
-                  type="number"
-                  required
-                  min={0}
-                  step={0.5}
-                  value={state.deliveryDistance || ""}
-                  onChange={(e) =>
-                    update("deliveryDistance", Number(e.target.value))
-                  }
-                  placeholder="e.g., 8"
-                />
-              </div>
+              <AddressAutocomplete
+                value={state.deliveryAddress}
+                onChange={handleAddressResult}
+                onError={(msg) =>
+                  setState((prev) => ({ ...prev, distanceError: msg }))
+                }
+              />
+              {state.distanceError && (
+                <p className="text-sm text-red-400">{state.distanceError}</p>
+              )}
               {state.deliveryDistance > 0 && deliveryFee !== null && (
                 <p className="text-sm text-gray-400">
                   Delivery fee: {formatMoney(deliveryFee)}
@@ -472,28 +523,28 @@ export function CateringWizard() {
           <div className="space-y-3">
             <PackageCard
               name="Buffet Style"
-              description="Party trays of vermicelli noodles, white rice, salad, proteins, and egg rolls. Guests serve themselves."
+              description="Party trays with your choice of bases, proteins, sides, and sauces. Guests serve themselves."
               recommended={state.guestCount >= 40}
               selected={state.packageType === "buffet"}
-              onSelect={() => update("packageType", "buffet")}
+              onSelect={() => handlePackageSelect("buffet")}
               features={[
                 "Best for 40+ guests",
                 "Self-serve trays",
+                "Choose your bases, sides & sauces",
                 "Min 10 orders per protein type",
-                "Includes all toppings & sauces",
               ]}
             />
             <PackageCard
               name="Pre-made Bowls"
-              description="Individually assembled and labeled bowls. Each guest picks their protein."
+              description="Individually assembled and labeled bowls. Choose a base and protein for each guest."
               recommended={state.guestCount < 40}
               selected={state.packageType === "premade"}
-              onSelect={() => update("packageType", "premade")}
+              onSelect={() => handlePackageSelect("premade")}
               features={[
                 "Best for under 40 guests",
                 "Individual bowls, labeled",
-                "Each with noodles, protein, toppings, sauce",
-                "1 egg roll per serving",
+                "Choose base + protein per bowl",
+                "Side & sauce included per bowl type",
               ]}
             />
           </div>
@@ -521,182 +572,36 @@ export function CateringWizard() {
         </div>
       )}
 
-      {/* Step 3: Customize */}
-      {step === "customize" && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-bold text-white">
-            Customize Your Order
-          </h2>
-          <p className="text-sm text-gray-400">
-            {state.guestCount} guests &times; $20.00/person = {formatMoney(state.guestCount * BASE_PRICE_PER_PERSON)} base
-          </p>
-
-          <div>
-            <Label className="text-base font-semibold">
-              Protein Selection
-              {state.packageType === "buffet" && (
-                <span className="text-xs font-normal text-gray-400 ml-2">
-                  (min {BUFFET_MIN_PER_PROTEIN} per protein for buffet)
-                </span>
-              )}
-            </Label>
-            <p className="text-xs text-gray-500 mb-3">
-              Total servings should equal {state.guestCount} (your guest count).
-            </p>
-
-            <div className="space-y-2">
-              {PROTEINS.map((protein) => {
-                const sel = state.proteins.find((p) => p.name === protein.name);
-                return (
-                  <div
-                    key={protein.name}
-                    className="flex items-center justify-between bg-surface-alt rounded-lg px-4 py-3"
-                  >
-                    <div>
-                      <span className="text-sm text-white font-medium">
-                        {protein.name}
-                      </span>
-                      {protein.upcharge > 0 && (
-                        <span className="text-xs text-brand-yellow ml-2">
-                          +{formatMoney(protein.upcharge)}/serving
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="h-8 w-8 rounded-full bg-gray-700 text-white text-sm hover:bg-gray-600"
-                        onClick={() =>
-                          updateProtein(
-                            protein.name,
-                            (sel?.quantity ?? 0) -
-                              (state.packageType === "buffet" ? 10 : 1)
-                          )
-                        }
-                      >
-                        -
-                      </button>
-                      <span className="w-10 text-center text-sm text-white font-semibold">
-                        {sel?.quantity ?? 0}
-                      </span>
-                      <button
-                        type="button"
-                        className="h-8 w-8 rounded-full bg-gray-700 text-white text-sm hover:bg-gray-600"
-                        onClick={() =>
-                          updateProtein(
-                            protein.name,
-                            (sel?.quantity ?? 0) +
-                              (state.packageType === "buffet" ? 10 : 1)
-                          )
-                        }
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {totalProteinServings > 0 && (
-              <p
-                className={`text-sm mt-2 ${
-                  totalProteinServings === state.guestCount
-                    ? "text-green-400"
-                    : "text-amber-400"
-                }`}
-              >
-                {totalProteinServings} / {state.guestCount} servings selected
-              </p>
-            )}
-          </div>
-
-          <div>
-            <Label>Egg Roll Preference</Label>
-            <div className="flex gap-2 mt-1">
-              <button
-                type="button"
-                className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                  state.eggRollType === "pork-shrimp"
-                    ? "border-brand-red bg-brand-red/5 text-brand-red"
-                    : "border-gray-600 text-gray-300 hover:border-gray-400"
-                }`}
-                onClick={() => update("eggRollType", "pork-shrimp")}
-              >
-                Pork &amp; Shrimp
-              </button>
-              <button
-                type="button"
-                className={`flex-1 py-2 px-4 rounded-lg border text-sm font-medium transition-colors ${
-                  state.eggRollType === "vegan"
-                    ? "border-brand-red bg-brand-red/5 text-brand-red"
-                    : "border-gray-600 text-gray-300 hover:border-gray-400"
-                }`}
-                onClick={() => update("eggRollType", "vegan")}
-              >
-                Vegan
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="dietaryNotes">Dietary Needs / Notes</Label>
-            <Textarea
-              id="dietaryNotes"
-              value={state.dietaryNotes}
-              onChange={(e) => update("dietaryNotes", e.target.value)}
-              placeholder="Allergies, dietary restrictions, special requests..."
-              rows={2}
-            />
-          </div>
-
-          {/* Live estimate */}
-          <Card className="border-brand-red/20">
-            <CardContent className="p-4">
-              <h3 className="font-display text-sm font-bold text-white mb-2">
-                Estimated Total
-              </h3>
-              <div className="space-y-1 text-sm">
-                {estimate.breakdown.map((item) => (
-                  <div
-                    key={item.label}
-                    className="flex justify-between text-gray-400"
-                  >
-                    <span>{item.label}</span>
-                    <span>{formatMoney(item.amount)}</span>
-                  </div>
-                ))}
-                <div className="border-t border-gray-700 pt-1 flex justify-between font-semibold text-white">
-                  <span>Total</span>
-                  <span className="text-brand-red">
-                    {formatMoney(estimate.total)}
-                  </span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep("style")} className="flex-1">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <Button
-              onClick={() => {
-                if (totalProteinServings === 0) {
-                  setError("Please select at least one protein.");
-                  return;
-                }
-                setError("");
-                setStep("contact");
-              }}
-              className="flex-1"
-              disabled={totalProteinServings === 0}
-            >
-              Continue
-            </Button>
-          </div>
-        </div>
+      {/* Step 3: Customize (extracted component) */}
+      {step === "customize" && state.packageType && (
+        <CustomizeStep
+          guestCount={state.guestCount}
+          packageType={state.packageType as "buffet" | "premade"}
+          proteins={state.proteins}
+          bases={state.bases}
+          sides={state.sides}
+          sauces={state.sauces}
+          dietaryNotes={state.dietaryNotes}
+          estimate={estimate}
+          onUpdateProtein={updateProtein}
+          onUpdateBase={updateBase}
+          onUpdateSide={updateSide}
+          onUpdateSauce={updateSauce}
+          onUpdateDietaryNotes={(v) => update("dietaryNotes", v)}
+          onContinue={() => {
+            const totalP = state.proteins.reduce((s, p) => s + p.quantity, 0);
+            const totalB = state.bases.reduce((s, b) => s + b.quantity, 0);
+            if (totalP !== state.guestCount || totalB !== state.guestCount) {
+              setError(
+                `Protein servings (${totalP}) and base servings (${totalB}) must both equal ${state.guestCount}.`
+              );
+              return;
+            }
+            setError("");
+            setStep("contact");
+          }}
+          onBack={() => setStep("style")}
+        />
       )}
 
       {/* Step 4: Contact Info */}
@@ -705,7 +610,6 @@ export function CateringWizard() {
           onSubmit={(e) => {
             e.preventDefault();
             setError("");
-            // Save draft for abandoned checkout tracking
             saveDraft();
             setStep("checkout");
           }}
@@ -795,6 +699,7 @@ export function CateringWizard() {
                 </div>
               </div>
 
+              {/* Proteins */}
               <div className="border-t border-gray-700 pt-2">
                 <h4 className="text-sm font-semibold text-white mb-1">
                   Proteins
@@ -819,6 +724,71 @@ export function CateringWizard() {
                   })}
               </div>
 
+              {/* Bases */}
+              {activeBases.length > 0 && (
+                <div className="border-t border-gray-700 pt-2">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Bases
+                  </h4>
+                  {activeBases.map((b) => (
+                    <div
+                      key={b.name}
+                      className="text-sm text-gray-400"
+                    >
+                      {b.name} x{b.quantity}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Sides & Sauces (buffet) */}
+              {isBuffet && state.sides.length > 0 && (
+                <div className="border-t border-gray-700 pt-2">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Sides
+                  </h4>
+                  {state.sides.map((s) => (
+                    <div key={s.baseName} className="text-sm text-gray-400">
+                      {s.baseName}: {s.side}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isBuffet && state.sauces.length > 0 && (
+                <div className="border-t border-gray-700 pt-2">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Sauces
+                  </h4>
+                  {state.sauces.map((s) => (
+                    <div key={s.baseName} className="text-sm text-gray-400">
+                      {s.baseName}: {s.sauce}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Bowl Details (premade) */}
+              {!isBuffet && activeBases.length > 0 && (
+                <div className="border-t border-gray-700 pt-2">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Bowl Details
+                  </h4>
+                  {PREMADE_BOWL_DEFAULTS.filter((d) =>
+                    activeBases.some((b) => b.name === d.base)
+                  ).map((d) => (
+                    <div
+                      key={`${d.base}-${d.protein}`}
+                      className="text-sm text-gray-400"
+                    >
+                      {d.base} bowl: {d.side !== "None" ? `${d.side} + ` : ""}
+                      {d.sauce}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Cost breakdown */}
               <div className="border-t border-gray-700 pt-2 space-y-1 text-sm">
                 {estimate.breakdown.map((item) => (
                   <div

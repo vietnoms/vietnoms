@@ -1,11 +1,38 @@
 export const BASE_PRICE_PER_PERSON = 2000; // $20.00 in cents
 
+export const RESTAURANT_ORIGIN = "387 S 1st St, San Jose, CA 95113";
+
 export const PROTEINS = [
   { name: "Lemongrass Chicken", upcharge: 0 },
   { name: "Lemongrass Pork", upcharge: 0 },
   { name: "Red Hot Beef", upcharge: 100 }, // +$1.00
   { name: "Grilled Shrimp", upcharge: 250 }, // +$2.50
   { name: "Stir-fried Tofu", upcharge: 0 },
+] as const;
+
+export const BASES = [
+  { name: "Rice", defaultSide: "Shredded Pork", defaultSauce: "House Sauce" },
+  { name: "Vermicelli Noodles", defaultSide: "Pork & Shrimp Egg Rolls", defaultSauce: "House Sauce" },
+  { name: "Salad", defaultSide: "None", defaultSauce: "Vietnoms Vinaigrette" },
+] as const;
+
+export const SIDES = [
+  "Pork & Shrimp Egg Rolls",
+  "Vegan Egg Rolls",
+  "Shredded Pork",
+] as const;
+
+export const SAUCES = [
+  "House Sauce",
+  "Vegan Soy Sauce",
+  "Vietnoms Vinaigrette",
+] as const;
+
+export const PREMADE_BOWL_DEFAULTS = [
+  { base: "Vermicelli Noodles", protein: "Any (non-tofu)", side: "Pork & shrimp egg roll", sauce: "2oz house sauce" },
+  { base: "Vermicelli Noodles", protein: "Stir-fried Tofu", side: "Vegan egg roll", sauce: "2oz vegan soy sauce" },
+  { base: "Rice", protein: "Any", side: "Shredded pork", sauce: "2oz house sauce" },
+  { base: "Salad", protein: "Any", side: "None", sauce: "2oz Vietnoms vinaigrette" },
 ] as const;
 
 export const DELIVERY_TIERS = [
