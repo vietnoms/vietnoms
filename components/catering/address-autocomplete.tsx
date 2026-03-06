@@ -1,11 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import {
-  setOptions,
-  importLibrary,
-} from "@googlemaps/js-api-loader";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { RESTAURANT_ORIGIN } from "@/lib/catering-pricing";
@@ -22,7 +17,39 @@ interface AddressAutocompleteProps {
 
 const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
-let optionsSet = false;
+function loadGoogleMaps(): Promise<void> {
+  // Already loaded
+  if (typeof google !== "undefined" && google.maps?.places) {
+    return Promise.resolve();
+  }
+
+  // Check if script is already being loaded
+  const existing = document.querySelector(
+    'script[src*="maps.googleapis.com"]'
+  );
+  if (existing) {
+    return new Promise((resolve) => {
+      existing.addEventListener("load", () => resolve());
+      // If it's already loaded by the time we attach
+      if (typeof google !== "undefined" && google.maps?.places) resolve();
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=__gmapsInit`;
+    script.async = true;
+    script.defer = true;
+
+    (window as unknown as Record<string, () => void>).__gmapsInit = () => {
+      resolve();
+      delete (window as unknown as Record<string, () => void>).__gmapsInit;
+    };
+
+    script.onerror = () => reject(new Error("Failed to load Google Maps API"));
+    document.head.appendChild(script);
+  });
+}
 
 export function AddressAutocomplete({
   value,
@@ -33,6 +60,7 @@ export function AddressAutocomplete({
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [loading, setLoading] = useState(false);
   const [distanceText, setDistanceText] = useState("");
+  const [apiLoaded, setApiLoaded] = useState(false);
   const onChangeRef = useRef(onChange);
   const onErrorRef = useRef(onError);
   onChangeRef.current = onChange;
@@ -76,14 +104,10 @@ export function AddressAutocomplete({
 
     let cancelled = false;
 
-    if (!optionsSet) {
-      setOptions({ key: API_KEY, v: "weekly", libraries: ["places"] });
-      optionsSet = true;
-    }
-
-    importLibrary("places")
+    loadGoogleMaps()
       .then(() => {
         if (cancelled || !inputRef.current) return;
+        setApiLoaded(true);
 
         const autocomplete = new google.maps.places.Autocomplete(
           inputRef.current,
@@ -102,8 +126,8 @@ export function AddressAutocomplete({
 
         autocompleteRef.current = autocomplete;
       })
-      .catch(() => {
-        // API failed to load — fallback to manual input
+      .catch((err) => {
+        console.error("Google Maps failed to load:", err);
       });
 
     return () => {
@@ -115,13 +139,13 @@ export function AddressAutocomplete({
     <div>
       <Label htmlFor="deliveryAddress">Delivery Address *</Label>
       <div className="relative">
-        <Input
+        <input
           ref={inputRef}
           id="deliveryAddress"
           required
           defaultValue={value}
-          placeholder="Start typing an address..."
-          className="pr-10"
+          placeholder={apiLoaded ? "Start typing an address..." : "Enter delivery address"}
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
         />
         {loading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
@@ -130,6 +154,11 @@ export function AddressAutocomplete({
       {distanceText && !loading && (
         <p className="text-xs text-gray-400 mt-1">
           {distanceText} from our kitchen
+        </p>
+      )}
+      {!API_KEY && (
+        <p className="text-xs text-amber-400 mt-1">
+          Address autocomplete unavailable. Enter your full address manually.
         </p>
       )}
     </div>
