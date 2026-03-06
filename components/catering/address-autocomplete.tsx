@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { RESTAURANT_ORIGIN } from "@/lib/catering-pricing";
 
 interface AddressAutocompleteProps {
   value: string;
@@ -15,40 +14,9 @@ interface AddressAutocompleteProps {
   onError: (message: string) => void;
 }
 
-const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
-
-function loadGoogleMaps(): Promise<void> {
-  // Already loaded
-  if (typeof google !== "undefined" && google.maps?.places) {
-    return Promise.resolve();
-  }
-
-  // Check if script is already being loaded
-  const existing = document.querySelector(
-    'script[src*="maps.googleapis.com"]'
-  );
-  if (existing) {
-    return new Promise((resolve) => {
-      existing.addEventListener("load", () => resolve());
-      // If it's already loaded by the time we attach
-      if (typeof google !== "undefined" && google.maps?.places) resolve();
-    });
-  }
-
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&callback=__gmapsInit`;
-    script.async = true;
-    script.defer = true;
-
-    (window as unknown as Record<string, () => void>).__gmapsInit = () => {
-      resolve();
-      delete (window as unknown as Record<string, () => void>).__gmapsInit;
-    };
-
-    script.onerror = () => reject(new Error("Failed to load Google Maps API"));
-    document.head.appendChild(script);
-  });
+interface Prediction {
+  placeId: string;
+  description: string;
 }
 
 export function AddressAutocomplete({
@@ -56,109 +24,131 @@ export function AddressAutocomplete({
   onChange,
   onError,
 }: AddressAutocompleteProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
+  const [inputValue, setInputValue] = useState(value);
+  const [predictions, setPredictions] = useState<Prediction[]>([]);
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [distanceText, setDistanceText] = useState("");
-  const [apiLoaded, setApiLoaded] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   const onErrorRef = useRef(onError);
   onChangeRef.current = onChange;
   onErrorRef.current = onError;
 
-  const calculateDistance = useCallback(
-    async (placeId: string, address: string) => {
-      setLoading(true);
-      setDistanceText("");
-      try {
-        const service = new google.maps.DistanceMatrixService();
-        const result = await service.getDistanceMatrix({
-          origins: [RESTAURANT_ORIGIN],
-          destinations: [{ placeId }],
-          travelMode: google.maps.TravelMode.DRIVING,
-          unitSystem: google.maps.UnitSystem.IMPERIAL,
-        });
-
-        const element = result.rows[0]?.elements[0];
-        if (!element || element.status !== "OK") {
-          onErrorRef.current("Could not calculate distance to that address.");
-          setLoading(false);
-          return;
-        }
-
-        const meters = element.distance.value;
-        const miles = Math.round((meters / 1609.34) * 10) / 10;
-        setDistanceText(element.distance.text);
-        onChangeRef.current({ address, placeId, distanceMiles: miles });
-      } catch {
-        onErrorRef.current("Distance calculation failed. Please try again.");
-      } finally {
-        setLoading(false);
+  const fetchPredictions = useCallback(async (input: string) => {
+    if (input.length < 3) {
+      setPredictions([]);
+      setOpen(false);
+      return;
+    }
+    try {
+      const res = await fetch(
+        `/api/places/autocomplete?input=${encodeURIComponent(input)}`
+      );
+      const data = await res.json();
+      if (data.predictions?.length) {
+        setPredictions(data.predictions);
+        setOpen(true);
+      } else {
+        setPredictions([]);
+        setOpen(false);
       }
+    } catch {
+      setPredictions([]);
+      setOpen(false);
+    }
+  }, []);
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setInputValue(val);
+      setDistanceText("");
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => fetchPredictions(val), 300);
     },
-    []
+    [fetchPredictions]
   );
 
-  useEffect(() => {
-    if (!API_KEY || !inputRef.current) return;
+  const handleSelect = useCallback(async (prediction: Prediction) => {
+    setInputValue(prediction.description);
+    setPredictions([]);
+    setOpen(false);
+    setLoading(true);
+    setDistanceText("");
 
-    let cancelled = false;
-
-    loadGoogleMaps()
-      .then(() => {
-        if (cancelled || !inputRef.current) return;
-        setApiLoaded(true);
-
-        const autocomplete = new google.maps.places.Autocomplete(
-          inputRef.current,
-          {
-            componentRestrictions: { country: "us" },
-            fields: ["place_id", "formatted_address"],
-          }
-        );
-
-        autocomplete.addListener("place_changed", () => {
-          const place = autocomplete.getPlace();
-          if (place.place_id && place.formatted_address) {
-            calculateDistance(place.place_id, place.formatted_address);
-          }
-        });
-
-        autocompleteRef.current = autocomplete;
-      })
-      .catch((err) => {
-        console.error("Google Maps failed to load:", err);
+    try {
+      const res = await fetch(
+        `/api/places/distance?placeId=${encodeURIComponent(prediction.placeId)}`
+      );
+      const data = await res.json();
+      if (data.error) {
+        onErrorRef.current(data.error);
+        return;
+      }
+      setDistanceText(data.distanceText);
+      onChangeRef.current({
+        address: prediction.description,
+        placeId: prediction.placeId,
+        distanceMiles: data.distanceMiles,
       });
+    } catch {
+      onErrorRef.current("Distance calculation failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [calculateDistance]);
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
-    <div>
+    <div ref={wrapperRef}>
       <Label htmlFor="deliveryAddress">Delivery Address *</Label>
       <div className="relative">
         <input
-          ref={inputRef}
           id="deliveryAddress"
           required
-          defaultValue={value}
-          placeholder={apiLoaded ? "Start typing an address..." : "Enter delivery address"}
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Start typing an address..."
+          autoComplete="off"
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 pr-10"
         />
         {loading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
         )}
+        {open && predictions.length > 0 && (
+          <ul className="absolute z-50 mt-1 w-full rounded-md border border-gray-700 bg-gray-900 shadow-lg max-h-60 overflow-auto">
+            {predictions.map((p) => (
+              <li key={p.placeId}>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(p)}
+                  className="w-full text-left px-3 py-2 text-sm text-gray-200 hover:bg-gray-800 cursor-pointer"
+                >
+                  {p.description}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       {distanceText && !loading && (
         <p className="text-xs text-gray-400 mt-1">
           {distanceText} from our kitchen
-        </p>
-      )}
-      {!API_KEY && (
-        <p className="text-xs text-amber-400 mt-1">
-          Address autocomplete unavailable. Enter your full address manually.
         </p>
       )}
     </div>
