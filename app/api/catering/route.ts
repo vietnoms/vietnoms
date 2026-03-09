@@ -6,6 +6,7 @@ import {
   listCateringRequests,
 } from "@/lib/db/catering";
 import { sendCateringInquiryEmails } from "@/lib/email";
+import { createDraftInvoice } from "@/lib/square-invoice";
 
 // GET — admin: list all catering requests
 export async function GET(request: Request) {
@@ -88,6 +89,21 @@ export async function POST(request: Request) {
       notes,
       customizations: customizations ?? undefined,
     }).catch((err) => console.error("Failed to send catering inquiry emails:", err));
+
+    // Create draft Square invoice (non-blocking)
+    createDraftInvoice({
+      contactName,
+      contactEmail,
+      contactPhone,
+      eventDate,
+      guestCount,
+      packageType,
+      totalAmount,
+      items: items || [],
+      deliveryFee: deliveryFee ?? 0,
+      notes,
+      customizations: customizations ?? undefined,
+    }).catch((err) => console.error("Failed to create draft invoice:", err));
 
     return NextResponse.json({ success: true, id });
   } catch (error) {

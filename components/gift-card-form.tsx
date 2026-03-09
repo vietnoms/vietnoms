@@ -16,6 +16,7 @@ import {
   CashAppPay,
 } from "react-square-web-payments-sdk";
 
+const GIFT_CARDS_ENABLED = false; // Toggle to re-enable gift card purchases
 const PRESET_AMOUNTS = [2500, 5000, 7500, 10000]; // in cents
 
 type Step = "amount" | "details" | "payment" | "processing" | "success";
@@ -72,6 +73,21 @@ export function GiftCardForm() {
       setStep("payment");
     }
   };
+
+  if (!GIFT_CARDS_ENABLED) {
+    return (
+      <div className="text-center py-8">
+        <Gift className="h-16 w-16 text-gray-400 mx-auto" />
+        <h2 className="mt-4 font-display text-2xl font-bold">
+          Temporarily Unavailable
+        </h2>
+        <p className="mt-2 text-gray-600">
+          Gift card purchases are temporarily unavailable. Please check back
+          soon or contact us directly.
+        </p>
+      </div>
+    );
+  }
 
   // Success state
   if (step === "success") {

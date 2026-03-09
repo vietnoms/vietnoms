@@ -41,6 +41,8 @@ interface CustomizeStepProps {
   onUpdateNoPeanuts: (value: boolean) => void;
   onUpdateEggRollCut: (value: "1/2" | "1/4" | "Uncut") => void;
   onUpdateDietaryNotes: (notes: string) => void;
+  utensils: { napkins: boolean; forks: boolean; chopsticks: boolean };
+  onUpdateUtensils: (utensils: { napkins: boolean; forks: boolean; chopsticks: boolean }) => void;
   onContinue: () => void;
   onBack: () => void;
 }
@@ -84,6 +86,8 @@ export function CustomizeStep({
   onUpdateNoPeanuts,
   onUpdateEggRollCut,
   onUpdateDietaryNotes,
+  utensils,
+  onUpdateUtensils,
   onContinue,
   onBack,
 }: CustomizeStepProps) {
@@ -149,6 +153,19 @@ export function CustomizeStep({
           {guestCount} guests &mdash; select your proteins, bases, and sides.
         </p>
       </div>
+
+      {/* Buffet disclaimer */}
+      {isBuffet && (
+        <div className="p-4 bg-amber-900/20 border border-amber-700 rounded-lg text-amber-300 text-sm">
+          <p className="font-medium mb-1">Please Note</p>
+          <p>
+            We do not provide chafing dishes or serving utensils for regular
+            catering orders. For special occasions, large orders, or if you
+            require additional set-up or clean-up services, please submit an
+            inquiry and we can work out the details.
+          </p>
+        </div>
+      )}
 
       {/* Protein Selection */}
       <div>
@@ -519,6 +536,29 @@ export function CustomizeStep({
           placeholder="Allergies, dietary restrictions, special requests..."
           rows={2}
         />
+      </div>
+
+      {/* Utensils & Supplies */}
+      <div>
+        <Label className="text-base font-semibold">Utensils &amp; Supplies</Label>
+        <p className="text-xs text-gray-500 mb-2">
+          Select any utensils you&apos;d like included with your order.
+        </p>
+        {(["napkins", "forks", "chopsticks"] as const).map((item) => (
+          <label key={item} className="flex items-center gap-2 mt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={utensils[item]}
+              onChange={(e) =>
+                onUpdateUtensils({ ...utensils, [item]: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-gray-600 bg-gray-700 text-brand-red focus:ring-brand-red accent-[#c62828]"
+            />
+            <span className="text-sm text-white font-medium capitalize">
+              {item}
+            </span>
+          </label>
+        ))}
       </div>
 
       {/* Live estimate */}

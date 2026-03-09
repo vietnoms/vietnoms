@@ -34,6 +34,8 @@ import {
   type SideSelection,
 } from "@/lib/catering-pricing";
 
+const CATERING_PAYMENT_ENABLED = false; // Toggle to re-enable Pay Now checkout
+
 type Step = "info" | "style" | "customize" | "checkout";
 
 interface BaseSelection {
@@ -68,6 +70,7 @@ interface WizardState {
   noPeanuts: boolean;
   eggRollCut: "1/2" | "1/4" | "Uncut";
   dietaryNotes: string;
+  utensils: { napkins: boolean; forks: boolean; chopsticks: boolean };
 }
 
 function formatMoney(cents: number): string {
@@ -112,6 +115,7 @@ export function CateringWizard() {
     noPeanuts: false,
     eggRollCut: "Uncut",
     dietaryNotes: "",
+    utensils: { napkins: false, forks: false, chopsticks: false },
   });
 
   const update = useCallback(
@@ -343,6 +347,7 @@ export function CateringWizard() {
         bigUpActive: state.bigUpActive,
         noPeanuts: state.noPeanuts,
         eggRollCut: state.eggRollCut,
+        utensils: state.utensils,
       },
       contactName: state.contactName,
       contactEmail: state.contactEmail,
@@ -787,6 +792,8 @@ export function CateringWizard() {
           onUpdateNoPeanuts={(v) => update("noPeanuts", v)}
           onUpdateEggRollCut={(v) => update("eggRollCut", v)}
           onUpdateDietaryNotes={(v) => update("dietaryNotes", v)}
+          utensils={state.utensils}
+          onUpdateUtensils={(v) => update("utensils", v)}
           onContinue={() => {
             const selectedProteins = state.proteins.filter(
               (p) => p.selected
@@ -964,6 +971,18 @@ export function CateringWizard() {
                 </div>
               )}
 
+              {/* Utensils */}
+              {(state.utensils.napkins || state.utensils.forks || state.utensils.chopsticks) && (
+                <div className="border-t border-gray-700 pt-2">
+                  <h4 className="text-sm font-semibold text-white mb-1">
+                    Utensils
+                  </h4>
+                  {state.utensils.napkins && <div className="text-sm text-gray-400">Napkins</div>}
+                  {state.utensils.forks && <div className="text-sm text-gray-400">Forks</div>}
+                  {state.utensils.chopsticks && <div className="text-sm text-gray-400">Chopsticks</div>}
+                </div>
+              )}
+
               {/* Cost breakdown */}
               <div className="border-t border-gray-700 pt-2 space-y-1 text-sm">
                 {estimate.breakdown.map((item) => (
@@ -1002,8 +1021,8 @@ export function CateringWizard() {
 
           {!submitting && (
             <div className="space-y-3">
-              {/* Pay Now option (hidden if 20+ miles) */}
-              {!forceEmailOnly && (
+              {/* Pay Now option (hidden if 20+ miles or payment disabled) */}
+              {!forceEmailOnly && CATERING_PAYMENT_ENABLED && (
                 <Card className="border-gray-700">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 mb-3">
@@ -1031,7 +1050,7 @@ export function CateringWizard() {
                   <div className="flex items-center gap-2 mb-3">
                     <Mail className="h-5 w-5 text-brand-yellow" />
                     <h3 className="font-display text-base font-bold text-white">
-                      {forceEmailOnly
+                      {forceEmailOnly || !CATERING_PAYMENT_ENABLED
                         ? "Submit Inquiry"
                         : "Email Us Instead"}
                     </h3>
@@ -1039,11 +1058,11 @@ export function CateringWizard() {
                   <p className="text-xs text-gray-400 mb-3">
                     {forceEmailOnly
                       ? "Delivery over 20 miles requires a custom quote. Submit your details and we'll reach out."
-                      : "Prefer to discuss details first? Submit an inquiry and we'll follow up within 24 hours."}
+                      : "Submit your catering details and we'll follow up within 24 hours."}
                   </p>
                   <Button
                     onClick={handleEmailSubmit}
-                    variant={forceEmailOnly ? "default" : "outline"}
+                    variant={forceEmailOnly || !CATERING_PAYMENT_ENABLED ? "default" : "outline"}
                     className="w-full"
                   >
                     Submit Inquiry

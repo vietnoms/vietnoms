@@ -27,6 +27,7 @@ interface CateringEmailData {
     bigUpActive?: boolean;
     noPeanuts?: boolean;
     eggRollCut?: string;
+    utensils?: { napkins: boolean; forks: boolean; chopsticks: boolean };
   } | null;
 }
 
@@ -87,6 +88,15 @@ function buildDetailsBlock(data: CateringEmailData): string {
   }
   if (data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut") {
     lines.push(`Egg Roll Cut: ${data.customizations.eggRollCut}`);
+  }
+
+  if (data.customizations?.utensils) {
+    const selected = Object.entries(data.customizations.utensils)
+      .filter(([, v]) => v)
+      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+    if (selected.length > 0) {
+      lines.push(`Utensils: ${selected.join(", ")}`);
+    }
   }
 
   if (data.totalAmount != null) {
