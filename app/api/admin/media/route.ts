@@ -8,12 +8,33 @@ const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function runMigrations() {
   const db = getTurso();
-  const migrations = [
+
+  // Ensure media table exists
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS media (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      blob_url TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      alt_text TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'uncategorized',
+      tags TEXT,
+      source TEXT NOT NULL DEFAULT 'upload',
+      width INTEGER,
+      height INTEGER,
+      size_bytes INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_media_category ON media(category)");
+  await db.execute("CREATE INDEX IF NOT EXISTS idx_media_source ON media(source)");
+
+  // Add gallery curation columns
+  const alterStatements = [
     "ALTER TABLE media ADD COLUMN gallery_visible INTEGER DEFAULT 1",
     "ALTER TABLE media ADD COLUMN gallery_order INTEGER DEFAULT 0",
     "ALTER TABLE media ADD COLUMN caption TEXT",
   ];
-  for (const sql of migrations) {
+  for (const sql of alterStatements) {
     try {
       await db.execute(sql);
     } catch {
@@ -53,6 +74,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     await requireAdmin();
+
+    if (!migrated) {
+      await runMigrations();
+      migrated = true;
+    }
 
     const formData = await request.formData();
     const file = formData.get("file") as File | null;

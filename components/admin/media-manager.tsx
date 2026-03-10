@@ -90,6 +90,7 @@ export function MediaManager() {
     if (selectedFiles.length === 0) return;
     setUploading(true);
 
+    let failed = 0;
     for (const file of selectedFiles) {
       const formData = new FormData();
       formData.set("file", file);
@@ -97,7 +98,12 @@ export function MediaManager() {
       formData.set("category", uploadCategory);
       formData.set("tags", uploadTags);
 
-      await fetch("/api/admin/media", { method: "POST", body: formData });
+      const res = await fetch("/api/admin/media", { method: "POST", body: formData });
+      if (!res.ok) failed++;
+    }
+
+    if (failed > 0) {
+      alert(`${failed} file${failed > 1 ? "s" : ""} failed to upload. Check the console for details.`);
     }
 
     clearSelection();
