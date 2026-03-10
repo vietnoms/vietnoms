@@ -1,37 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+import Image from "next/image";
+import { X } from "lucide-react";
 
-const CATEGORIES = ["All", "Food", "Interior", "Events", "Team"] as const;
+export interface GalleryItem {
+  id: number;
+  src: string;
+  alt: string;
+  category: string;
+  caption?: string;
+}
 
-const GALLERY_ITEMS = [
-  { src: "/images/gallery/bun-bowl-1.jpg", alt: "Vermicelli bun bowl with grilled lemongrass chicken", category: "Food" },
-  { src: "/images/gallery/banh-mi-1.jpg", alt: "Crispy banh mi sandwich with grilled pork", category: "Food" },
-  { src: "/images/gallery/wings-1.jpg", alt: "Nuoc mam chicken wings with fresh herbs", category: "Food" },
-  { src: "/images/gallery/interior-1.jpg", alt: "Vietnoms restaurant dining area", category: "Interior" },
-  { src: "/images/gallery/interior-2.jpg", alt: "Vietnoms restaurant bar area", category: "Interior" },
-  { src: "/images/gallery/big-classic-1.jpg", alt: "The Big Classic double-meat bun bowl", category: "Food" },
-  { src: "/images/gallery/catering-1.jpg", alt: "Vietnoms catering setup for corporate event", category: "Events" },
-  { src: "/images/gallery/team-1.jpg", alt: "Vietnoms kitchen team preparing dishes", category: "Team" },
-  { src: "/images/gallery/rice-bowl-1.jpg", alt: "Rice bowl with grilled lemongrass pork", category: "Food" },
-  { src: "/images/gallery/catering-2.jpg", alt: "Bun bowl bar catering station at wedding", category: "Events" },
-  { src: "/images/gallery/team-2.jpg", alt: "Vietnoms front of house team", category: "Team" },
-  { src: "/images/gallery/coffee-1.jpg", alt: "Vietnamese iced coffee with condensed milk", category: "Food" },
-];
+interface GalleryGridProps {
+  items: GalleryItem[];
+}
 
-export function GalleryGrid() {
-  const [activeCategory, setActiveCategory] = useState<string>("All");
+export function GalleryGrid({ items }: GalleryGridProps) {
+  const [activeCategory, setActiveCategory] = useState("All");
+  const [lightbox, setLightbox] = useState<GalleryItem | null>(null);
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(items.map((i) => i.category))).sort(),
+  ];
 
   const filtered =
     activeCategory === "All"
-      ? GALLERY_ITEMS
-      : GALLERY_ITEMS.filter((item) => item.category === activeCategory);
+      ? items
+      : items.filter((item) => item.category === activeCategory);
+
+  const closeLightbox = useCallback(() => setLightbox(null), []);
 
   return (
     <div>
       {/* Category filters */}
       <div className="flex flex-wrap gap-2 mb-8">
-        {CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
@@ -41,26 +46,73 @@ export function GalleryGrid() {
                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
             }`}
           >
-            {cat}
+            {cat.charAt(0).toUpperCase() + cat.slice(1)}
           </button>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
-        {filtered.map((item) => (
-          <div
-            key={item.src}
-            className="break-inside-avoid rounded-lg overflow-hidden bg-gray-200 aspect-[4/3] relative group"
+      {filtered.length === 0 ? (
+        <div className="text-center py-16 text-gray-400">
+          <p className="text-lg">Gallery coming soon</p>
+          <p className="text-sm mt-1">We&apos;re adding photos — check back shortly!</p>
+        </div>
+      ) : (
+        <div className="columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4">
+          {filtered.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setLightbox(item)}
+              className="break-inside-avoid rounded-lg overflow-hidden relative group block w-full"
+            >
+              <Image
+                src={item.src}
+                alt={item.alt}
+                width={800}
+                height={600}
+                className="w-full h-auto"
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+              <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                <p className="text-white text-sm">{item.caption || item.alt}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={closeLightbox}
+          onKeyDown={(e) => e.key === "Escape" && closeLightbox()}
+          role="dialog"
+          aria-modal="true"
+          aria-label={lightbox.alt}
+        >
+          <button
+            onClick={closeLightbox}
+            className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
           >
-            {/* Placeholder — replace with next/image when photos are added */}
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-xs p-2 text-center">
-              {item.alt}
-            </div>
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-          </div>
-        ))}
-      </div>
+            <X className="h-6 w-6" />
+          </button>
+          <Image
+            src={lightbox.src}
+            alt={lightbox.alt}
+            width={1200}
+            height={900}
+            className="max-h-[90vh] max-w-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {(lightbox.caption || lightbox.alt) && (
+            <p className="absolute bottom-6 left-0 right-0 text-center text-white/80 text-sm">
+              {lightbox.caption || lightbox.alt}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

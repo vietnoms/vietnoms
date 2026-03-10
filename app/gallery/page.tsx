@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 import { GalleryGrid } from "@/components/gallery-grid";
+import { listMedia } from "@/lib/db/media";
 
 export const metadata: Metadata = {
   title: "Gallery | Vietnoms Vietnamese Restaurant",
@@ -14,7 +15,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function GalleryPage() {
+export const dynamic = "force-dynamic";
+
+export default async function GalleryPage() {
+  const media = await listMedia({ limit: 100, galleryOnly: true });
+  const items = media.map((m) => ({
+    id: m.id,
+    src: m.blobUrl,
+    alt: m.altText,
+    category: m.category,
+    caption: m.caption ?? undefined,
+  }));
+
   return (
     <>
       <BreadcrumbSchema
@@ -37,7 +49,7 @@ export default function GalleryPage() {
 
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <GalleryGrid />
+          <GalleryGrid items={items} />
         </div>
       </section>
     </>

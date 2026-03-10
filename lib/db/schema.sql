@@ -70,3 +70,22 @@ CREATE TABLE IF NOT EXISTS catering_items (
   unit_price INTEGER,                     -- cents
   notes TEXT
 );
+
+-- Media Library
+
+CREATE TABLE IF NOT EXISTS media (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  blob_url TEXT NOT NULL,
+  filename TEXT NOT NULL,
+  alt_text TEXT NOT NULL DEFAULT '',
+  category TEXT NOT NULL DEFAULT 'uncategorized',
+  tags TEXT,
+  source TEXT NOT NULL DEFAULT 'upload',  -- 'upload' | 'generated'
+  width INTEGER,
+  height INTEGER,
+  size_bytes INTEGER,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_media_category ON media(category);
+CREATE INDEX IF NOT EXISTS idx_media_source ON media(source);

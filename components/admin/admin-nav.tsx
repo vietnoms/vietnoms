@@ -7,14 +7,18 @@ import {
   PenTool,
   CheckSquare,
   Calendar,
+  ImageIcon,
+  Code,
   LogOut,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/catering", label: "Catering", icon: UtensilsCrossed },
   { href: "/admin/content", label: "Content", icon: PenTool },
+  { href: "/admin/media", label: "Media", icon: ImageIcon },
   { href: "/admin/seo", label: "SEO Audit", icon: CheckSquare },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
+  { href: "/admin/schema", label: "Schema", icon: Code },
 ];
 
 export function AdminNav() {
