@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { upload } from "@vercel/blob/client";
 import { Upload, Trash2, Pencil, X, Check, Loader2, Eye, EyeOff } from "lucide-react";
 
 interface MediaItem {
@@ -92,18 +93,35 @@ export function MediaManager() {
 
     let failed = 0;
     for (const file of selectedFiles) {
-      const formData = new FormData();
-      formData.set("file", file);
-      formData.set("altText", uploadAlt);
-      formData.set("category", uploadCategory);
-      formData.set("tags", uploadTags);
+      try {
+        // Upload directly to Vercel Blob (bypasses 4.5MB serverless limit)
+        const blob = await upload(`media/${Date.now()}-${file.name}`, file, {
+          access: "public",
+          handleUploadUrl: "/api/admin/media/upload",
+        });
 
-      const res = await fetch("/api/admin/media", { method: "POST", body: formData });
-      if (!res.ok) failed++;
+        // Insert DB record via the existing POST route
+        const res = await fetch("/api/admin/media", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            blobUrl: blob.url,
+            filename: file.name,
+            altText: uploadAlt,
+            category: uploadCategory,
+            tags: uploadTags,
+            sizeBytes: file.size,
+          }),
+        });
+        if (!res.ok) failed++;
+      } catch (err) {
+        console.error("Upload failed:", err);
+        failed++;
+      }
     }
 
     if (failed > 0) {
-      alert(`${failed} file${failed > 1 ? "s" : ""} failed to upload. Check the console for details.`);
+      alert(`${failed} file${failed > 1 ? "s" : ""} failed to upload.`);
     }
 
     clearSelection();

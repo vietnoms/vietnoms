@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 import { requireAdmin } from "@/lib/admin";
 import { listMedia, insertMedia } from "@/lib/db/media";
 import { getTurso } from "@/lib/turso";
-
-const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 async function runMigrations() {
   const db = getTurso();
@@ -80,49 +77,29 @@ export async function POST(request: Request) {
       migrated = true;
     }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    const body = await request.json();
+    const { blobUrl, filename, altText, category, tags, sizeBytes } = body;
+
+    if (!blobUrl || !filename) {
+      return NextResponse.json({ error: "Missing blobUrl or filename" }, { status: 400 });
     }
-
-    if (!file.type.startsWith("image/")) {
-      return NextResponse.json({ error: "Only image files are allowed" }, { status: 400 });
-    }
-
-    if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: "File must be under 10MB" }, { status: 400 });
-    }
-
-    const altText = (formData.get("altText") as string) || "";
-    const category = (formData.get("category") as string) || "uncategorized";
-    const tags = (formData.get("tags") as string) || "";
-
-    const blob = await put(`media/${Date.now()}-${file.name}`, file, { access: "public" });
 
     const { id } = await insertMedia({
-      blobUrl: blob.url,
-      filename: file.name,
-      altText,
-      category,
+      blobUrl,
+      filename,
+      altText: altText || "",
+      category: category || "uncategorized",
       tags: tags || undefined,
       source: "upload",
-      sizeBytes: file.size,
+      sizeBytes: sizeBytes ?? undefined,
     });
 
-    return NextResponse.json({
-      id,
-      blobUrl: blob.url,
-      filename: file.name,
-      altText,
-      category,
-      tags,
-    });
+    return NextResponse.json({ id, blobUrl, filename });
   } catch (error) {
     if (error instanceof Error && error.message === "Not authorized") {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });
     }
-    console.error("Upload media error:", error);
-    return NextResponse.json({ error: "Failed to upload media" }, { status: 500 });
+    console.error("Insert media error:", error);
+    return NextResponse.json({ error: "Failed to insert media" }, { status: 500 });
   }
 }
