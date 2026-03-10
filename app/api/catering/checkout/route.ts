@@ -5,6 +5,7 @@ import {
   createCateringItems,
   updateCateringRequestPayment,
 } from "@/lib/db/catering";
+import { createPurchase, updatePurchasePayment, updatePurchaseStatus } from "@/lib/db/purchases";
 import { sendCateringOrderEmails } from "@/lib/email";
 import crypto from "crypto";
 import {
@@ -102,6 +103,17 @@ export async function POST(request: Request) {
       );
     }
 
+    // 1b. Log purchase
+    const { id: purchaseId } = await createPurchase({
+      type: "catering",
+      status: "pending",
+      amount: body.totalAmount,
+      customerName: body.contactName,
+      customerEmail: body.contactEmail,
+      customerPhone: body.contactPhone,
+      metadata: JSON.stringify({ cateringRequestId: id }),
+    });
+
     // 2. Create Square order with ad-hoc line items
     const square = getSquare();
     const lineItems = [
@@ -148,6 +160,7 @@ export async function POST(request: Request) {
     const order = orderResponse?.order;
     if (!order?.id) {
       console.error("Failed to create catering order:", orderResponse);
+      await updatePurchaseStatus(purchaseId, "failed", "Failed to create Square order");
       return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }
 
@@ -167,11 +180,13 @@ export async function POST(request: Request) {
     const payment = paymentResponse?.payment;
     if (!payment?.id || payment.status !== "COMPLETED") {
       console.error("Catering payment failed:", paymentResponse);
+      await updatePurchaseStatus(purchaseId, "failed", "Payment failed");
       return NextResponse.json({ error: "Payment failed" }, { status: 500 });
     }
 
     // 4. Update DB with payment info
     await updateCateringRequestPayment(id, order.id, payment.id, body.totalAmount);
+    await updatePurchasePayment(purchaseId, payment.id, order.id);
 
     // 5. Send emails (non-blocking)
     sendCateringOrderEmails({

@@ -15,6 +15,7 @@ import {
   ApplePay,
   GooglePay,
   CashAppPay,
+  GiftCard,
 } from "react-square-web-payments-sdk";
 import { ArrowLeft, Loader2, CheckCircle, Star, Clock } from "lucide-react";
 import {
@@ -647,6 +648,7 @@ export function CheckoutForm() {
                 or pay with
               </div>
               <div className="space-y-2">
+                <GiftCard />
                 <ApplePay />
                 <GooglePay />
                 <CashAppPay />

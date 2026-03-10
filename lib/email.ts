@@ -6,7 +6,8 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM = "Vietnoms Catering <catering@vietnoms.com>";
+const FROM_CATERING = "Vietnoms Catering <catering@vietnoms.com>";
+const FROM_ORDERS = "Vietnoms <orders@vietnoms.com>";
 const ADMIN_EMAIL = "catering@vietnoms.com";
 
 interface CateringEmailData {
@@ -115,14 +116,14 @@ export async function sendCateringOrderEmails(data: CateringEmailData) {
   await Promise.all([
     // Admin notification
     resend.emails.send({
-      from: FROM,
+      from: FROM_CATERING,
       to: ADMIN_EMAIL,
       subject: `New Catering Order - ${data.contactName}`,
       text: `A new catering order has been placed and paid.\n\n${details}`,
     }),
     // Customer confirmation
     resend.emails.send({
-      from: FROM,
+      from: FROM_CATERING,
       to: data.contactEmail,
       subject: "Your Vietnoms Catering Order Confirmation",
       text: [
@@ -147,13 +148,13 @@ export async function sendCateringInquiryEmails(data: CateringEmailData) {
 
   await Promise.all([
     resend.emails.send({
-      from: FROM,
+      from: FROM_CATERING,
       to: ADMIN_EMAIL,
       subject: `New Catering Inquiry - ${data.contactName}`,
       text: `A new catering inquiry has been submitted.\n\n${details}`,
     }),
     resend.emails.send({
-      from: FROM,
+      from: FROM_CATERING,
       to: data.contactEmail,
       subject: "We Received Your Catering Inquiry",
       text: [
@@ -165,6 +166,70 @@ export async function sendCateringInquiryEmails(data: CateringEmailData) {
         "",
         "Thanks,",
         "Vietnoms Catering",
+      ].join("\n"),
+    }),
+  ]);
+}
+
+interface GiftCardEmailData {
+  senderName: string;
+  senderEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  amount: number; // cents
+  gan: string; // 16-digit gift card number
+  message?: string;
+}
+
+function formatGan(gan: string): string {
+  return gan.replace(/(.{4})(?=.)/g, "$1 ");
+}
+
+export async function sendGiftCardEmails(data: GiftCardEmailData) {
+  const resend = getResend();
+  const amountStr = formatMoney(data.amount);
+  const ganFormatted = formatGan(data.gan);
+
+  await Promise.all([
+    resend.emails.send({
+      from: FROM_ORDERS,
+      to: data.senderEmail,
+      subject: "Your Vietnoms Gift Card Purchase",
+      text: [
+        `Hi ${data.senderName},`,
+        "",
+        `Your ${amountStr} Vietnoms gift card has been purchased successfully!`,
+        "",
+        `Gift Card Number: ${ganFormatted}`,
+        `Amount: ${amountStr}`,
+        `Recipient: ${data.recipientName} (${data.recipientEmail})`,
+        "",
+        "The recipient has also been emailed their gift card details.",
+        "",
+        "Check your balance anytime at: https://vietnoms.com/gift-cards#balance",
+        "",
+        "Thanks for sharing the love of Vietnamese food!",
+        "Vietnoms",
+      ].join("\n"),
+    }),
+    resend.emails.send({
+      from: FROM_ORDERS,
+      to: data.recipientEmail,
+      subject: "You've Received a Vietnoms Gift Card!",
+      text: [
+        `Hi ${data.recipientName},`,
+        "",
+        `${data.senderName} sent you a ${amountStr} Vietnoms gift card!`,
+        ...(data.message ? ["", `"${data.message}"`, ""] : [""]),
+        `Gift Card Number: ${ganFormatted}`,
+        `Amount: ${amountStr}`,
+        "",
+        "Use this card online at vietnoms.com or in-store at Vietnoms.",
+        "",
+        "Check your balance anytime at: https://vietnoms.com/gift-cards#balance",
+        "",
+        "Enjoy!",
+        "Vietnoms",
       ].join("\n"),
     }),
   ]);

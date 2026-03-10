@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 import { GiftCardForm } from "@/components/gift-card-form";
+import { GiftCardBalance } from "@/components/gift-card-balance";
 
 export const metadata: Metadata = {
   title: "Gift Cards | Vietnoms Vietnamese Restaurant",
@@ -41,6 +42,13 @@ export default function GiftCardsPage() {
       <section className="py-16 md:py-24">
         <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
           <GiftCardForm />
+        </div>
+      </section>
+
+      {/* Balance Check */}
+      <section className="py-16 md:py-24 bg-gray-50">
+        <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
+          <GiftCardBalance />
         </div>
       </section>
     </>

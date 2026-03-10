@@ -10,15 +10,19 @@ import {
   ImageIcon,
   Code,
   LogOut,
+  Wand2,
+  Receipt,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "/admin/catering", label: "Catering", icon: UtensilsCrossed },
+  { href: "/admin/purchases", label: "Purchases", icon: Receipt },
   { href: "/admin/content", label: "Content", icon: PenTool },
   { href: "/admin/media", label: "Media", icon: ImageIcon },
   { href: "/admin/seo", label: "SEO Audit", icon: CheckSquare },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
   { href: "/admin/schema", label: "Schema", icon: Code },
+  { href: "/admin/image-studio", label: "Studio", icon: Wand2 },
 ];
 
 export function AdminNav() {

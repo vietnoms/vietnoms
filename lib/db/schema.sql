@@ -89,3 +89,23 @@ CREATE TABLE IF NOT EXISTS media (
 
 CREATE INDEX IF NOT EXISTS idx_media_category ON media(category);
 CREATE INDEX IF NOT EXISTS idx_media_source ON media(source);
+
+-- Purchases
+
+CREATE TABLE IF NOT EXISTS purchases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT NOT NULL,                     -- 'gift_card' | 'catering' | 'order'
+  status TEXT NOT NULL DEFAULT 'pending', -- 'pending' | 'completed' | 'failed' | 'refunded'
+  amount INTEGER NOT NULL,               -- cents
+  square_payment_id TEXT,
+  square_order_id TEXT,
+  customer_name TEXT,
+  customer_email TEXT,
+  customer_phone TEXT,
+  gift_card_id TEXT,
+  gift_card_gan TEXT,
+  metadata TEXT,                          -- JSON for extra context
+  error_message TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);

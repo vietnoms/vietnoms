@@ -7,6 +7,7 @@ import {
   ApplePay,
   GooglePay,
   CashAppPay,
+  GiftCard,
 } from "react-square-web-payments-sdk";
 import { Loader2 } from "lucide-react";
 
@@ -68,6 +69,7 @@ export function CateringPayment({
         or pay with
       </div>
       <div className="space-y-2">
+        <GiftCard />
         <ApplePay />
         <GooglePay />
         <CashAppPay />

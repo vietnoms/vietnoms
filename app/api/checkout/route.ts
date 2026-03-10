@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSquare, LOCATION_ID } from "@/lib/square";
 import { getSession } from "@/lib/auth";
 import { accumulateLoyaltyPoints } from "@/lib/loyalty";
+import { createPurchase, updatePurchasePayment, updatePurchaseStatus } from "@/lib/db/purchases";
 import crypto from "crypto";
 
 interface CheckoutLineItem {
@@ -40,6 +41,16 @@ export async function POST(request: Request) {
 
     const square = getSquare();
     const session = await getSession();
+
+    // Log purchase attempt
+    const { id: purchaseId } = await createPurchase({
+      type: "order",
+      status: "pending",
+      amount: 0, // Will be updated after order creation
+      customerName: customerInfo.name,
+      customerEmail: customerInfo.email,
+      customerPhone: customerInfo.phone,
+    });
 
     // Build pickup time
     let pickupAt: string | undefined;
@@ -96,6 +107,7 @@ export async function POST(request: Request) {
     const order = orderResponse?.order;
     if (!order?.id) {
       console.error("Failed to create order:", orderResponse);
+      await updatePurchaseStatus(purchaseId, "failed", "Failed to create Square order");
       return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
     }
 
@@ -116,10 +128,14 @@ export async function POST(request: Request) {
     const payment = paymentResponse?.payment;
     if (!payment?.id || payment.status !== "COMPLETED") {
       console.error("Payment failed:", paymentResponse);
+      await updatePurchaseStatus(purchaseId, "failed", "Payment failed");
       return NextResponse.json({ error: "Payment failed" }, { status: 500 });
     }
 
-    // Step 3: Accumulate loyalty points (if authenticated, non-blocking)
+    // Step 3: Log completed purchase
+    await updatePurchasePayment(purchaseId, payment.id, order.id);
+
+    // Step 4: Accumulate loyalty points (if authenticated, non-blocking)
     if (session?.customerId) {
       accumulateLoyaltyPoints(session.customerId, order.id).catch((err) =>
         console.error("Loyalty points accumulation failed:", err)

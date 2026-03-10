@@ -2,8 +2,34 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { upload } from "@vercel/blob/client";
 import { Upload, Trash2, Pencil, X, Check, Loader2, Eye, EyeOff } from "lucide-react";
+
+function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > maxDim || height > maxDim) {
+        const ratio = Math.min(maxDim / width, maxDim / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => (blob ? resolve(blob) : reject(new Error("Compression failed"))),
+        "image/jpeg",
+        quality
+      );
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
 
 interface MediaItem {
   id: number;
@@ -94,24 +120,18 @@ export function MediaManager() {
     let failed = 0;
     for (const file of selectedFiles) {
       try {
-        // Upload directly to Vercel Blob (bypasses 4.5MB serverless limit)
-        const blob = await upload(`media/${Date.now()}-${file.name}`, file, {
-          access: "public",
-          handleUploadUrl: "/api/admin/media/upload",
-        });
+        // Compress image client-side to stay under serverless body limit
+        const compressed = await compressImage(file);
 
-        // Insert DB record via the existing POST route
+        const formData = new FormData();
+        formData.append("file", compressed, file.name);
+        formData.append("altText", uploadAlt);
+        formData.append("category", uploadCategory);
+        formData.append("tags", uploadTags);
+
         const res = await fetch("/api/admin/media", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            blobUrl: blob.url,
-            filename: file.name,
-            altText: uploadAlt,
-            category: uploadCategory,
-            tags: uploadTags,
-            sizeBytes: file.size,
-          }),
+          body: formData,
         });
         if (!res.ok) failed++;
       } catch (err) {

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import { requireAdmin } from "@/lib/admin";
 import { listMedia, insertMedia } from "@/lib/db/media";
 import { getTurso } from "@/lib/turso";
@@ -77,24 +78,36 @@ export async function POST(request: Request) {
       migrated = true;
     }
 
-    const body = await request.json();
-    const { blobUrl, filename, altText, category, tags, sizeBytes } = body;
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+    const altText = (formData.get("altText") as string) || "";
+    const category = (formData.get("category") as string) || "uncategorized";
+    const tags = (formData.get("tags") as string) || undefined;
 
-    if (!blobUrl || !filename) {
-      return NextResponse.json({ error: "Missing blobUrl or filename" }, { status: 400 });
+    if (!file) {
+      return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    const filename = file.name || `upload-${Date.now()}.jpg`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+
+    const blob = await put(
+      `media/${Date.now()}-${filename}`,
+      buffer,
+      { access: "public", contentType: file.type || "image/jpeg" }
+    );
+
     const { id } = await insertMedia({
-      blobUrl,
+      blobUrl: blob.url,
       filename,
-      altText: altText || "",
-      category: category || "uncategorized",
-      tags: tags || undefined,
+      altText,
+      category,
+      tags,
       source: "upload",
-      sizeBytes: sizeBytes ?? undefined,
+      sizeBytes: buffer.byteLength,
     });
 
-    return NextResponse.json({ id, blobUrl, filename });
+    return NextResponse.json({ id, blobUrl: blob.url, filename });
   } catch (error) {
     if (error instanceof Error && error.message === "Not authorized") {
       return NextResponse.json({ error: "Not authorized" }, { status: 401 });

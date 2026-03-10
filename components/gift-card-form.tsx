@@ -14,6 +14,7 @@ import {
   ApplePay,
   GooglePay,
   CashAppPay,
+  GiftCard,
 } from "react-square-web-payments-sdk";
 
 const GIFT_CARDS_ENABLED = false; // Toggle to re-enable gift card purchases
@@ -309,6 +310,7 @@ export function GiftCardForm() {
                 or pay with
               </div>
               <div className="space-y-2">
+                <GiftCard />
                 <ApplePay />
                 <GooglePay />
                 <CashAppPay />
