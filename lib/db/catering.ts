@@ -1,5 +1,46 @@
 import { getTurso } from "@/lib/turso";
 
+let tablesEnsured = false;
+export async function ensureCateringTables() {
+  if (tablesEnsured) return;
+  const db = getTurso();
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS catering_requests (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT NOT NULL DEFAULT 'draft',
+      event_date TEXT NOT NULL,
+      guest_count INTEGER NOT NULL,
+      package_type TEXT NOT NULL,
+      customizations TEXT,
+      contact_name TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      contact_phone TEXT NOT NULL,
+      delivery_type TEXT NOT NULL DEFAULT 'pickup',
+      delivery_address TEXT,
+      delivery_distance REAL,
+      delivery_fee INTEGER DEFAULT 0,
+      total_amount INTEGER,
+      square_order_id TEXT,
+      square_payment_id TEXT,
+      notes TEXT,
+      fulfillment_type TEXT NOT NULL DEFAULT 'email',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS catering_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      catering_request_id INTEGER NOT NULL REFERENCES catering_requests(id) ON DELETE CASCADE,
+      item_name TEXT NOT NULL,
+      quantity INTEGER NOT NULL DEFAULT 1,
+      unit_price INTEGER,
+      notes TEXT
+    )
+  `);
+  tablesEnsured = true;
+}
+
 export interface CateringRequestRow {
   id: number;
   status: string;

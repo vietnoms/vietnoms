@@ -4,6 +4,7 @@ import {
   getCateringRequest,
   getCateringItems,
   updateCateringRequestStatus,
+  ensureCateringTables,
 } from "@/lib/db/catering";
 
 // GET — admin: single request with items
@@ -17,6 +18,7 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await ensureCateringTables();
   const id = parseInt(params.id, 10);
   if (isNaN(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -42,6 +44,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await ensureCateringTables();
   const id = parseInt(params.id, 10);
   if (isNaN(id)) {
     return NextResponse.json({ error: "Invalid ID" }, { status: 400 });

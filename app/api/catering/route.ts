@@ -4,6 +4,7 @@ import {
   createCateringRequest,
   createCateringItems,
   listCateringRequests,
+  ensureCateringTables,
 } from "@/lib/db/catering";
 import { sendCateringInquiryEmails } from "@/lib/email";
 import { createDraftInvoice } from "@/lib/square-invoice";
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  await ensureCateringTables();
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status") || undefined;
   const requests = await listCateringRequests(status);
@@ -25,6 +27,7 @@ export async function GET(request: Request) {
 // POST — public: create a catering request (email inquiry path)
 export async function POST(request: Request) {
   try {
+    await ensureCateringTables();
     const body = await request.json();
     const {
       eventDate,

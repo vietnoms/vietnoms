@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { createCateringRequest, createCateringItems } from "@/lib/db/catering";
+import { createCateringRequest, createCateringItems, ensureCateringTables } from "@/lib/db/catering";
 
 // POST — save partial wizard data as draft for abandoned checkout tracking
 export async function POST(request: Request) {
   try {
+    await ensureCateringTables();
     const body = await request.json();
     const {
       eventDate,

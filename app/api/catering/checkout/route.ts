@@ -4,6 +4,7 @@ import {
   createCateringRequest,
   createCateringItems,
   updateCateringRequestPayment,
+  ensureCateringTables,
 } from "@/lib/db/catering";
 import { createPurchase, updatePurchasePayment, updatePurchaseStatus } from "@/lib/db/purchases";
 import { sendCateringOrderEmails } from "@/lib/email";
@@ -35,6 +36,7 @@ interface CateringCheckoutRequest {
 
 export async function POST(request: Request) {
   try {
+    await ensureCateringTables();
     const body: CateringCheckoutRequest = await request.json();
 
     if (!body.paymentToken) {
