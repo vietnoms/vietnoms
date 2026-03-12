@@ -105,7 +105,11 @@ export interface GiftCardOrder {
   amount: number;
   senderName: string;
   senderEmail: string;
+  senderPhone: string;
   recipientName: string;
   recipientEmail: string;
+  recipientPhone?: string;
   message?: string;
+  sendToSelf?: boolean;
+  deliveryMethod?: "email" | "sms";
 }

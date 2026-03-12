@@ -63,3 +63,21 @@ export async function verifyOTP(
     return { success: false, error: error.message || "Verification failed" };
   }
 }
+
+/** Send an SMS message via Twilio */
+export async function sendSms(
+  to: string,
+  body: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const client = getClient();
+    const from = process.env.TWILIO_PHONE_NUMBER;
+    if (!from) throw new Error("TWILIO_PHONE_NUMBER is not set");
+    const normalized = normalizePhone(to);
+    await client.messages.create({ to: normalized, from, body });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Failed to send SMS:", error);
+    return { success: false, error: error.message || "Failed to send text message" };
+  }
+}

@@ -92,6 +92,38 @@ CREATE INDEX IF NOT EXISTS idx_media_source ON media(source);
 
 -- Purchases
 
+-- Gift Card Group Contributions
+
+CREATE TABLE IF NOT EXISTS gift_card_contributions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  token TEXT NOT NULL UNIQUE,
+  gift_card_id TEXT NOT NULL,
+  gift_card_gan TEXT NOT NULL,
+  organizer_name TEXT NOT NULL,
+  organizer_email TEXT NOT NULL,
+  recipient_name TEXT NOT NULL,
+  suggested_amount INTEGER,
+  message TEXT,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_contributions_token ON gift_card_contributions(token);
+
+CREATE TABLE IF NOT EXISTS contribution_invites (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  contribution_id INTEGER NOT NULL REFERENCES gift_card_contributions(id),
+  invitee_email TEXT NOT NULL,
+  invited_at TEXT NOT NULL DEFAULT (datetime('now')),
+  contributed_at TEXT,
+  amount INTEGER,
+  square_payment_id TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_invites_contribution ON contribution_invites(contribution_id);
+
+-- Purchases
+
 CREATE TABLE IF NOT EXISTS purchases (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT NOT NULL,                     -- 'gift_card' | 'catering' | 'order'

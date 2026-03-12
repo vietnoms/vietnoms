@@ -36,6 +36,10 @@ function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function formatGan(gan: string): string {
+  return gan.replace(/(.{4})(?=.)/g, "$1 ");
+}
+
 function buildDetailsBlock(data: CateringEmailData): string {
   const lines = [
     `Name: ${data.contactName}`,
@@ -171,56 +175,59 @@ export async function sendCateringInquiryEmails(data: CateringEmailData) {
   ]);
 }
 
+// ---------- Gift Card Emails ----------
+
 interface GiftCardEmailData {
   senderName: string;
   senderEmail: string;
+  senderPhone: string;
   recipientName: string;
   recipientEmail: string;
   amount: number; // cents
   gan: string; // 16-digit gift card number
   message?: string;
-}
-
-function formatGan(gan: string): string {
-  return gan.replace(/(.{4})(?=.)/g, "$1 ");
+  sendToSelf?: boolean;
 }
 
 export async function sendGiftCardEmails(data: GiftCardEmailData) {
   const resend = getResend();
   const amountStr = formatMoney(data.amount);
   const ganFormatted = formatGan(data.gan);
+  const isSelf = data.sendToSelf || data.senderEmail === data.recipientEmail;
 
-  await Promise.all([
-    resend.emails.send({
+  const emails: Parameters<typeof resend.emails.send>[0][] = [
+    // Admin notification (always)
+    {
+      from: FROM_ORDERS,
+      to: ADMIN_EMAIL,
+      subject: `Gift Card Purchase - ${data.senderName} (${amountStr})`,
+      text: [
+        `New gift card purchase:`,
+        "",
+        `Sender: ${data.senderName}`,
+        `Email: ${data.senderEmail}`,
+        `Phone: ${data.senderPhone}`,
+        `Amount: ${amountStr}`,
+        `Gift Card #: ${ganFormatted}`,
+        ...(isSelf
+          ? [`Type: Self-purchase`]
+          : [`Recipient: ${data.recipientName} (${data.recipientEmail})`]),
+        ...(data.message ? [`Message: "${data.message}"`] : []),
+      ].join("\n"),
+    },
+  ];
+
+  if (isSelf) {
+    // Self-purchase: single email to buyer
+    emails.push({
       from: FROM_ORDERS,
       to: data.senderEmail,
-      subject: "Your Vietnoms Gift Card Purchase",
+      subject: "Your Vietnoms Gift Card",
       text: [
         `Hi ${data.senderName},`,
         "",
-        `Your ${amountStr} Vietnoms gift card has been purchased successfully!`,
+        `Your ${amountStr} Vietnoms gift card is ready!`,
         "",
-        `Gift Card Number: ${ganFormatted}`,
-        `Amount: ${amountStr}`,
-        `Recipient: ${data.recipientName} (${data.recipientEmail})`,
-        "",
-        "The recipient has also been emailed their gift card details.",
-        "",
-        "Check your balance anytime at: https://vietnoms.com/gift-cards#balance",
-        "",
-        "Thanks for sharing the love of Vietnamese food!",
-        "Vietnoms",
-      ].join("\n"),
-    }),
-    resend.emails.send({
-      from: FROM_ORDERS,
-      to: data.recipientEmail,
-      subject: "You've Received a Vietnoms Gift Card!",
-      text: [
-        `Hi ${data.recipientName},`,
-        "",
-        `${data.senderName} sent you a ${amountStr} Vietnoms gift card!`,
-        ...(data.message ? ["", `"${data.message}"`, ""] : [""]),
         `Gift Card Number: ${ganFormatted}`,
         `Amount: ${amountStr}`,
         "",
@@ -230,6 +237,149 @@ export async function sendGiftCardEmails(data: GiftCardEmailData) {
         "",
         "Enjoy!",
         "Vietnoms",
+      ].join("\n"),
+    });
+  } else {
+    // Gift to someone else: sender confirmation + recipient notification
+    emails.push(
+      {
+        from: FROM_ORDERS,
+        to: data.senderEmail,
+        subject: "Your Vietnoms Gift Card Purchase",
+        text: [
+          `Hi ${data.senderName},`,
+          "",
+          `Your ${amountStr} Vietnoms gift card has been purchased successfully!`,
+          "",
+          `Gift Card Number: ${ganFormatted}`,
+          `Amount: ${amountStr}`,
+          `Recipient: ${data.recipientName} (${data.recipientEmail})`,
+          "",
+          "The recipient has also been emailed their gift card details.",
+          "",
+          "Check your balance anytime at: https://vietnoms.com/gift-cards#balance",
+          "",
+          "Thanks for sharing the love of Vietnamese food!",
+          "Vietnoms",
+        ].join("\n"),
+      },
+      {
+        from: FROM_ORDERS,
+        to: data.recipientEmail,
+        subject: "You've Received a Vietnoms Gift Card!",
+        text: [
+          `Hi ${data.recipientName},`,
+          "",
+          `${data.senderName} sent you a ${amountStr} Vietnoms gift card!`,
+          ...(data.message ? ["", `"${data.message}"`, ""] : [""]),
+          `Gift Card Number: ${ganFormatted}`,
+          `Amount: ${amountStr}`,
+          "",
+          "Use this card online at vietnoms.com or in-store at Vietnoms.",
+          "",
+          "Check your balance anytime at: https://vietnoms.com/gift-cards#balance",
+          "",
+          "Enjoy!",
+          "Vietnoms",
+        ].join("\n"),
+      }
+    );
+  }
+
+  await Promise.all(emails.map((e) => resend.emails.send(e)));
+}
+
+// ---------- Contribution Invite Emails ----------
+
+interface ContributionInviteEmailData {
+  organizerName: string;
+  recipientName: string;
+  message?: string;
+  suggestedAmount?: number; // cents
+  contributeUrl: string;
+  inviteeEmail: string;
+}
+
+export async function sendContributionInviteEmail(data: ContributionInviteEmailData) {
+  const resend = getResend();
+  const suggestedStr = data.suggestedAmount ? formatMoney(data.suggestedAmount) : null;
+
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: data.inviteeEmail,
+    subject: `${data.organizerName} invited you to contribute to a gift card for ${data.recipientName}`,
+    text: [
+      `Hi there!`,
+      "",
+      `${data.organizerName} is putting together a group gift card for ${data.recipientName} at Vietnoms and would love your contribution.`,
+      ...(data.message ? ["", `"${data.message}"`, ""] : [""]),
+      ...(suggestedStr ? [`Suggested contribution: ${suggestedStr}`, ""] : []),
+      `Contribute here: ${data.contributeUrl}`,
+      "",
+      "Thanks!",
+      "Vietnoms",
+    ].join("\n"),
+  });
+}
+
+interface ContributionConfirmationEmailData {
+  contributorName: string;
+  contributorEmail: string;
+  amount: number; // cents
+  recipientName: string;
+  organizerName: string;
+  organizerEmail: string;
+}
+
+export async function sendContributionConfirmationEmails(data: ContributionConfirmationEmailData) {
+  const resend = getResend();
+  const amountStr = formatMoney(data.amount);
+
+  await Promise.all([
+    // Contributor receipt
+    resend.emails.send({
+      from: FROM_ORDERS,
+      to: data.contributorEmail,
+      subject: `Your ${amountStr} contribution to ${data.recipientName}'s gift card`,
+      text: [
+        `Hi ${data.contributorName},`,
+        "",
+        `Thank you for contributing ${amountStr} to ${data.recipientName}'s Vietnoms gift card!`,
+        "",
+        `Organized by: ${data.organizerName}`,
+        "",
+        "Your contribution has been added to the gift card balance.",
+        "",
+        "Thanks for sharing the love of Vietnamese food!",
+        "Vietnoms",
+      ].join("\n"),
+    }),
+    // Organizer notification
+    resend.emails.send({
+      from: FROM_ORDERS,
+      to: data.organizerEmail,
+      subject: `${data.contributorName} contributed ${amountStr} to ${data.recipientName}'s gift card`,
+      text: [
+        `Hi ${data.organizerName},`,
+        "",
+        `${data.contributorName} just contributed ${amountStr} to ${data.recipientName}'s Vietnoms gift card!`,
+        "",
+        "Thanks,",
+        "Vietnoms",
+      ].join("\n"),
+    }),
+    // Admin notification
+    resend.emails.send({
+      from: FROM_ORDERS,
+      to: ADMIN_EMAIL,
+      subject: `Gift Card Contribution - ${data.contributorName} (${amountStr})`,
+      text: [
+        `New gift card contribution:`,
+        "",
+        `Contributor: ${data.contributorName} (${data.contributorEmail})`,
+        `Amount: ${amountStr}`,
+        `For: ${data.recipientName}`,
+        `Organized by: ${data.organizerName} (${data.organizerEmail})`,
       ].join("\n"),
     }),
   ]);

@@ -12,12 +12,29 @@ export default function TermsPage() {
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 prose prose-gray">
         <h1 className="font-display">Terms of Service</h1>
-        <p className="text-sm text-gray-400">Last updated: March 2026</p>
+        <p className="text-sm text-gray-400">Last updated: March 12, 2026</p>
 
         <h2>Ordering</h2>
         <p>
-          By placing an order through our website, you agree to provide accurate
-          and complete information. All orders are subject to availability.
+          By placing an order through our website &mdash; including online
+          orders, gift card purchases, and catering requests &mdash; you agree
+          to provide accurate and complete information. All orders are subject
+          to availability.
+        </p>
+
+        <h2>Checkout & Loyalty Program</h2>
+        <p>
+          When you complete a checkout on our website (online order, gift card
+          purchase, or catering request), your name, phone number, and email
+          address will be entered into our Square Loyalty program to track your
+          purchases and earn reward points. By completing checkout, you consent
+          to this enrollment.
+        </p>
+        <p>
+          Points are earned automatically on qualifying purchases. You can view
+          your balance and redeem rewards through your account on our website.
+          To opt out of the loyalty program, contact us at{" "}
+          <a href={`mailto:${RESTAURANT.email}`}>{RESTAURANT.email}</a>.
         </p>
 
         <h2>Pricing</h2>
@@ -30,14 +47,25 @@ export default function TermsPage() {
         <p>
           Orders may be cancelled within 5 minutes of placement by contacting us
           at {RESTAURANT.phone}. Refunds for cancelled orders will be processed
-          to the original payment method within 5–10 business days.
+          to the original payment method within 5&ndash;10 business days.
+        </p>
+
+        <h2>SMS / Text Messages</h2>
+        <p>
+          By providing your phone number, you consent to receive one-time text
+          messages from {RESTAURANT.name} for identity verification (OTP codes)
+          and gift card delivery. Message and data rates may apply. Message
+          frequency varies based on your activity. You may opt out at any time
+          by replying <strong>STOP</strong> to any message or contacting us at{" "}
+          {RESTAURANT.phone}.
         </p>
 
         <h2>Gift Cards</h2>
         <p>
           Gift cards purchased through our website are non-refundable and do not
           expire. Gift cards may be redeemed for food and beverages at our
-          restaurant or through online orders.
+          restaurant or through online orders. Gift cards can be delivered via
+          email or text message to the recipient of your choice.
         </p>
 
         <h2>Catering</h2>

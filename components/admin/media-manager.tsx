@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { Upload, Trash2, Pencil, X, Check, Loader2, Eye, EyeOff } from "lucide-react";
 
-function compressImage(file: File, maxDim = 2000, quality = 0.85): Promise<Blob> {
+function compressImage(file: File, maxDim = 1600, quality = 0.7): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const img = new window.Image();
     img.onload = () => {
@@ -117,10 +117,10 @@ export function MediaManager() {
     if (selectedFiles.length === 0) return;
     setUploading(true);
 
-    let failed = 0;
+    const errors: string[] = [];
     for (const file of selectedFiles) {
       try {
-        // Compress image client-side to stay under serverless body limit
+        // Compress image to stay under Vercel's 4.5MB serverless body limit
         const compressed = await compressImage(file);
 
         const formData = new FormData();
@@ -133,15 +133,19 @@ export function MediaManager() {
           method: "POST",
           body: formData,
         });
-        if (!res.ok) failed++;
+        if (!res.ok) {
+          const data = await res.json().catch(() => null);
+          errors.push(`${file.name}: ${data?.error || res.statusText}`);
+        }
       } catch (err) {
-        console.error("Upload failed:", err);
-        failed++;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Upload failed for ${file.name}:`, err);
+        errors.push(`${file.name}: ${msg}`);
       }
     }
 
-    if (failed > 0) {
-      alert(`${failed} file${failed > 1 ? "s" : ""} failed to upload.`);
+    if (errors.length > 0) {
+      alert(`${errors.length} upload(s) failed:\n\n${errors.join("\n")}`);
     }
 
     clearSelection();
