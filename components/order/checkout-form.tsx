@@ -31,6 +31,8 @@ import {
 
 type Step = "info" | "review" | "payment" | "processing" | "success";
 
+type ReceiptPreference = "email" | "text" | "both" | "none";
+
 interface LoyaltyData {
   program: {
     rewardTiers: { id: string; name: string; points: number }[];
@@ -42,7 +44,7 @@ interface LoyaltyData {
 
 export function CheckoutForm() {
   const { items, total } = useCart();
-  const { user } = useAuth();
+  const { user, setShowLogin } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("info");
   const [error, setError] = useState("");
@@ -62,7 +64,14 @@ export function CheckoutForm() {
 
   // Loyalty state
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
-  const [selectedRewardId, setSelectedRewardId] = useState<string>("");
+  const [selectedRewardTierId, setSelectedRewardTierId] = useState<string>("");
+
+  // Receipt preference
+  const [receiptPreference, setReceiptPreference] = useState<ReceiptPreference>("none");
+
+  // Marketing opt-in
+  const [optInText, setOptInText] = useState(false);
+  const [optInEmail, setOptInEmail] = useState(false);
 
   // Hours state
   const [hoursDisplay, setHoursDisplay] = useState<string | null>(null);
@@ -112,9 +121,9 @@ export function CheckoutForm() {
     }
   }, [user]);
 
-  // Fetch loyalty data when logged in and reaching review step
+  // Fetch loyalty data on review step (always — endpoint handles unauthenticated)
   useEffect(() => {
-    if (user && step === "review") {
+    if (step === "review") {
       fetch("/api/loyalty")
         .then((r) => r.json())
         .then((data) => {
@@ -125,6 +134,17 @@ export function CheckoutForm() {
         .catch(() => {});
     }
   }, [user, step]);
+
+  // Set default receipt preference when moving to review
+  useEffect(() => {
+    if (step === "review" && receiptPreference === "none") {
+      if (customerInfo.email) {
+        setReceiptPreference("email");
+      } else if (customerInfo.phone) {
+        setReceiptPreference("text");
+      }
+    }
+  }, [step, customerInfo.email, customerInfo.phone, receiptPreference]);
 
   // Phone-based customer lookup
   const handlePhoneLookup = useCallback(async (phone: string) => {
@@ -211,7 +231,10 @@ export function CheckoutForm() {
               pickupMode === "asap" ? "" : customerInfo.pickupDate,
           },
           paymentToken: token.token,
-          rewardId: selectedRewardId || undefined,
+          rewardTierId: selectedRewardTierId || undefined,
+          receiptPreference,
+          optInText,
+          optInEmail,
         }),
       });
 
@@ -465,6 +488,32 @@ export function CheckoutForm() {
                 rows={2}
               />
             </div>
+
+            {/* Marketing opt-in */}
+            <div className="space-y-2 pt-1">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={optInText}
+                  onChange={(e) => setOptInText(e.target.checked)}
+                  className="mt-0.5 accent-brand-red"
+                />
+                <span className="text-sm text-gray-400">
+                  Text me updates about specials and events
+                </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={optInEmail}
+                  onChange={(e) => setOptInEmail(e.target.checked)}
+                  className="mt-0.5 accent-brand-red"
+                />
+                <span className="text-sm text-gray-400">
+                  Email me updates about specials and events
+                </span>
+              </label>
+            </div>
           </div>
           <Button
             type="submit"
@@ -552,7 +601,37 @@ export function CheckoutForm() {
             )}
           </div>
 
-          {/* Loyalty section */}
+          {/* Receipt preference */}
+          <div className="bg-surface-alt rounded-lg p-4 space-y-2">
+            <p className="text-sm font-semibold">How would you like your receipt?</p>
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { value: "email", label: "Email", show: !!customerInfo.email },
+                  { value: "text", label: "Text", show: !!customerInfo.phone },
+                  { value: "both", label: "Both", show: !!customerInfo.email && !!customerInfo.phone },
+                  { value: "none", label: "No receipt", show: true },
+                ] as const
+              )
+                .filter((opt) => opt.show)
+                .map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setReceiptPreference(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                      receiptPreference === opt.value
+                        ? "border-brand-red bg-brand-red/5 text-brand-red"
+                        : "border-gray-600 text-gray-300 hover:border-gray-300"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+            </div>
+          </div>
+
+          {/* Loyalty section — logged in with account */}
           {loyalty?.account && loyalty.program && (
             <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -570,7 +649,7 @@ export function CheckoutForm() {
                       <label
                         key={tier.id}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                          selectedRewardId === tier.id
+                          selectedRewardTierId === tier.id
                             ? "border-yellow-500 bg-yellow-100"
                             : "border-gray-200 hover:border-gray-300"
                         }`}
@@ -578,8 +657,8 @@ export function CheckoutForm() {
                         <input
                           type="radio"
                           name="reward"
-                          checked={selectedRewardId === tier.id}
-                          onChange={() => setSelectedRewardId(tier.id)}
+                          checked={selectedRewardTierId === tier.id}
+                          onChange={() => setSelectedRewardTierId(tier.id)}
                           className="accent-yellow-500"
                         />
                         <span>{tier.name}</span>
@@ -588,9 +667,9 @@ export function CheckoutForm() {
                         </span>
                       </label>
                     ))}
-                  {selectedRewardId && (
+                  {selectedRewardTierId && (
                     <button
-                      onClick={() => setSelectedRewardId("")}
+                      onClick={() => setSelectedRewardTierId("")}
                       className="text-xs text-gray-400 hover:text-gray-700"
                     >
                       Don&apos;t use a reward
@@ -598,6 +677,27 @@ export function CheckoutForm() {
                   )}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Loyalty prompt — not logged in but program exists */}
+          {loyalty?.program && !loyalty.account && !user && (
+            <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Star className="h-4 w-4 text-yellow-500" />
+                Earn rewards on this order!
+              </div>
+              <p className="text-sm text-gray-400">
+                Sign in with your phone number to join our rewards program and earn points.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowLogin(true)}
+                className="border-yellow-700 text-yellow-400 hover:bg-yellow-900/30"
+              >
+                Sign In
+              </Button>
             </div>
           )}
 

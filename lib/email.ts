@@ -175,6 +175,32 @@ export async function sendCateringInquiryEmails(data: CateringEmailData) {
   ]);
 }
 
+// ---------- Order Receipt Link ----------
+
+export async function sendOrderReceiptLink(data: {
+  customerEmail: string;
+  customerName: string;
+  receiptUrl: string;
+  orderTotal: string;
+}) {
+  const resend = getResend();
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: data.customerEmail,
+    subject: "Your Vietnoms Receipt",
+    text: [
+      `Hi ${data.customerName},`,
+      "",
+      `Thanks for your order! Your total was ${data.orderTotal}.`,
+      "",
+      `View your receipt: ${data.receiptUrl}`,
+      "",
+      "Thanks,",
+      "Vietnoms",
+    ].join("\n"),
+  });
+}
+
 // ---------- Gift Card Emails ----------
 
 interface GiftCardEmailData {

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
+import { CheckoutForm } from "@/components/order/checkout-form";
 
 export const metadata: Metadata = {
   title: "Checkout",
@@ -7,5 +7,14 @@ export const metadata: Metadata = {
 };
 
 export default function CheckoutPage() {
-  redirect("/order");
+  return (
+    <section className="py-8 md:py-12">
+      <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+        <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-8">
+          Checkout
+        </h1>
+        <CheckoutForm />
+      </div>
+    </section>
+  );
 }
