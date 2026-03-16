@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
@@ -43,11 +43,13 @@ interface LoyaltyData {
 }
 
 export function CheckoutForm() {
-  const { items, total } = useCart();
+  const { items, total, clearCart } = useCart();
   const { user, setShowLogin } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("info");
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [completedOrderId, setCompletedOrderId] = useState<string>("");
 
   const [customerInfo, setCustomerInfo] = useState({
     name: "",
@@ -61,13 +63,15 @@ export function CheckoutForm() {
   const [pickupMode, setPickupMode] = useState<"asap" | "scheduled">("asap");
   const [customerLookupDone, setCustomerLookupDone] = useState(false);
   const [customerLookupMsg, setCustomerLookupMsg] = useState("");
+  const [lookingUpPhone, setLookingUpPhone] = useState(false);
 
   // Loyalty state
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [selectedRewardTierId, setSelectedRewardTierId] = useState<string>("");
 
-  // Receipt preference
+  // Receipt preference — default "none", user must explicitly choose
   const [receiptPreference, setReceiptPreference] = useState<ReceiptPreference>("none");
+  const [receiptDefaultSet, setReceiptDefaultSet] = useState(false);
 
   // Marketing opt-in
   const [optInText, setOptInText] = useState(false);
@@ -78,6 +82,9 @@ export function CheckoutForm() {
   const [restaurantOpen, setRestaurantOpen] = useState(true);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [pickupSlots, setPickupSlots] = useState<{ label: string; value: string }[]>([]);
+
+  // Phone lookup debounce
+  const phoneLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Set initial pickupDate to today
   useEffect(() => {
@@ -135,22 +142,29 @@ export function CheckoutForm() {
     }
   }, [user, step]);
 
-  // Set default receipt preference when moving to review
+  // Set default receipt preference once when entering review
   useEffect(() => {
-    if (step === "review" && receiptPreference === "none") {
+    if (step === "review" && !receiptDefaultSet) {
       if (customerInfo.email) {
         setReceiptPreference("email");
       } else if (customerInfo.phone) {
         setReceiptPreference("text");
       }
+      setReceiptDefaultSet(true);
     }
-  }, [step, customerInfo.email, customerInfo.phone, receiptPreference]);
+  }, [step, customerInfo.email, customerInfo.phone, receiptDefaultSet]);
 
-  // Phone-based customer lookup
+  // Phone-based customer lookup (debounced)
   const handlePhoneLookup = useCallback(async (phone: string) => {
     if (!phone || phone.replace(/\D/g, "").length < 10) return;
     if (customerLookupDone) return;
 
+    // Clear any pending timer
+    if (phoneLookupTimer.current) {
+      clearTimeout(phoneLookupTimer.current);
+    }
+
+    setLookingUpPhone(true);
     try {
       const res = await fetch("/api/customers/lookup", {
         method: "POST",
@@ -174,10 +188,30 @@ export function CheckoutForm() {
       setCustomerLookupDone(true);
     } catch {
       // ignore
+    } finally {
+      setLookingUpPhone(false);
     }
   }, [customerLookupDone]);
 
-  if (items.length === 0) {
+  // Debounced phone change handler
+  const handlePhoneChange = useCallback((value: string) => {
+    setCustomerInfo((prev) => ({ ...prev, phone: value }));
+    setCustomerLookupDone(false);
+    setCustomerLookupMsg("");
+
+    if (phoneLookupTimer.current) {
+      clearTimeout(phoneLookupTimer.current);
+    }
+
+    const digits = value.replace(/\D/g, "");
+    if (digits.length >= 10) {
+      phoneLookupTimer.current = setTimeout(() => {
+        handlePhoneLookup(value);
+      }, 500);
+    }
+  }, [handlePhoneLookup]);
+
+  if (items.length === 0 && step !== "success") {
     return (
       <div className="text-center py-12">
         <p className="text-gray-400">
@@ -207,6 +241,10 @@ export function CheckoutForm() {
       setError("Payment failed. Please try again.");
       return;
     }
+
+    // Prevent double-submit
+    if (submitting) return;
+    setSubmitting(true);
     setStep("processing");
     setError("");
 
@@ -244,11 +282,14 @@ export function CheckoutForm() {
         throw new Error(data.error || "Payment failed");
       }
 
+      // Clear cart immediately on success
+      clearCart();
+      setCompletedOrderId(data.orderId);
       setStep("success");
 
       setTimeout(() => {
         router.push(`/order/confirmation?orderId=${data.orderId}`);
-      }, 2000);
+      }, 3000);
     } catch (err) {
       setError(
         err instanceof Error
@@ -256,6 +297,8 @@ export function CheckoutForm() {
           : "Payment failed. Please try again."
       );
       setStep("payment");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -275,7 +318,7 @@ export function CheckoutForm() {
       : null;
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-xl pb-24">
       {/* Hours banner */}
       {hoursDisplay && (
         <div className="flex items-center gap-2 text-sm mb-4 px-3 py-2 bg-surface-alt rounded-lg">
@@ -341,22 +384,20 @@ export function CheckoutForm() {
           <div className="space-y-3">
             <div>
               <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                required
-                value={customerInfo.phone}
-                onChange={(e) => {
-                  setCustomerInfo((prev) => ({
-                    ...prev,
-                    phone: e.target.value,
-                  }));
-                  setCustomerLookupDone(false);
-                  setCustomerLookupMsg("");
-                }}
-                onBlur={(e) => handlePhoneLookup(e.target.value)}
-                placeholder="(408) 555-0123"
-              />
+              <div className="relative">
+                <Input
+                  id="phone"
+                  type="tel"
+                  required
+                  value={customerInfo.phone}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
+                  onBlur={(e) => handlePhoneLookup(e.target.value)}
+                  placeholder="(408) 555-0123"
+                />
+                {lookingUpPhone && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
+                )}
+              </div>
             </div>
             <div>
               <Label htmlFor="name">Name</Label>
@@ -382,7 +423,7 @@ export function CheckoutForm() {
                 onChange={(e) =>
                   setCustomerInfo((prev) => ({
                     ...prev,
-                    email: e.target.value,
+                    email: e.target.value.trim(),
                   }))
                 }
                 placeholder="your@email.com"
@@ -443,7 +484,7 @@ export function CheckoutForm() {
                       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
                     })()}
                     required
-                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                    className="w-full rounded-lg border border-gray-600 bg-surface-alt px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-red"
                   />
                   {pickupSlots.length > 0 ? (
                     <select
@@ -455,7 +496,7 @@ export function CheckoutForm() {
                         }))
                       }
                       required
-                      className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-red"
+                      className="w-full rounded-lg border border-gray-600 bg-surface-alt px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-red"
                     >
                       <option value="">Select a time</option>
                       {pickupSlots.map((slot) => (
@@ -787,6 +828,14 @@ export function CheckoutForm() {
           <h2 className="mt-4 font-display text-2xl font-bold text-white">
             Payment Successful!
           </h2>
+          {completedOrderId && (
+            <p className="mt-2 text-sm text-gray-400">
+              Order ID:{" "}
+              <code className="bg-gray-800 px-2 py-0.5 rounded text-gray-200">
+                {completedOrderId}
+              </code>
+            </p>
+          )}
           <p className="mt-2 text-gray-400">Redirecting to confirmation...</p>
         </div>
       )}

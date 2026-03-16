@@ -73,15 +73,16 @@ export async function createPurchase(input: {
 export async function updatePurchasePayment(
   id: number,
   squarePaymentId: string,
-  squareOrderId?: string
+  squareOrderId?: string,
+  amount?: number
 ): Promise<void> {
   const db = getTurso();
   await db.execute({
     sql: `UPDATE purchases
           SET status = 'completed', square_payment_id = ?, square_order_id = ?,
-              updated_at = datetime('now')
+              amount = COALESCE(?, amount), updated_at = datetime('now')
           WHERE id = ?`,
-    args: [squarePaymentId, squareOrderId ?? null, id],
+    args: [squarePaymentId, squareOrderId ?? null, amount ?? null, id],
   });
 }
 
