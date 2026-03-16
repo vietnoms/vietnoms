@@ -54,7 +54,7 @@ export function GiftCardBalance() {
     <div id="balance" className="space-y-4">
       <div className="flex items-center gap-2">
         <CreditCard className="h-5 w-5 text-gray-400" />
-        <h2 className="font-display text-xl font-bold">Check Your Balance</h2>
+        <h2 className="font-display text-xl font-bold text-gray-900">Check Your Balance</h2>
       </div>
 
       <div className="flex gap-3">
@@ -68,7 +68,7 @@ export function GiftCardBalance() {
           }}
           placeholder="XXXX XXXX XXXX XXXX"
           maxLength={19}
-          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-center font-mono tracking-wider text-lg focus:outline-none focus:ring-2 focus:ring-brand-red"
+          className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-center font-mono tracking-wider text-lg text-gray-900 placeholder:text-gray-400 bg-white focus:outline-none focus:ring-2 focus:ring-brand-red"
         />
         <Button onClick={handleCheck} disabled={loading}>
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check"}

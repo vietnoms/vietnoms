@@ -18,7 +18,7 @@ import {
 } from "react-square-web-payments-sdk";
 import { GiftCardInvite } from "@/components/gift-card-invite";
 
-const GIFT_CARDS_ENABLED = false; // Toggle to re-enable gift card purchases
+const GIFT_CARDS_ENABLED = true; // Toggle to re-enable gift card purchases
 const PRESET_AMOUNTS = [2500, 5000, 7500, 10000]; // in cents
 const RECAPTCHA_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "";
 
@@ -244,7 +244,7 @@ export function GiftCardForm() {
       {/* Step 1: Amount */}
       {step === "amount" && (
         <div className="space-y-6">
-          <h2 className="font-display text-xl font-bold text-center">
+          <h2 className="font-display text-xl font-bold text-center text-gray-900">
             Choose an Amount
           </h2>
 
@@ -300,7 +300,7 @@ export function GiftCardForm() {
       {/* Step 2: Details */}
       {step === "details" && (
         <form onSubmit={handleDetailsSubmit} className="space-y-5">
-          <h2 className="font-display text-xl font-bold">
+          <h2 className="font-display text-xl font-bold text-gray-900">
             Gift Card Details — {formatPrice(effectiveAmount)}
           </h2>
 
@@ -368,7 +368,7 @@ export function GiftCardForm() {
 
           {/* Sender info (always shown) */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               {sendToSelf ? "Your Information" : "From"}
             </h3>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -414,7 +414,7 @@ export function GiftCardForm() {
           {/* Recipient info (only when sending to someone else) */}
           {!sendToSelf && (
             <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
                 To
               </h3>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -496,7 +496,7 @@ export function GiftCardForm() {
       {/* Step 3: Payment */}
       {step === "payment" && (
         <div className="space-y-4">
-          <h2 className="font-display text-xl font-bold">
+          <h2 className="font-display text-xl font-bold text-gray-900">
             Pay {formatPrice(effectiveAmount)}
           </h2>
 

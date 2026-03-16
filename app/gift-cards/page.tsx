@@ -39,14 +39,14 @@ export default function GiftCardsPage() {
       </section>
 
       {/* Gift Card Form */}
-      <section className="py-16 md:py-24">
+      <section className="py-16 md:py-24 bg-white text-gray-900 [&_label]:text-gray-700 [&_input]:text-gray-900 [&_input]:bg-white [&_input]:border-gray-300 [&_textarea]:text-gray-900 [&_textarea]:bg-white [&_textarea]:border-gray-300">
         <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
           <GiftCardForm />
         </div>
       </section>
 
       {/* Balance Check */}
-      <section className="py-16 md:py-24 bg-gray-50">
+      <section className="py-16 md:py-24 bg-gray-50 text-gray-900 [&_label]:text-gray-700 [&_input]:text-gray-900 [&_input]:bg-white [&_input]:border-gray-300">
         <div className="mx-auto max-w-xl px-4 sm:px-6 lg:px-8">
           <GiftCardBalance />
         </div>
