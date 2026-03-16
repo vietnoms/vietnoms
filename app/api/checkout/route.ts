@@ -74,6 +74,61 @@ export async function POST(request: Request) {
     }
 
     const square = getSquare();
+
+    // Pre-checkout inventory validation — check stock before creating order
+    if (LOCATION_ID) {
+      try {
+        const variationIds = Array.from(new Set(lineItems.map((item) => item.catalogObjectId)));
+        const countsPage = await square.inventory.batchGetCounts({
+          catalogObjectIds: variationIds,
+          locationIds: [LOCATION_ID],
+          states: ["IN_STOCK"],
+        });
+
+        // Aggregate requested quantities per variation
+        const requestedQty = new Map<string, number>();
+        for (const item of lineItems) {
+          requestedQty.set(
+            item.catalogObjectId,
+            (requestedQty.get(item.catalogObjectId) || 0) + item.quantity
+          );
+        }
+
+        // Build available stock map (only tracked variations appear in response)
+        const availableStock = new Map<string, number>();
+        for await (const count of countsPage) {
+          if (count.catalogObjectId) {
+            availableStock.set(
+              count.catalogObjectId,
+              parseFloat(count.quantity || "0")
+            );
+          }
+        }
+
+        // Check each tracked variation
+        const overStockItems: string[] = [];
+        requestedQty.forEach((requested, varId) => {
+          const available = availableStock.get(varId);
+          // If variation is not in response, it's untracked (unlimited) — skip
+          if (available !== undefined && requested > available) {
+            overStockItems.push(
+              `requested ${requested} but only ${Math.max(0, Math.floor(available))} available`
+            );
+          }
+        });
+
+        if (overStockItems.length > 0) {
+          return NextResponse.json(
+            { error: `Insufficient stock: ${overStockItems.join("; ")}. Please reduce quantities.` },
+            { status: 400 }
+          );
+        }
+      } catch (invErr) {
+        // Fail-open: if inventory API is down, proceed — Square will reject at order creation if truly out
+        console.warn("Pre-checkout inventory check failed:", invErr);
+      }
+    }
+
     const session = await getSession();
 
     // Resolve customer ID — from session or by phone lookup/creation
@@ -256,13 +311,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Update Square customer with email if provided and different
-    if (customerId && customerInfo.email) {
+    // Update Square customer with email and name if provided
+    if (customerId && (customerInfo.email || customerInfo.name)) {
+      const nameParts = customerInfo.name?.includes(" ")
+        ? {
+            givenName: customerInfo.name.split(" ")[0],
+            familyName: customerInfo.name.split(" ").slice(1).join(" "),
+          }
+        : {};
       postPaymentTasks.push(
         square.customers.update({
           customerId,
-          emailAddress: customerInfo.email,
-        }).catch((err) => console.error("Customer email update failed:", err))
+          ...(customerInfo.email ? { emailAddress: customerInfo.email } : {}),
+          ...nameParts,
+        }).catch((err) => console.error("Customer update failed:", err))
       );
     }
 

@@ -130,13 +130,20 @@ export function CartDrawer() {
                     <span className="text-sm w-6 text-center">
                       {item.quantity}
                     </span>
-                    <button
-                      onClick={() => updateQuantity(index, item.quantity + 1)}
-                      className="h-6 w-6 rounded border border-gray-600 flex items-center justify-center hover:bg-white/10"
-                      aria-label="Increase quantity"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                    {(() => {
+                      const stock = item.menuItem.variations.find(v => v.id === item.variationId)?.stockQuantity;
+                      const atMax = stock != null && item.quantity >= stock;
+                      return (
+                        <button
+                          onClick={() => updateQuantity(index, item.quantity + 1)}
+                          disabled={atMax}
+                          className="h-6 w-6 rounded border border-gray-600 flex items-center justify-center hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                          aria-label="Increase quantity"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      );
+                    })()}
                     <button
                       onClick={() => removeItem(index)}
                       className="h-6 w-6 rounded flex items-center justify-center text-gray-400 hover:text-red-500 ml-1"

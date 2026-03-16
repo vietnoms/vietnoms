@@ -58,15 +58,21 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           JSON.stringify(item.modifiers) === JSON.stringify(modifiers)
       );
 
+      // Cap at stock quantity if tracked
+      const stock = menuItem.variations.find(v => v.id === variationId)?.stockQuantity;
+
       let newItems: CartItem[];
       if (existingIndex >= 0) {
         newItems = [...state.items];
+        const cappedQty = stock != null
+          ? Math.min(state.items[existingIndex].quantity + 1, stock)
+          : state.items[existingIndex].quantity + 1;
         newItems[existingIndex] = {
           ...newItems[existingIndex],
-          quantity: newItems[existingIndex].quantity + 1,
+          quantity: cappedQty,
           lineTotal: calculateLineTotal({
             ...newItems[existingIndex],
-            quantity: newItems[existingIndex].quantity + 1,
+            quantity: cappedQty,
           }),
         };
       } else {
@@ -102,7 +108,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
     }
 
     case "UPDATE_QUANTITY": {
-      const { index, quantity } = action.payload;
+      let { index, quantity } = action.payload;
       if (quantity <= 0) {
         const newItems = state.items.filter((_, i) => i !== index);
         return {
@@ -110,6 +116,12 @@ function cartReducer(state: CartState, action: CartAction): CartState {
           total: calculateTotal(newItems),
           itemCount: newItems.reduce((sum, item) => sum + item.quantity, 0),
         };
+      }
+      // Cap at stock quantity if tracked
+      const item = state.items[index];
+      const itemStock = item.menuItem.variations.find(v => v.id === item.variationId)?.stockQuantity;
+      if (itemStock != null) {
+        quantity = Math.min(quantity, itemStock);
       }
       const newItems = [...state.items];
       newItems[index] = {

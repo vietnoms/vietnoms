@@ -327,7 +327,10 @@ export function CheckoutForm() {
             Open today: {hoursDisplay}
           </span>
           {!restaurantOpen && (
-            <span className="text-red-500 font-medium ml-auto">Closed</span>
+            <span className="text-red-500 font-medium ml-auto">
+              Closed
+              <span className="text-gray-400 text-xs font-normal block">Scheduled orders available</span>
+            </span>
           )}
           {restaurantOpen && !acceptingOrders && (
             <span className="text-amber-600 font-medium ml-auto">
@@ -338,8 +341,13 @@ export function CheckoutForm() {
       )}
 
       {closedMessage && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-red-400 text-sm">
-          {closedMessage}
+        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-sm">
+          <span className="text-red-400">{closedMessage}</span>
+          {pickupMode === "asap" && (
+            <span className="text-gray-400 block mt-1">
+              You can still schedule an order for later.
+            </span>
+          )}
         </div>
       )}
 
@@ -560,7 +568,11 @@ export function CheckoutForm() {
             type="submit"
             size="lg"
             className="w-full"
-            disabled={!!closedMessage}
+            disabled={
+              pickupMode === "asap"
+                ? !!closedMessage
+                : pickupSlots.length === 0 || !customerInfo.pickupTime
+            }
           >
             Continue to Review
           </Button>

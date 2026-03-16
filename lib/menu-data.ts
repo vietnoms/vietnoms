@@ -46,12 +46,22 @@ export const getMenuItems = unstable_cache(
               selectionType: data.selectionType === "SINGLE" ? "SINGLE" : "MULTIPLE",
               minSelected: data.minSelectedModifiers != null ? Number(data.minSelectedModifiers) : undefined,
               maxSelected: data.maxSelectedModifiers != null ? Number(data.maxSelectedModifiers) : undefined,
-              modifiers: ((data.modifiers || []) as any[]).map((m: any) => ({
-                id: m.id || "",
-                name: m.modifierData?.name || "",
-                price: toNumber(m.modifierData?.priceMoney?.amount),
-                formattedPrice: toDollars(m.modifierData?.priceMoney?.amount),
-              })),
+              modifiers: ((data.modifiers || []) as any[]).map((m: any) => {
+                const modData = m.modifierData;
+                // Check sold-out status from modifier data or location overrides
+                const modOverrides: any[] = modData?.locationOverrides || [];
+                const modLocOverride = modOverrides.find(
+                  (o: any) => o.locationId === LOCATION_ID
+                );
+                const modSoldOut = modData?.soldOut === true || modLocOverride?.soldOut === true;
+                return {
+                  id: m.id || "",
+                  name: modData?.name || "",
+                  price: toNumber(modData?.priceMoney?.amount),
+                  formattedPrice: toDollars(modData?.priceMoney?.amount),
+                  ...(modSoldOut ? { soldOut: true } : {}),
+                };
+              }),
             });
           }
         }
@@ -111,6 +121,7 @@ export const getMenuItems = unstable_cache(
 
       // Batch fetch inventory counts for all variations
       const soldOutItemIds = new Set<string>();
+      const variationStockMap = new Map<string, number | null>();
 
       if (allVariationIds.length > 0 && LOCATION_ID) {
         try {
@@ -126,10 +137,18 @@ export const getMenuItems = unstable_cache(
             if (count.catalogObjectId) {
               trackedVariations.add(count.catalogObjectId);
               const qty = parseFloat(count.quantity || "0");
+              variationStockMap.set(count.catalogObjectId, Math.max(0, qty));
               if (qty <= 0) {
                 const itemId = variationToItemId.get(count.catalogObjectId);
                 if (itemId) soldOutItemIds.add(itemId);
               }
+            }
+          }
+
+          // Untracked variations = null (unlimited)
+          for (const varId of allVariationIds) {
+            if (!trackedVariations.has(varId)) {
+              variationStockMap.set(varId, null);
             }
           }
         } catch (invError) {
@@ -164,7 +183,10 @@ export const getMenuItems = unstable_cache(
       // Build final items
       const items: MenuItem[] = filteredRawItems.map(({ item, obj, variations }) => {
         const cleanVariations = variations.map(
-          ({ _soldOutOverride, ...v }: any) => v as MenuVariation
+          ({ _soldOutOverride, ...v }: any) => ({
+            ...v,
+            stockQuantity: variationStockMap.get(v.id) ?? null,
+          } as MenuVariation)
         );
         const basePrice = cleanVariations[0]?.price || 0;
         const imageId = item.imageIds?.[0];

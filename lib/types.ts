@@ -22,6 +22,7 @@ export interface MenuVariation {
   price: number;
   formattedPrice: string;
   imageUrl?: string | null;
+  stockQuantity: number | null; // null = untracked (unlimited)
 }
 
 export interface ModifierList {
@@ -38,6 +39,7 @@ export interface Modifier {
   name: string;
   price: number;
   formattedPrice: string;
+  soldOut?: boolean;
 }
 
 export interface MenuCategory {

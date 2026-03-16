@@ -44,6 +44,8 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
     return total;
   }, [item.modifierLists, selectedModifiers]);
 
+  const maxStock = selectedVariation?.stockQuantity ?? Infinity;
+
   const lineTotal =
     ((selectedVariation?.price ?? item.price) + modifierTotal) * quantity;
 
@@ -214,7 +216,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
               {list.modifiers.map((mod) => {
                 const isSelected =
                   selectedModifiers[list.id]?.has(mod.id) || false;
-                const disabled = !isSelected && atMax && list.selectionType === "MULTIPLE";
+                const disabled = mod.soldOut || (!isSelected && atMax && list.selectionType === "MULTIPLE");
                 return (
                   <label
                     key={mod.id}
@@ -239,11 +241,13 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
                       className="accent-brand-red"
                     />
                     <span className="flex-1 text-sm">{mod.name}</span>
-                    {mod.price > 0 && (
+                    {mod.soldOut ? (
+                      <span className="text-xs text-red-400">Sold Out</span>
+                    ) : mod.price > 0 ? (
                       <span className="text-sm text-gray-500">
                         +{mod.formattedPrice}
                       </span>
-                    )}
+                    ) : null}
                   </label>
                 );
               })}
@@ -253,6 +257,9 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
       })}
 
       {/* Quantity + total + add to cart */}
+      {isFinite(maxStock) && maxStock <= 10 && (
+        <p className="text-xs text-amber-500">{maxStock} left in stock</p>
+      )}
       <div className="flex items-center gap-4 pt-2">
         <div className="flex items-center border border-gray-600 rounded-lg">
           <button
@@ -266,8 +273,9 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
             {quantity}
           </span>
           <button
-            onClick={() => setQuantity((q) => q + 1)}
-            className="p-2 hover:bg-white/10 rounded-r-lg"
+            onClick={() => setQuantity((q) => Math.min(q + 1, maxStock))}
+            disabled={quantity >= maxStock}
+            className="p-2 hover:bg-white/10 rounded-r-lg disabled:opacity-50 disabled:cursor-not-allowed"
             aria-label="Increase quantity"
           >
             <Plus className="h-4 w-4" />
