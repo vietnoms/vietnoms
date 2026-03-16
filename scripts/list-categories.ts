@@ -26,22 +26,38 @@ async function main() {
     (obj: any) => obj.type === "CATEGORY"
   );
 
-  // Fetch all items to count per category
-  const itemResponse = await square.catalog.search({
-    objectTypes: ["ITEM"],
-  });
-  const items = (itemResponse?.objects || []).filter(
-    (obj: any) => obj.type === "ITEM"
-  );
+  // Fetch all items (paginated) to count per category
+  const items: any[] = [];
+  let cursor: string | undefined;
+  do {
+    const response = await square.catalog.search({
+      objectTypes: ["ITEM"],
+      cursor,
+    });
+    items.push(...((response?.objects || []).filter((obj: any) => obj.type === "ITEM")));
+    cursor = response?.cursor;
+  } while (cursor);
 
-  // Count items per category
+  // Count items per category (items can appear in multiple categories)
   const counts = new Map<string, number>();
+  const multiCatItems: string[] = [];
   for (const obj of items) {
-    const catId =
-      (obj as any).itemData?.categoryId ||
-      (obj as any).itemData?.categories?.[0]?.id ||
-      "";
-    if (catId) counts.set(catId, (counts.get(catId) || 0) + 1);
+    const itemData = (obj as any).itemData;
+    const catIds: string[] = [];
+    if (itemData?.categories?.length) {
+      for (const c of itemData.categories) {
+        if (c.id) catIds.push(c.id);
+      }
+    }
+    if (itemData?.categoryId && !catIds.includes(itemData.categoryId)) {
+      catIds.unshift(itemData.categoryId);
+    }
+    for (const catId of catIds) {
+      counts.set(catId, (counts.get(catId) || 0) + 1);
+    }
+    if (catIds.length > 1) {
+      multiCatItems.push(`${itemData?.name} (${catIds.length} categories)`);
+    }
   }
 
   console.log("\n=== Square Catalog Categories ===\n");
@@ -58,6 +74,14 @@ async function main() {
   }
 
   console.log(`\nTotal: ${categories.length} categories, ${items.length} items`);
+
+  if (multiCatItems.length > 0) {
+    console.log(`\n=== Multi-Category Items (${multiCatItems.length}) ===`);
+    for (const name of multiCatItems) {
+      console.log(`  - ${name}`);
+    }
+  }
+
   console.log(
     "\nCopy the IDs you want on the website and set:\n" +
       "  SQUARE_MENU_CATEGORY_IDS=ID1,ID2,ID3\n"

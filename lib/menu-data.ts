@@ -14,14 +14,20 @@ export const getMenuItems = unstable_cache(
     try {
       const square = getSquare();
 
-      // Fetch items with related objects (images, categories) in a single call
-      const response = await square.catalog.search({
-        objectTypes: ["ITEM"],
-        includeRelatedObjects: true,
-      });
-
-      const objects = response?.objects || [];
-      const relatedObjects = response?.relatedObjects || [];
+      // Fetch items with related objects (images, categories), paginating through all results
+      const objects: any[] = [];
+      const relatedObjects: any[] = [];
+      let cursor: string | undefined;
+      do {
+        const response = await square.catalog.search({
+          objectTypes: ["ITEM"],
+          includeRelatedObjects: true,
+          cursor,
+        });
+        objects.push(...(response?.objects || []));
+        relatedObjects.push(...(response?.relatedObjects || []));
+        cursor = response?.cursor;
+      } while (cursor);
 
       // Build image map: imageId -> URL
       const imageMap = new Map<string, string>();
@@ -150,8 +156,8 @@ export const getMenuItems = unstable_cache(
 
       const filteredRawItems = allowedCategories?.length
         ? rawItems.filter(({ item }) => {
-            const catId = item.categoryId || item.categories?.[0]?.id || "";
-            return allowedCategories.includes(catId);
+            const catIds = getCategoryIds(item);
+            return catIds.some((id) => allowedCategories.includes(id));
           })
         : rawItems;
 
@@ -175,6 +181,7 @@ export const getMenuItems = unstable_cache(
           }
         }
 
+        const categoryIds = getCategoryIds(item);
         return {
           id: obj.id || "",
           name: item.name || "",
@@ -182,7 +189,8 @@ export const getMenuItems = unstable_cache(
           description: item.description || "",
           price: basePrice,
           formattedPrice: cleanVariations[0]?.formattedPrice || "$0.00",
-          categoryId: item.categoryId || item.categories?.[0]?.id || "",
+          categoryId: categoryIds[0] || "",
+          categoryIds,
           categoryName: "",
           imageUrl: imageId ? (imageMap.get(imageId) || null) : null,
           variations: cleanVariations,
@@ -266,16 +274,42 @@ export async function getFullMenu(): Promise<MenuCategory[]> {
   const categoryMap = new Map(categories.map((c) => [c.id, c]));
 
   for (const item of items) {
-    const category = categoryMap.get(item.categoryId);
-    if (category) {
-      item.categoryName = category.name;
-      category.items.push(item);
+    for (const catId of item.categoryIds) {
+      const category = categoryMap.get(catId);
+      if (category) {
+        // Clone item with this category's info so each category gets its own copy
+        const catItem = { ...item, categoryId: catId, categoryName: category.name };
+        category.items.push(catItem);
+      }
+    }
+    // Fallback: if no categoryIds matched, try the legacy categoryId
+    if (item.categoryIds.length === 0) {
+      const category = categoryMap.get(item.categoryId);
+      if (category) {
+        item.categoryName = category.name;
+        category.items.push(item);
+      }
     }
   }
 
   return categories
     .filter((c) => c.items.length > 0)
     .sort((a, b) => a.ordinal - b.ordinal);
+}
+
+/** Extracts all category IDs from a Square item (multi-category + legacy fallback) */
+function getCategoryIds(item: any): string[] {
+  const ids: string[] = [];
+  if (item.categories?.length) {
+    for (const c of item.categories) {
+      if (c.id) ids.push(c.id);
+    }
+  }
+  // Include legacy categoryId if not already present
+  if (item.categoryId && !ids.includes(item.categoryId)) {
+    ids.unshift(item.categoryId);
+  }
+  return ids;
 }
 
 /** Parses dietary labels from item description text */

@@ -6,6 +6,7 @@ export interface MenuItem {
   price: number; // in cents
   formattedPrice: string;
   categoryId: string;
+  categoryIds: string[];
   categoryName: string;
   imageUrl: string | null;
   variations: MenuVariation[];
