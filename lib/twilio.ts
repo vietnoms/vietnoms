@@ -32,14 +32,13 @@ export function normalizePhone(phone: string): string {
 export async function sendOTP(phone: string): Promise<{ success: boolean; error?: string }> {
   try {
     const client = getClient();
-    const normalized = normalizePhone(phone);
     await client.verify.v2
       .services(getVerifyServiceSid())
-      .verifications.create({ to: normalized, channel: "sms" });
+      .verifications.create({ to: phone, channel: "sms" });
     return { success: true };
   } catch (error: any) {
     console.error("Failed to send OTP:", error);
-    return { success: false, error: error.message || "Failed to send verification code" };
+    return { success: false, error: "Unable to send verification code. Please check your phone number and try again." };
   }
 }
 
@@ -49,10 +48,9 @@ export async function verifyOTP(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const client = getClient();
-    const normalized = normalizePhone(phone);
     const check = await client.verify.v2
       .services(getVerifyServiceSid())
-      .verificationChecks.create({ to: normalized, code });
+      .verificationChecks.create({ to: phone, code });
 
     if (check.status === "approved") {
       return { success: true };
@@ -60,7 +58,7 @@ export async function verifyOTP(
     return { success: false, error: "Invalid verification code" };
   } catch (error: any) {
     console.error("Failed to verify OTP:", error);
-    return { success: false, error: error.message || "Verification failed" };
+    return { success: false, error: "Verification failed. Please try again." };
   }
 }
 

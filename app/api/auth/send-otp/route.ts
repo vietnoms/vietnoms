@@ -20,7 +20,10 @@ export async function POST(request: NextRequest) {
     const result = await sendOTP(normalized);
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+      return NextResponse.json(
+        { error: "Unable to send verification code. Please check your phone number and try again." },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ success: true });

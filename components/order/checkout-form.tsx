@@ -42,6 +42,16 @@ interface LoyaltyData {
 
 const TIP_PRESETS = [0, 200, 300, 500];
 
+/** Format phone digits as (XXX) XXX-XXXX for display */
+function formatPhoneDisplay(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  // Strip leading country code 1 for display
+  const local = digits.startsWith("1") && digits.length > 10 ? digits.slice(1) : digits;
+  if (local.length <= 3) return local;
+  if (local.length <= 6) return `(${local.slice(0, 3)}) ${local.slice(3)}`;
+  return `(${local.slice(0, 3)}) ${local.slice(3, 6)}-${local.slice(6, 10)}`;
+}
+
 export function CheckoutForm() {
   const { items, total, clearCart } = useCart();
   const { user, refreshSession } = useAuth();
@@ -69,6 +79,7 @@ export function CheckoutForm() {
   const [otpStep, setOtpStep] = useState<"idle" | "sending" | "sent" | "verifying" | "verified">("idle");
   const [otpCode, setOtpCode] = useState("");
   const [otpError, setOtpError] = useState("");
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   // Loyalty state
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
@@ -96,6 +107,13 @@ export function CheckoutForm() {
 
   // Phone lookup debounce
   const phoneLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // OTP cooldown timer
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const timer = setTimeout(() => setOtpCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [otpCooldown]);
 
   // Set initial pickupDate to today
   useEffect(() => {
@@ -226,9 +244,10 @@ export function CheckoutForm() {
     }
   }, [customerLookupDone]);
 
-  // Debounced phone change handler
+  // Debounced phone change handler with auto-formatting
   const handlePhoneChange = useCallback((value: string) => {
-    setCustomerInfo((prev) => ({ ...prev, phone: value }));
+    const formatted = formatPhoneDisplay(value);
+    setCustomerInfo((prev) => ({ ...prev, phone: formatted }));
     setCustomerLookupDone(false);
     setCustomerLookupMsg("");
     setOtpStep("idle");
@@ -242,7 +261,7 @@ export function CheckoutForm() {
     const digits = value.replace(/\D/g, "");
     if (digits.length >= 10) {
       phoneLookupTimer.current = setTimeout(() => {
-        handlePhoneLookup(value);
+        handlePhoneLookup(formatted);
       }, 500);
     }
   }, [handlePhoneLookup]);
@@ -262,6 +281,7 @@ export function CheckoutForm() {
         throw new Error(data.error || "Failed to send code");
       }
       setOtpStep("sent");
+      setOtpCooldown(30);
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Failed to send code");
       setOtpStep("idle");
@@ -542,17 +562,19 @@ export function CheckoutForm() {
                         variant="outline"
                         size="sm"
                         onClick={handleSendOTP}
-                        disabled={otpStep === "sending"}
+                        disabled={otpStep === "sending" || otpCooldown > 0}
                         className="border-brand-red text-brand-red hover:bg-brand-red/10"
                       >
                         {otpStep === "sending" ? (
                           <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Sending...</>
+                        ) : otpCooldown > 0 ? (
+                          `Resend in ${otpCooldown}s`
                         ) : (
                           "Verify Phone"
                         )}
                       </Button>
                       <span className="text-xs text-gray-400">
-                        Verify to earn rewards on this order
+                        Enter your phone number to receive your receipt and earn reward points on your order
                       </span>
                     </div>
                   )}
@@ -591,9 +613,10 @@ export function CheckoutForm() {
                         <button
                           type="button"
                           onClick={handleSendOTP}
-                          className="text-gray-400 hover:text-gray-300"
+                          disabled={otpCooldown > 0}
+                          className="text-gray-400 hover:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          Resend code
+                          {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : "Resend code"}
                         </button>
                         <button
                           type="button"
@@ -779,7 +802,7 @@ export function CheckoutForm() {
                   className="mt-0.5 accent-brand-red"
                 />
                 <span className="text-sm text-gray-400">
-                  Text me updates about specials and events
+                  Opt-in to receive promos and special deals via text message
                 </span>
               </label>
               <label className="flex items-start gap-2 cursor-pointer">
@@ -790,7 +813,7 @@ export function CheckoutForm() {
                   className="mt-0.5 accent-brand-red"
                 />
                 <span className="text-sm text-gray-400">
-                  Email me updates about specials and events
+                  Opt-in to receive promos and special deals via e-mail
                 </span>
               </label>
             </div>
