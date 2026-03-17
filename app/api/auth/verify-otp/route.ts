@@ -3,6 +3,7 @@ import { verifyOTP, normalizePhone } from "@/lib/twilio";
 import { findCustomerByPhone, createSquareCustomer } from "@/lib/square-customers";
 import { upsertCustomer } from "@/lib/db/customers";
 import { setSessionCookie } from "@/lib/auth";
+import { getLoyaltyProgram, getLoyaltyAccount, createLoyaltyAccount } from "@/lib/loyalty";
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,6 +47,19 @@ export async function POST(request: NextRequest) {
       familyName: customer.familyName || undefined,
       email: customer.emailAddress || undefined,
     });
+
+    // Auto-create loyalty account if program exists and customer has no account
+    try {
+      const program = await getLoyaltyProgram();
+      if (program?.id && customer.id) {
+        const existingAccount = await getLoyaltyAccount(customer.id);
+        if (!existingAccount) {
+          await createLoyaltyAccount(program.id, normalized);
+        }
+      }
+    } catch (err) {
+      console.error("Auto loyalty enrollment failed:", err);
+    }
 
     // Set session cookie
     await setSessionCookie(customer.id);

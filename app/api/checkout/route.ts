@@ -28,7 +28,8 @@ interface CheckoutRequest {
   };
   paymentToken: string;
   rewardTierId?: string;
-  receiptPreference?: "email" | "text" | "both" | "none";
+  tipAmount?: number;
+  receiptPreference?: "email" | "text" | "both";
   optInText?: boolean;
   optInEmail?: boolean;
 }
@@ -56,7 +57,7 @@ function getSquareErrorMessage(error: unknown): string {
 export async function POST(request: Request) {
   try {
     const body: CheckoutRequest = await request.json();
-    const { lineItems, customerInfo, paymentToken, rewardTierId, receiptPreference } = body;
+    const { lineItems, customerInfo, paymentToken, rewardTierId, tipAmount, receiptPreference } = body;
 
     if (!lineItems?.length) {
       return NextResponse.json({ error: "No items in order" }, { status: 400 });
@@ -247,9 +248,12 @@ export async function POST(request: Request) {
         sourceId: paymentToken,
         idempotencyKey: paymentIdempotencyKey,
         amountMoney: {
-          amount: order.totalMoney?.amount ?? BigInt(0),
+          amount: (order.totalMoney?.amount ?? BigInt(0)) + BigInt(tipAmount || 0),
           currency: "USD",
         },
+        ...(tipAmount ? {
+          tipMoney: { amount: BigInt(tipAmount), currency: "USD" },
+        } : {}),
         orderId: order.id,
         locationId: LOCATION_ID,
         ...(customerId ? { customerId } : {}),
@@ -334,7 +338,7 @@ export async function POST(request: Request) {
       ? `$${(Number(order.totalMoney.amount) / 100).toFixed(2)}`
       : "";
 
-    if (receiptUrl && receiptPreference && receiptPreference !== "none") {
+    if (receiptUrl && receiptPreference) {
       if ((receiptPreference === "email" || receiptPreference === "both") && customerInfo.email) {
         postPaymentTasks.push(
           sendOrderReceiptLink({

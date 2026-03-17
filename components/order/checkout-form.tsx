@@ -17,21 +17,19 @@ import {
   CashAppPay,
   GiftCard,
 } from "react-square-web-payments-sdk";
-import { ArrowLeft, Loader2, CheckCircle, Star, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, Star, Clock, ShieldCheck } from "lucide-react";
 import {
   isOpenNow,
   canAcceptOrders,
   getTodayHoursDisplay,
   generatePickupSlots,
   generatePickupSlotsForDate,
-  getOrderCutoff,
-  getDateHoursDisplay,
   MAX_ADVANCE_DAYS,
 } from "@/lib/restaurant-hours";
 
-type Step = "info" | "review" | "payment" | "processing" | "success";
+type Step = "info" | "payment" | "processing" | "success";
 
-type ReceiptPreference = "email" | "text" | "both" | "none";
+type ReceiptPreference = "email" | "text" | "both";
 
 interface LoyaltyData {
   program: {
@@ -42,9 +40,11 @@ interface LoyaltyData {
   } | null;
 }
 
+const TIP_PRESETS = [0, 200, 300, 500];
+
 export function CheckoutForm() {
   const { items, total, clearCart } = useCart();
-  const { user, setShowLogin } = useAuth();
+  const { user, refreshSession } = useAuth();
   const router = useRouter();
   const [step, setStep] = useState<Step>("info");
   const [error, setError] = useState("");
@@ -65,13 +65,17 @@ export function CheckoutForm() {
   const [customerLookupMsg, setCustomerLookupMsg] = useState("");
   const [lookingUpPhone, setLookingUpPhone] = useState(false);
 
+  // Inline OTP verification state
+  const [otpStep, setOtpStep] = useState<"idle" | "sending" | "sent" | "verifying" | "verified">("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+
   // Loyalty state
   const [loyalty, setLoyalty] = useState<LoyaltyData | null>(null);
   const [selectedRewardTierId, setSelectedRewardTierId] = useState<string>("");
 
-  // Receipt preference — default "none", user must explicitly choose
-  const [receiptPreference, setReceiptPreference] = useState<ReceiptPreference>("none");
-  const [receiptDefaultSet, setReceiptDefaultSet] = useState(false);
+  // Receipt preference — default "text" (phone is always required)
+  const [receiptPreference, setReceiptPreference] = useState<ReceiptPreference>("text");
 
   // Marketing opt-in
   const [optInText, setOptInText] = useState(false);
@@ -82,6 +86,13 @@ export function CheckoutForm() {
   const [restaurantOpen, setRestaurantOpen] = useState(true);
   const [acceptingOrders, setAcceptingOrders] = useState(true);
   const [pickupSlots, setPickupSlots] = useState<{ label: string; value: string }[]>([]);
+
+  // Tax/tip state
+  const [orderTotals, setOrderTotals] = useState<{ subtotal: number; tax: number; total: number } | null>(null);
+  const [calculatingTotals, setCalculatingTotals] = useState(false);
+  const [tipAmount, setTipAmount] = useState(0);
+  const [customTip, setCustomTip] = useState("");
+  const [tipMode, setTipMode] = useState<"preset" | "custom">("preset");
 
   // Phone lookup debounce
   const phoneLookupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -125,41 +136,63 @@ export function CheckoutForm() {
         phone: prev.phone || user.phone || "",
       }));
       setCustomerLookupDone(true);
+      setOtpStep("verified");
     }
   }, [user]);
 
-  // Fetch loyalty data on review step (always — endpoint handles unauthenticated)
+  // Fetch loyalty data when entering payment step or after OTP verification
+  const fetchLoyalty = useCallback(() => {
+    fetch("/api/loyalty")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.program) {
+          setLoyalty(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
-    if (step === "review") {
-      fetch("/api/loyalty")
+    if (step === "payment") {
+      fetchLoyalty();
+    }
+  }, [step, user, fetchLoyalty]);
+
+  // Calculate order totals (tax) when entering payment step
+  useEffect(() => {
+    if (step === "payment" && !orderTotals && items.length > 0) {
+      setCalculatingTotals(true);
+      const lineItemsPayload = items.map((item) => ({
+        catalogObjectId: item.variationId,
+        quantity: item.quantity,
+        modifiers: item.modifiers.map((m) => ({ catalogObjectId: m.id })),
+      }));
+      fetch("/api/orders/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineItems: lineItemsPayload }),
+      })
         .then((r) => r.json())
         .then((data) => {
-          if (data.program) {
-            setLoyalty(data);
-          }
+          if (data.total != null) setOrderTotals(data);
         })
-        .catch(() => {});
+        .catch(() => {})
+        .finally(() => setCalculatingTotals(false));
     }
-  }, [user, step]);
+  }, [step, orderTotals, items]);
 
-  // Set default receipt preference once when entering review
+  // Set default receipt preference based on available contact info
   useEffect(() => {
-    if (step === "review" && !receiptDefaultSet) {
-      if (customerInfo.email) {
-        setReceiptPreference("email");
-      } else if (customerInfo.phone) {
-        setReceiptPreference("text");
-      }
-      setReceiptDefaultSet(true);
+    if (customerInfo.email && receiptPreference === "text") {
+      setReceiptPreference("email");
     }
-  }, [step, customerInfo.email, customerInfo.phone, receiptDefaultSet]);
+  }, [customerInfo.email, receiptPreference]);
 
   // Phone-based customer lookup (debounced)
   const handlePhoneLookup = useCallback(async (phone: string) => {
     if (!phone || phone.replace(/\D/g, "").length < 10) return;
     if (customerLookupDone) return;
 
-    // Clear any pending timer
     if (phoneLookupTimer.current) {
       clearTimeout(phoneLookupTimer.current);
     }
@@ -198,6 +231,9 @@ export function CheckoutForm() {
     setCustomerInfo((prev) => ({ ...prev, phone: value }));
     setCustomerLookupDone(false);
     setCustomerLookupMsg("");
+    setOtpStep("idle");
+    setOtpCode("");
+    setOtpError("");
 
     if (phoneLookupTimer.current) {
       clearTimeout(phoneLookupTimer.current);
@@ -210,6 +246,59 @@ export function CheckoutForm() {
       }, 500);
     }
   }, [handlePhoneLookup]);
+
+  // Inline OTP handlers
+  const handleSendOTP = useCallback(async () => {
+    setOtpError("");
+    setOtpStep("sending");
+    try {
+      const res = await fetch("/api/auth/send-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: customerInfo.phone }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send code");
+      }
+      setOtpStep("sent");
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Failed to send code");
+      setOtpStep("idle");
+    }
+  }, [customerInfo.phone]);
+
+  const handleVerifyInlineOTP = useCallback(async () => {
+    setOtpError("");
+    setOtpStep("verifying");
+    try {
+      const res = await fetch("/api/auth/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: customerInfo.phone, code: otpCode }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Invalid code");
+      }
+      setOtpStep("verified");
+      await refreshSession();
+      // Pre-fill from verified customer data
+      if (data.user) {
+        const name = [data.user.givenName, data.user.familyName].filter(Boolean).join(" ");
+        setCustomerInfo((prev) => ({
+          ...prev,
+          name: prev.name || name,
+        }));
+      }
+      setCustomerLookupMsg("Phone verified! You'll earn rewards on this order.");
+      // Fetch loyalty data now that user is authenticated
+      fetchLoyalty();
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Verification failed");
+      setOtpStep("sent");
+    }
+  }, [customerInfo.phone, otpCode, refreshSession, fetchLoyalty]);
 
   if (items.length === 0 && step !== "success") {
     return (
@@ -229,8 +318,11 @@ export function CheckoutForm() {
     if (pickupMode === "asap") {
       setCustomerInfo((prev) => ({ ...prev, pickupTime: "" }));
     }
-    setStep("review");
+    setOrderTotals(null); // Reset so tax is recalculated
+    setStep("payment");
   };
+
+  const finalTotal = (orderTotals?.total ?? total) + tipAmount;
 
   const handlePaymentToken = async (token: {
     status: string;
@@ -270,6 +362,7 @@ export function CheckoutForm() {
           },
           paymentToken: token.token,
           rewardTierId: selectedRewardTierId || undefined,
+          tipAmount: tipAmount || undefined,
           receiptPreference,
           optInText,
           optInEmail,
@@ -304,10 +397,9 @@ export function CheckoutForm() {
 
   const stepIndex = {
     info: 0,
-    review: 1,
-    payment: 2,
-    processing: 2,
-    success: 3,
+    payment: 1,
+    processing: 1,
+    success: 2,
   };
 
   // Closed / kitchen closing warning
@@ -316,6 +408,31 @@ export function CheckoutForm() {
     : !acceptingOrders
       ? "Kitchen is closing soon — orders are no longer accepted."
       : null;
+
+  const phoneDigits = customerInfo.phone.replace(/\D/g, "");
+  const phoneValid = phoneDigits.length >= 10;
+  const isVerified = otpStep === "verified" || !!user;
+
+  // Format pickup display
+  const pickupDisplay = pickupMode === "asap"
+    ? "ASAP (10-15 min)"
+    : (() => {
+        if (!customerInfo.pickupTime) return "Scheduled";
+        const [y, mo, d] = customerInfo.pickupDate.split("-").map(Number);
+        const [h, mi] = customerInfo.pickupTime.split(":").map(Number);
+        const dt = new Date(y, mo - 1, d, h, mi);
+        return dt.toLocaleDateString("en-US", {
+          weekday: "short",
+          month: "short",
+          day: "numeric",
+        }) +
+          " at " +
+          dt.toLocaleTimeString("en-US", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+      })();
 
   return (
     <div className="max-w-xl pb-24">
@@ -353,7 +470,7 @@ export function CheckoutForm() {
 
       {/* Step indicator */}
       <div className="flex gap-2 mb-8">
-        {(["Details", "Review", "Payment"] as const).map((label, i) => (
+        {(["Details", "Payment"] as const).map((label, i) => (
           <div key={label} className="flex items-center gap-2">
             <div
               className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold ${
@@ -367,7 +484,7 @@ export function CheckoutForm() {
             <span className="text-sm text-gray-400 hidden sm:inline">
               {label}
             </span>
-            {i < 2 && <div className="w-8 h-px bg-gray-300" />}
+            {i < 1 && <div className="w-8 h-px bg-gray-300" />}
           </div>
         ))}
       </div>
@@ -390,6 +507,7 @@ export function CheckoutForm() {
           )}
 
           <div className="space-y-3">
+            {/* Phone with inline OTP */}
             <div>
               <Label htmlFor="phone">Phone</Label>
               <div className="relative">
@@ -405,8 +523,92 @@ export function CheckoutForm() {
                 {lookingUpPhone && (
                   <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-gray-400" />
                 )}
+                {isVerified && (
+                  <ShieldCheck className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-500" />
+                )}
               </div>
+
+              {/* Inline OTP verification */}
+              {phoneValid && !isVerified && (
+                <div className="mt-2 space-y-2">
+                  {otpError && (
+                    <p className="text-xs text-red-400">{otpError}</p>
+                  )}
+
+                  {(otpStep === "idle" || otpStep === "sending") && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSendOTP}
+                        disabled={otpStep === "sending"}
+                        className="border-brand-red text-brand-red hover:bg-brand-red/10"
+                      >
+                        {otpStep === "sending" ? (
+                          <><Loader2 className="h-3 w-3 mr-1.5 animate-spin" />Sending...</>
+                        ) : (
+                          "Verify Phone"
+                        )}
+                      </Button>
+                      <span className="text-xs text-gray-400">
+                        Verify to earn rewards on this order
+                      </span>
+                    </div>
+                  )}
+
+                  {(otpStep === "sent" || otpStep === "verifying") && (
+                    <div className="bg-surface-alt rounded-lg p-3 space-y-2">
+                      <p className="text-xs text-gray-400">
+                        We sent a 6-digit code to {customerInfo.phone}
+                      </p>
+                      <div className="flex gap-2">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          maxLength={6}
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                          placeholder="123456"
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleVerifyInlineOTP}
+                          disabled={otpCode.length < 6 || otpStep === "verifying"}
+                        >
+                          {otpStep === "verifying" ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            "Verify"
+                          )}
+                        </Button>
+                      </div>
+                      <div className="flex gap-3 text-xs">
+                        <button
+                          type="button"
+                          onClick={handleSendOTP}
+                          className="text-gray-400 hover:text-gray-300"
+                        >
+                          Resend code
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setOtpStep("idle"); setOtpCode(""); setOtpError(""); }}
+                          className="text-gray-400 hover:text-gray-300"
+                        >
+                          Different number
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
             <div>
               <Label htmlFor="name">Name</Label>
               <Input
@@ -538,6 +740,35 @@ export function CheckoutForm() {
               />
             </div>
 
+            {/* Receipt preference */}
+            <div>
+              <Label>Receipt</Label>
+              <div className="flex flex-wrap gap-2 mt-1">
+                {(
+                  [
+                    { value: "email" as const, label: "Email", show: !!customerInfo.email },
+                    { value: "text" as const, label: "Text", show: !!customerInfo.phone },
+                    { value: "both" as const, label: "Both", show: !!customerInfo.email && !!customerInfo.phone },
+                  ]
+                )
+                  .filter((opt) => opt.show)
+                  .map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setReceiptPreference(opt.value)}
+                      className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
+                        receiptPreference === opt.value
+                          ? "border-brand-red bg-brand-red/5 text-brand-red"
+                          : "border-gray-600 text-gray-300 hover:border-gray-300"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+              </div>
+            </div>
+
             {/* Marketing opt-in */}
             <div className="space-y-2 pt-1">
               <label className="flex items-start gap-2 cursor-pointer">
@@ -574,15 +805,39 @@ export function CheckoutForm() {
                 : pickupSlots.length === 0 || !customerInfo.pickupTime
             }
           >
-            Continue to Review
+            Continue to Payment
           </Button>
         </form>
       )}
 
-      {/* Step 2: Review + Loyalty */}
-      {step === "review" && (
+      {/* Step 2: Payment (merged review + payment) */}
+      {step === "payment" && (
         <div className="space-y-4">
-          <h2 className="font-display text-xl font-bold">Review Order</h2>
+          <h2 className="font-display text-xl font-bold">Review & Pay</h2>
+
+          {/* Compact contact/pickup summary */}
+          <div className="bg-surface-alt rounded-lg p-3 text-sm flex items-start justify-between">
+            <div className="space-y-0.5">
+              <p className="font-medium">{customerInfo.name}</p>
+              <p className="text-gray-400">{customerInfo.phone}</p>
+              {customerInfo.email && (
+                <p className="text-gray-400">{customerInfo.email}</p>
+              )}
+              <p className="text-gray-400">Pickup: {pickupDisplay}</p>
+              {customerInfo.notes && (
+                <p className="text-gray-400 text-xs">Note: {customerInfo.notes}</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setStep("info")}
+              className="text-xs text-brand-red hover:underline shrink-0 ml-3"
+            >
+              Edit
+            </button>
+          </div>
+
+          {/* Full cart summary */}
           <div className="bg-surface-alt rounded-lg p-4 space-y-2">
             {items.map((item, i) => (
               <div key={i} className="flex justify-between text-sm">
@@ -601,90 +856,12 @@ export function CheckoutForm() {
                     </div>
                   )}
                 </div>
-                <span>{formatPrice(item.lineTotal)}</span>
+                <span className="shrink-0 ml-2">{formatPrice(item.lineTotal)}</span>
               </div>
             ))}
-            <div className="border-t pt-2 mt-2 flex justify-between font-semibold">
-              <span>Subtotal</span>
-              <span>{formatPrice(total)}</span>
-            </div>
-            <p className="text-xs text-gray-400">
-              Tax will be calculated at payment.
-            </p>
           </div>
 
-          <div className="bg-surface-alt rounded-lg p-4 text-sm space-y-1">
-            <p>
-              <strong>Name:</strong> {customerInfo.name}
-            </p>
-            {customerInfo.email && (
-              <p>
-                <strong>Email:</strong> {customerInfo.email}
-              </p>
-            )}
-            <p>
-              <strong>Phone:</strong> {customerInfo.phone}
-            </p>
-            <p>
-              <strong>Pickup:</strong>{" "}
-              {pickupMode === "asap"
-                ? "ASAP (10-15 min)"
-                : (() => {
-                    if (!customerInfo.pickupTime) return "Scheduled";
-                    const [y, mo, d] = customerInfo.pickupDate.split("-").map(Number);
-                    const [h, mi] = customerInfo.pickupTime.split(":").map(Number);
-                    const dt = new Date(y, mo - 1, d, h, mi);
-                    return dt.toLocaleDateString("en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                    }) +
-                      " at " +
-                      dt.toLocaleTimeString("en-US", {
-                        hour: "numeric",
-                        minute: "2-digit",
-                        hour12: true,
-                      });
-                  })()}
-            </p>
-            {customerInfo.notes && (
-              <p>
-                <strong>Notes:</strong> {customerInfo.notes}
-              </p>
-            )}
-          </div>
-
-          {/* Receipt preference */}
-          <div className="bg-surface-alt rounded-lg p-4 space-y-2">
-            <p className="text-sm font-semibold">How would you like your receipt?</p>
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  { value: "email", label: "Email", show: !!customerInfo.email },
-                  { value: "text", label: "Text", show: !!customerInfo.phone },
-                  { value: "both", label: "Both", show: !!customerInfo.email && !!customerInfo.phone },
-                  { value: "none", label: "No receipt", show: true },
-                ] as const
-              )
-                .filter((opt) => opt.show)
-                .map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setReceiptPreference(opt.value)}
-                    className={`px-3 py-1.5 rounded-lg border text-sm transition-colors ${
-                      receiptPreference === opt.value
-                        ? "border-brand-red bg-brand-red/5 text-brand-red"
-                        : "border-gray-600 text-gray-300 hover:border-gray-300"
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-            </div>
-          </div>
-
-          {/* Loyalty section — logged in with account */}
+          {/* Loyalty section — show if logged in with account */}
           {loyalty?.account && loyalty.program && (
             <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm font-semibold">
@@ -703,8 +880,8 @@ export function CheckoutForm() {
                         key={tier.id}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                           selectedRewardTierId === tier.id
-                            ? "border-yellow-500 bg-yellow-100"
-                            : "border-gray-200 hover:border-gray-300"
+                            ? "border-yellow-500 bg-yellow-900/30"
+                            : "border-gray-700 hover:border-gray-500"
                         }`}
                       >
                         <input
@@ -723,7 +900,7 @@ export function CheckoutForm() {
                   {selectedRewardTierId && (
                     <button
                       onClick={() => setSelectedRewardTierId("")}
-                      className="text-xs text-gray-400 hover:text-gray-700"
+                      className="text-xs text-gray-400 hover:text-gray-300"
                     >
                       Don&apos;t use a reward
                     </button>
@@ -733,55 +910,98 @@ export function CheckoutForm() {
             </div>
           )}
 
-          {/* Loyalty prompt — not logged in but program exists */}
-          {loyalty?.program && !loyalty.account && !user && (
-            <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-yellow-500" />
-                Earn rewards on this order!
-              </div>
-              <p className="text-sm text-gray-400">
-                Sign in with your phone number to join our rewards program and earn points.
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLogin(true)}
-                className="border-yellow-700 text-yellow-400 hover:bg-yellow-900/30"
-              >
-                Sign In
-              </Button>
+          {/* Price breakdown */}
+          <div className="bg-surface-alt rounded-lg p-4 space-y-1.5 text-sm">
+            <div className="flex justify-between">
+              <span className="text-gray-400">Subtotal</span>
+              <span>{formatPrice(orderTotals?.subtotal ?? total)}</span>
             </div>
-          )}
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setStep("info")}
-              className="flex-1"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <Button onClick={() => setStep("payment")} className="flex-1">
-              Continue to Payment
-            </Button>
+            {orderTotals ? (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Tax</span>
+                <span>{formatPrice(orderTotals.tax)}</span>
+              </div>
+            ) : calculatingTotals ? (
+              <div className="flex justify-between text-gray-400">
+                <span>Tax</span>
+                <Loader2 className="h-4 w-4 animate-spin" />
+              </div>
+            ) : (
+              <div className="flex justify-between text-gray-400">
+                <span>Tax</span>
+                <span>--</span>
+              </div>
+            )}
+            {tipAmount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-gray-400">Tip</span>
+                <span>{formatPrice(tipAmount)}</span>
+              </div>
+            )}
+            <div className="border-t border-gray-700 pt-1.5 mt-1.5 flex justify-between font-semibold">
+              <span>Total</span>
+              <span className="text-brand-red">{formatPrice(finalTotal)}</span>
+            </div>
           </div>
-        </div>
-      )}
 
-      {/* Step 3: Payment */}
-      {step === "payment" && (
-        <div className="space-y-4">
-          <h2 className="font-display text-xl font-bold">Payment</h2>
-          <div className="bg-surface-alt rounded-lg p-4 flex justify-between text-sm font-semibold">
-            <span>Order Total</span>
-            <span className="text-brand-red">{formatPrice(total)}</span>
+          {/* Tip selector */}
+          <div>
+            <Label>Add a Tip</Label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {TIP_PRESETS.map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => {
+                    setTipAmount(amt);
+                    setTipMode("preset");
+                    setCustomTip("");
+                  }}
+                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                    tipMode === "preset" && tipAmount === amt
+                      ? "border-brand-red bg-brand-red/5 text-brand-red"
+                      : "border-gray-600 text-gray-300 hover:border-gray-300"
+                  }`}
+                >
+                  {amt === 0 ? "No tip" : formatPrice(amt)}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setTipMode("custom");
+                  setTipAmount(0);
+                }}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  tipMode === "custom"
+                    ? "border-brand-red bg-brand-red/5 text-brand-red"
+                    : "border-gray-600 text-gray-300 hover:border-gray-300"
+                }`}
+              >
+                Custom
+              </button>
+            </div>
+            {tipMode === "custom" && (
+              <div className="mt-2 relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={customTip}
+                  onChange={(e) => {
+                    setCustomTip(e.target.value);
+                    const cents = Math.round(parseFloat(e.target.value || "0") * 100);
+                    setTipAmount(isNaN(cents) ? 0 : Math.max(0, cents));
+                  }}
+                  placeholder="0.00"
+                  className="pl-7"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-gray-400">
-            Tax will be added. Tip can be added after payment.
-          </p>
 
+          {/* Payment form */}
           {appId && locationId ? (
             <PaymentForm
               applicationId={appId}
@@ -791,7 +1011,7 @@ export function CheckoutForm() {
                 countryCode: "US",
                 currencyCode: "USD",
                 total: {
-                  amount: (total / 100).toFixed(2),
+                  amount: (finalTotal / 100).toFixed(2),
                   label: "Vietnoms Order",
                 },
               })}
@@ -816,11 +1036,11 @@ export function CheckoutForm() {
 
           <Button
             variant="outline"
-            onClick={() => setStep("review")}
+            onClick={() => setStep("info")}
             className="w-full"
           >
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Review
+            Back to Details
           </Button>
         </div>
       )}
