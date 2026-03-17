@@ -40,7 +40,7 @@ interface LoyaltyData {
   } | null;
 }
 
-const TIP_PRESETS = [0, 200, 300, 500];
+const TIP_PERCENT_PRESETS = [15, 20, 25];
 
 /** Format phone digits as (XXX) XXX-XXXX for display */
 function formatPhoneDisplay(value: string): string {
@@ -102,6 +102,7 @@ export function CheckoutForm() {
   const [orderTotals, setOrderTotals] = useState<{ subtotal: number; tax: number; total: number } | null>(null);
   const [calculatingTotals, setCalculatingTotals] = useState(false);
   const [tipAmount, setTipAmount] = useState(0);
+  const [tipPercent, setTipPercent] = useState<number | null>(null);
   const [customTip, setCustomTip] = useState("");
   const [tipMode, setTipMode] = useState<"preset" | "custom">("preset");
 
@@ -198,6 +199,14 @@ export function CheckoutForm() {
         .finally(() => setCalculatingTotals(false));
     }
   }, [step, orderTotals, items]);
+
+  // Recalculate tip when orderTotals load (for percentage-based tips)
+  useEffect(() => {
+    if (tipMode === "preset" && tipPercent != null) {
+      const base = orderTotals?.subtotal ?? total;
+      setTipAmount(Math.round(base * tipPercent / 100));
+    }
+  }, [orderTotals, total, tipMode, tipPercent]);
 
   // Set default receipt preference based on available contact info
   useEffect(() => {
@@ -971,28 +980,51 @@ export function CheckoutForm() {
           <div>
             <Label>Add a Tip</Label>
             <div className="flex flex-wrap gap-2 mt-1">
-              {TIP_PRESETS.map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => {
-                    setTipAmount(amt);
-                    setTipMode("preset");
-                    setCustomTip("");
-                  }}
-                  className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
-                    tipMode === "preset" && tipAmount === amt
-                      ? "border-brand-red bg-brand-red/5 text-brand-red"
-                      : "border-gray-600 text-gray-300 hover:border-gray-300"
-                  }`}
-                >
-                  {amt === 0 ? "No tip" : formatPrice(amt)}
-                </button>
-              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setTipAmount(0);
+                  setTipPercent(null);
+                  setTipMode("preset");
+                  setCustomTip("");
+                }}
+                className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                  tipMode === "preset" && tipPercent === null && tipAmount === 0
+                    ? "border-brand-red bg-brand-red/5 text-brand-red"
+                    : "border-gray-600 text-gray-300 hover:border-gray-300"
+                }`}
+              >
+                No tip
+              </button>
+              {TIP_PERCENT_PRESETS.map((pct) => {
+                const tipBase = orderTotals?.subtotal ?? total;
+                const computed = Math.round(tipBase * pct / 100);
+                return (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setTipPercent(pct);
+                      setTipAmount(computed);
+                      setTipMode("preset");
+                      setCustomTip("");
+                    }}
+                    className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${
+                      tipMode === "preset" && tipPercent === pct
+                        ? "border-brand-red bg-brand-red/5 text-brand-red"
+                        : "border-gray-600 text-gray-300 hover:border-gray-300"
+                    }`}
+                  >
+                    <span>{pct}%</span>
+                    <span className="block text-xs opacity-70">{formatPrice(computed)}</span>
+                  </button>
+                );
+              })}
               <button
                 type="button"
                 onClick={() => {
                   setTipMode("custom");
+                  setTipPercent(null);
                   setTipAmount(0);
                 }}
                 className={`px-4 py-2 rounded-lg border text-sm font-medium transition-colors ${

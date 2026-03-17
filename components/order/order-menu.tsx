@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ItemDetailModal } from "./item-detail-modal";
 import type { MenuCategory, MenuItem } from "@/lib/types";
-import { Plus, Star, Heart } from "lucide-react";
+import { Plus, Star, Heart, ShoppingBag } from "lucide-react";
+import { CartSidebar } from "./cart-sidebar";
 
 interface ItemStats {
   averageRating: number;
@@ -22,7 +23,7 @@ interface OrderMenuProps {
 }
 
 export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
-  const { addItem, openCart } = useCart();
+  const { addItem, openCart, itemCount } = useCart();
   const { user, setShowLogin } = useAuth();
   const [activeCategory, setActiveCategory] = useState(
     categories[0]?.slug || ""
@@ -185,7 +186,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
       </nav>
 
       {/* Main content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 pb-24 lg:pb-0">
         {/* Mobile horizontal scrollable tabs */}
         <div className="lg:hidden flex gap-2 mb-6 sticky top-16 bg-surface-alt/90 backdrop-blur-lg py-3 z-30 border-b border-gray-800/50 overflow-x-auto scrollbar-hide -mx-4 px-4">
           {categories.map((cat) => (
@@ -342,6 +343,24 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
           ))}
         </div>
       </div>
+
+      {/* Desktop cart sidebar */}
+      <div className="hidden lg:block w-80 shrink-0">
+        <CartSidebar />
+      </div>
+
+      {/* Mobile floating cart FAB */}
+      {itemCount > 0 && (
+        <button
+          onClick={openCart}
+          className="lg:hidden fixed bottom-20 right-4 z-30 h-14 w-14 rounded-full bg-brand-red text-white shadow-lg flex items-center justify-center"
+        >
+          <ShoppingBag className="h-6 w-6" />
+          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-white text-brand-red text-xs font-bold flex items-center justify-center">
+            {itemCount}
+          </span>
+        </button>
+      )}
 
       {/* Item detail modal */}
       <ItemDetailModal

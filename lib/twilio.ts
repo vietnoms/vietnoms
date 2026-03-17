@@ -31,14 +31,18 @@ export function normalizePhone(phone: string): string {
 
 export async function sendOTP(phone: string): Promise<{ success: boolean; error?: string }> {
   try {
+    const sid = getVerifyServiceSid();
+    console.log("[OTP] service SID prefix:", sid.substring(0, 5));
     const client = getClient();
     await client.verify.v2
-      .services(getVerifyServiceSid())
+      .services(sid)
       .verifications.create({ to: phone, channel: "sms" });
     return { success: true };
   } catch (error: any) {
     console.error("Failed to send OTP:", error);
-    return { success: false, error: "Unable to send verification code. Please check your phone number and try again." };
+    console.error("[OTP] Twilio error details — code:", error?.code, "status:", error?.status, "moreInfo:", error?.moreInfo);
+    const code = error?.code || "UNKNOWN";
+    return { success: false, error: `[${code}] Unable to send verification code. Please check your phone number and try again.` };
   }
 }
 

@@ -6,6 +6,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { phone } = body;
 
+    console.log("[send-otp] env check —",
+      "hasAccountSid:", !!process.env.TWILIO_ACCOUNT_SID,
+      "hasAuthToken:", !!process.env.TWILIO_AUTH_TOKEN,
+      "verifySidPrefix:", process.env.TWILIO_VERIFY_SERVICE_SID?.substring(0, 5) || "MISSING"
+    );
+
     if (!phone) {
       return NextResponse.json({ error: "Phone number is required" }, { status: 400 });
     }
@@ -21,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     if (!result.success) {
       return NextResponse.json(
-        { error: "Unable to send verification code. Please check your phone number and try again." },
+        { error: result.error || "Unable to send verification code." },
         { status: 400 }
       );
     }
