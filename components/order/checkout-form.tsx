@@ -24,6 +24,7 @@ import {
   getTodayHoursDisplay,
   generatePickupSlots,
   generatePickupSlotsForDate,
+  getNextOpeningTime,
   MAX_ADVANCE_DAYS,
 } from "@/lib/restaurant-hours";
 
@@ -137,8 +138,28 @@ export function CheckoutForm() {
   useEffect(() => {
     const now = new Date();
     setHoursDisplay(getTodayHoursDisplay(now));
-    setRestaurantOpen(isOpenNow(now));
+    const open = isOpenNow(now);
+    setRestaurantOpen(open);
     setAcceptingOrders(canAcceptOrders(now));
+
+    // If ASAP is selected but restaurant is closed, auto-switch to scheduled
+    // and pre-fill with next opening time
+    if (pickupMode === "asap" && !open) {
+      const nextOpen = getNextOpeningTime(now);
+      if (nextOpen) {
+        setPickupMode("scheduled");
+        const yyyy = nextOpen.getFullYear();
+        const mm = String(nextOpen.getMonth() + 1).padStart(2, "0");
+        const dd = String(nextOpen.getDate()).padStart(2, "0");
+        const hh = String(nextOpen.getHours()).padStart(2, "0");
+        const mi = String(nextOpen.getMinutes()).padStart(2, "0");
+        setCustomerInfo((prev) => ({
+          ...prev,
+          pickupDate: `${yyyy}-${mm}-${dd}`,
+          pickupTime: `${hh}:${mi}`,
+        }));
+      }
+    }
 
     if (customerInfo.pickupDate) {
       const [y, m, d] = customerInfo.pickupDate.split("-").map(Number);
@@ -147,6 +168,7 @@ export function CheckoutForm() {
     } else {
       setPickupSlots(generatePickupSlots(now));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, customerInfo.pickupDate]);
 
   // Pre-fill from auth
@@ -458,7 +480,15 @@ export function CheckoutForm() {
 
   // Closed / kitchen closing warning
   const closedMessage = !restaurantOpen
-    ? "We're currently closed. Please check back during business hours."
+    ? (() => {
+        const nextOpen = getNextOpeningTime(new Date());
+        if (nextOpen) {
+          const dayLabel = nextOpen.toLocaleDateString("en-US", { weekday: "long" });
+          const timeLabel = nextOpen.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+          return `We're currently closed. Your order will be scheduled for ${dayLabel} at ${timeLabel}.`;
+        }
+        return "We're currently closed.";
+      })()
     : !acceptingOrders
       ? "Kitchen is closing soon — orders are no longer accepted."
       : null;
@@ -512,13 +542,8 @@ export function CheckoutForm() {
       )}
 
       {closedMessage && (
-        <div className="mb-4 p-3 bg-red-900/30 border border-red-800 rounded-lg text-sm">
-          <span className="text-red-400">{closedMessage}</span>
-          {pickupMode === "asap" && (
-            <span className="text-gray-400 block mt-1">
-              You can still schedule an order for later.
-            </span>
-          )}
+        <div className="mb-4 p-3 bg-amber-900/30 border border-amber-800 rounded-lg text-sm">
+          <span className="text-amber-400">{closedMessage}</span>
         </div>
       )}
 
@@ -708,7 +733,27 @@ export function CheckoutForm() {
                       ? "border-brand-red bg-brand-red/5 text-brand-red"
                       : "border-gray-600 text-gray-300 hover:border-gray-300"
                   }`}
-                  onClick={() => setPickupMode("asap")}
+                  onClick={() => {
+                    if (!restaurantOpen) {
+                      // Auto-switch to scheduled with next opening time
+                      const nextOpen = getNextOpeningTime(new Date());
+                      if (nextOpen) {
+                        setPickupMode("scheduled");
+                        const yyyy = nextOpen.getFullYear();
+                        const mm = String(nextOpen.getMonth() + 1).padStart(2, "0");
+                        const dd = String(nextOpen.getDate()).padStart(2, "0");
+                        const hh = String(nextOpen.getHours()).padStart(2, "0");
+                        const mi = String(nextOpen.getMinutes()).padStart(2, "0");
+                        setCustomerInfo((prev) => ({
+                          ...prev,
+                          pickupDate: `${yyyy}-${mm}-${dd}`,
+                          pickupTime: `${hh}:${mi}`,
+                        }));
+                      }
+                    } else {
+                      setPickupMode("asap");
+                    }
+                  }}
                 >
                   ASAP
                 </button>
@@ -724,7 +769,7 @@ export function CheckoutForm() {
                   Schedule for Later
                 </button>
               </div>
-              {pickupMode === "asap" && (
+              {pickupMode === "asap" && restaurantOpen && (
                 <p className="text-sm text-gray-400 mt-2">
                   Estimated ready in 10-15 minutes
                 </p>

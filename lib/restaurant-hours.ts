@@ -87,6 +87,25 @@ export function getTodayHoursDisplay(date: Date = new Date()): string | null {
 
 export const MAX_ADVANCE_DAYS = 7;
 
+/** Find the next date+time the restaurant opens (could be later today or a future day). */
+export function getNextOpeningTime(date: Date = new Date()): Date | null {
+  // Check if we're before opening today
+  const todayOpening = getOpeningTime(date);
+  if (todayOpening && date < todayOpening) {
+    return todayOpening;
+  }
+
+  // Otherwise check subsequent days (up to 8 to cover a full week)
+  for (let i = 1; i <= 8; i++) {
+    const futureDate = new Date(date);
+    futureDate.setDate(futureDate.getDate() + i);
+    futureDate.setHours(0, 0, 0, 0);
+    const opening = getOpeningTime(futureDate);
+    if (opening) return opening;
+  }
+  return null;
+}
+
 export function getDateHoursDisplay(date: Date): string | null {
   const hours = getTodayHours(date);
   if (!hours) return null;
@@ -139,12 +158,19 @@ export function generatePickupSlots(
   const cutoff = getOrderCutoff(date);
   if (!cutoff) return [];
 
+  const opening = getOpeningTime(date);
+
   // Start from now + 15 minutes, rounded up to next interval
   const startMs = date.getTime() + 15 * 60 * 1000;
   const startDate = new Date(startMs);
   const mins = startDate.getMinutes();
   const roundedMins = Math.ceil(mins / intervalMinutes) * intervalMinutes;
   startDate.setMinutes(roundedMins, 0, 0);
+
+  // Don't allow slots before the store opens
+  if (opening && startDate < opening) {
+    startDate.setTime(opening.getTime());
+  }
 
   const slots: { label: string; value: string }[] = [];
   const current = new Date(startDate);
