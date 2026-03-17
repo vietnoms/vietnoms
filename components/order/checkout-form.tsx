@@ -34,11 +34,16 @@ type ReceiptPreference = "email" | "text" | "both";
 interface LoyaltyData {
   program: {
     rewardTiers: { id: string; name: string; points: number }[];
+    terminologyOne: string;
+    terminologyOther: string;
   } | null;
   account: {
     balance: number;
+    lifetimePoints: number;
   } | null;
 }
+
+const POINTS_PER_DOLLAR = 5;
 
 const TIP_PERCENT_PRESETS = [15, 20, 25];
 
@@ -313,6 +318,7 @@ export function CheckoutForm() {
       setOtpStep("verified");
       await refreshSession();
       // Pre-fill from verified customer data
+      const firstName = data.user?.givenName || "";
       if (data.user) {
         const name = [data.user.givenName, data.user.familyName].filter(Boolean).join(" ");
         setCustomerInfo((prev) => ({
@@ -320,9 +326,28 @@ export function CheckoutForm() {
           name: prev.name || name,
         }));
       }
-      setCustomerLookupMsg("Phone verified! You'll earn rewards on this order.");
-      // Fetch loyalty data now that user is authenticated
-      fetchLoyalty();
+      // Fetch loyalty and build welcome message
+      try {
+        const loyaltyRes = await fetch("/api/loyalty");
+        const loyaltyData = await loyaltyRes.json();
+        if (loyaltyData.program) {
+          setLoyalty(loyaltyData);
+          const balance = loyaltyData.account?.balance ?? 0;
+          const lowestTier = loyaltyData.program.rewardTiers
+            .filter((t: any) => t.points > balance)
+            .sort((a: any, b: any) => a.points - b.points)[0];
+          const greeting = firstName ? `Welcome back, ${firstName}!` : "Phone verified!";
+          const pointsMsg = loyaltyData.account
+            ? `You currently have ${balance} points.${lowestTier ? ` Only ${lowestTier.points - balance} away from your next reward!` : ""}`
+            : "You'll earn rewards on this order.";
+          setCustomerLookupMsg(`${greeting} ${pointsMsg}`);
+        } else {
+          setCustomerLookupMsg(firstName ? `Welcome back, ${firstName}!` : "Phone verified!");
+        }
+      } catch {
+        setCustomerLookupMsg(firstName ? `Welcome back, ${firstName}!` : "Phone verified!");
+        fetchLoyalty();
+      }
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Verification failed");
       setOtpStep("sent");
@@ -894,20 +919,53 @@ export function CheckoutForm() {
           </div>
 
           {/* Loyalty section — show if logged in with account */}
-          {loyalty?.account && loyalty.program && (
-            <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm font-semibold">
-                <Star className="h-4 w-4 text-yellow-500" />
-                Loyalty Points: {loyalty.account.balance}
-              </div>
-              {loyalty.program.rewardTiers.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-xs text-gray-400">Available rewards:</p>
-                  {loyalty.program.rewardTiers
-                    .filter(
-                      (tier) => loyalty.account!.balance >= tier.points
-                    )
-                    .map((tier) => (
+          {loyalty?.account && loyalty.program && (() => {
+            const balance = loyalty.account!.balance;
+            const subtotal = orderTotals?.subtotal ?? total;
+            const earningPoints = Math.floor((subtotal / 100) * POINTS_PER_DOLLAR);
+            const redeemableTiers = loyalty.program!.rewardTiers.filter(
+              (tier) => balance >= tier.points
+            );
+            const nextTier = loyalty.program!.rewardTiers
+              .filter((tier) => tier.points > balance)
+              .sort((a, b) => a.points - b.points)[0];
+            const pointsAfterOrder = balance + earningPoints;
+            const nextTierAfter = loyalty.program!.rewardTiers
+              .filter((tier) => tier.points > pointsAfterOrder)
+              .sort((a, b) => a.points - b.points)[0];
+
+            return (
+              <div className="bg-yellow-900/20 border border-yellow-800/50 rounded-lg p-4 space-y-3">
+                {/* Balance + progress */}
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Star className="h-4 w-4 text-yellow-500" />
+                  <span>Your Rewards</span>
+                </div>
+                <div className="text-sm">
+                  <p>
+                    You currently have <span className="font-semibold text-yellow-400">{balance}</span> points.
+                    {nextTier && (
+                      <> Only <span className="font-semibold text-yellow-400">{nextTier.points - balance}</span> away from your next reward!</>
+                    )}
+                  </p>
+                </div>
+
+                {/* Points earning on this order */}
+                <div className="bg-yellow-900/30 rounded-lg px-3 py-2 text-sm flex items-center justify-between">
+                  <span className="text-gray-300">Points earned on this order</span>
+                  <span className="font-semibold text-yellow-400">+{earningPoints} pts</span>
+                </div>
+                {nextTierAfter && (
+                  <p className="text-xs text-gray-400">
+                    After this order you&apos;ll have {pointsAfterOrder} points — only {nextTierAfter.points - pointsAfterOrder} from your next reward!
+                  </p>
+                )}
+
+                {/* Redeemable rewards */}
+                {redeemableTiers.length > 0 && (
+                  <div className="space-y-1 pt-1 border-t border-yellow-800/30">
+                    <p className="text-xs text-gray-400 font-medium">Redeem a reward:</p>
+                    {redeemableTiers.map((tier) => (
                       <label
                         key={tier.id}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
@@ -929,18 +987,19 @@ export function CheckoutForm() {
                         </span>
                       </label>
                     ))}
-                  {selectedRewardTierId && (
-                    <button
-                      onClick={() => setSelectedRewardTierId("")}
-                      className="text-xs text-gray-400 hover:text-gray-300"
-                    >
-                      Don&apos;t use a reward
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                    {selectedRewardTierId && (
+                      <button
+                        onClick={() => setSelectedRewardTierId("")}
+                        className="text-xs text-gray-400 hover:text-gray-300"
+                      >
+                        Don&apos;t use a reward
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Price breakdown */}
           <div className="bg-surface-alt rounded-lg p-4 space-y-1.5 text-sm">
