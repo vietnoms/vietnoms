@@ -6,28 +6,38 @@ import { setSessionCookie } from "@/lib/auth";
 import { getLoyaltyProgram, getLoyaltyAccount, createLoyaltyAccount } from "@/lib/loyalty";
 
 export async function POST(request: NextRequest) {
+  let body: { phone?: string; code?: string };
   try {
-    const body = await request.json();
-    const { phone, code } = body;
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "Invalid request body" },
+      { status: 400 }
+    );
+  }
 
-    if (!phone || !code) {
-      return NextResponse.json(
-        { error: "Phone and code are required" },
-        { status: 400 }
-      );
-    }
+  const { phone, code } = body;
 
-    const normalized = normalizePhone(phone);
+  if (!phone || !code) {
+    return NextResponse.json(
+      { error: "Phone and code are required" },
+      { status: 400 }
+    );
+  }
 
-    // Verify the OTP with Twilio
-    const verification = await verifyOTP(normalized, code);
-    if (!verification.success) {
-      return NextResponse.json(
-        { error: verification.error || "Invalid code" },
-        { status: 401 }
-      );
-    }
+  const normalized = normalizePhone(phone);
 
+  // Verify the OTP with Twilio
+  const verification = await verifyOTP(normalized, code);
+  if (!verification.success) {
+    return NextResponse.json(
+      { error: verification.error || "Invalid code" },
+      { status: 401 }
+    );
+  }
+
+  // OTP verified — now set up the customer account and session
+  try {
     // Find or create Square customer
     const existing = await findCustomerByPhone(normalized);
     const customer = existing ?? await createSquareCustomer({ phone: normalized });
@@ -74,9 +84,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error("Verify OTP error:", error);
+    console.error("Post-verification error:", error);
     return NextResponse.json(
-      { error: "Verification failed" },
+      { error: "Phone verified but sign-in failed. Please try again." },
       { status: 500 }
     );
   }
