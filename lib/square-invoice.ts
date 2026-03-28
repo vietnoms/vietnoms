@@ -249,7 +249,7 @@ export async function createDraftInvoice(
     }
   }
 
-  // Apply tax to all line items so far (before delivery fee)
+  // Apply tax to all line items
   const taxUid = "catering-sales-tax";
   const taxableItems = lineItems.map((item, i) => ({
     ...item,
@@ -257,22 +257,23 @@ export async function createDraftInvoice(
     appliedTaxes: [{ taxUid }],
   }));
 
-  // Delivery fee (NOT taxed — added separately without appliedTaxes)
-  if (deliveryFeeAmount > 0) {
-    taxableItems.push({
-      catalogObjectId: CAT.deliveryFee,
-      quantity: "1",
-      basePriceMoney: { amount: BigInt(deliveryFeeAmount), currency: "USD" },
-      uid: `item-delivery`,
-    } as typeof taxableItems[number]);
-  }
+  // Delivery fee as a service charge (NOT taxed)
+  const DELIVERY_FEE_SERVICE_CHARGE_ID = "H7WSQYQJRIUHUOWNW3M6JZKK";
+  const serviceCharges = deliveryFeeAmount > 0
+    ? [{
+        catalogObjectId: DELIVERY_FEE_SERVICE_CHARGE_ID,
+        amountMoney: { amount: BigInt(deliveryFeeAmount), currency: "USD" as const },
+        taxable: false,
+      }]
+    : [];
 
-  // 3. Create Square order with line-item-level tax (excludes delivery fee)
+  // 3. Create Square order with line-item tax + service charge for delivery
   const orderResult = await square.orders.create({
     order: {
       locationId: LOCATION_ID,
       customerId,
       lineItems: taxableItems,
+      serviceCharges,
       taxes: [{
         uid: taxUid,
         catalogObjectId: SALES_TAX_ID,
