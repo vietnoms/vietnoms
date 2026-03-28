@@ -40,13 +40,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Cache customer data in Turso
-    await upsertCustomer({
-      id: customer.id,
-      phone: normalized,
-      givenName: customer.givenName || undefined,
-      familyName: customer.familyName || undefined,
-      email: customer.emailAddress || undefined,
-    });
+    try {
+      await upsertCustomer({
+        id: customer.id,
+        phone: normalized,
+        givenName: customer.givenName || undefined,
+        familyName: customer.familyName || undefined,
+        email: customer.emailAddress || undefined,
+      });
+    } catch (dbErr) {
+      console.error("Customer upsert failed (non-fatal):", dbErr);
+      // Don't fail the entire verification for a cache miss
+    }
 
     // Auto-create loyalty account if program exists and customer has no account
     try {
