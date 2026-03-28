@@ -122,6 +122,7 @@ export function PurchasesTable() {
                 <th className="px-3 py-2">Tip</th>
                 <th className="px-3 py-2">Customer</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Loyalty</th>
                 <th className="px-3 py-2">Receipt</th>
                 {showGiftCardCol && <th className="px-3 py-2">Gift Card #</th>}
                 <th className="px-3 py-2">Date</th>
@@ -169,6 +170,23 @@ export function PurchasesTable() {
                           {p.errorMessage}
                         </div>
                       )}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {(() => {
+                        const enrolled = meta.loyaltyEnrolled as boolean | undefined;
+                        const pts = meta.loyaltyPointsEarned as number | undefined;
+                        const bal = meta.loyaltyBalance as number | undefined;
+                        if (enrolled) {
+                          return (
+                            <div>
+                              <span className="text-green-400">Enrolled</span>
+                              {pts != null && <div className="text-gray-400">+{pts} pts</div>}
+                              {bal != null && <div className="text-gray-500">Bal: {bal}</div>}
+                            </div>
+                          );
+                        }
+                        return <span className="text-gray-600">—</span>;
+                      })()}
                     </td>
                     <td className="px-3 py-2 text-xs">
                       {receiptUrl ? (

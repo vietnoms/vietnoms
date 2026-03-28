@@ -1,5 +1,23 @@
 import { getSquare, LOCATION_ID } from "./square";
 import { randomUUID } from "crypto";
+import { PROTEINS } from "./catering-pricing";
+
+// Square catalog variation IDs for catering items
+const CATALOG = {
+  cateringPerPerson: "HEH3EO77DNTOZAVXUHCVRF3A",    // $20.00/person
+  beefUpcharge: "N5K45MBM5FFW7Q2ZMW4PAH32",          // $1.00/person
+  shrimpUpcharge: "EA6PSWLG2VD2XJXDI2D4TYB6",        // $2.50/person
+  bigUp: "Q4UFIOE53WKVYUONJVKL2MK2",                 // $4.00/person
+  extraProtein: "FT2WV4NDNEZEONNAOYRJWC3O",           // $4.00/serving
+  extraSide: "O6LUWLSKRVFGZNCTGO6SOIRC",              // $3.00/serving
+  deliveryFee: "36UE7H2ZZ37JXWD5NLNKMLK5",            // variable
+};
+
+// Map protein names to their upcharge catalog items
+const PROTEIN_UPCHARGE_MAP: Record<string, string> = {
+  "Red Hot Beef": CATALOG.beefUpcharge,
+  "Grilled Shrimp": CATALOG.shrimpUpcharge,
+};
 
 interface InvoiceData {
   contactName: string;
@@ -72,7 +90,6 @@ async function findOrCreateCustomer(data: {
 }): Promise<string> {
   const square = getSquare();
 
-  // Search by email first
   const searchResult = await square.customers.search({
     query: {
       filter: {
@@ -85,7 +102,6 @@ async function findOrCreateCustomer(data: {
     return searchResult.customers[0].id!;
   }
 
-  // Create new customer
   const createResult = await square.customers.create({
     idempotencyKey: randomUUID(),
     givenName: data.name.split(" ")[0],
@@ -109,44 +125,108 @@ export async function createDraftInvoice(
     phone: data.contactPhone,
   });
 
-  // 2. Build line items for the order
-  const lineItems: {
-    name: string;
+  // 2. Build line items using catalog items
+  type LineItem = {
+    catalogObjectId?: string;
+    name?: string;
     quantity: string;
-    basePriceMoney: { amount: bigint; currency: "USD" };
-  }[] = [];
+    basePriceMoney?: { amount: bigint; currency: "USD" };
+    note?: string;
+  };
+  const lineItems: LineItem[] = [];
 
-  if (data.items.length > 0) {
-    for (const item of data.items) {
+  // Base catering per person
+  const proteinDescriptions: string[] = [];
+  for (const item of data.items) {
+    if (item.quantity > 0) {
+      proteinDescriptions.push(`${item.itemName} x${item.quantity}`);
+    }
+  }
+
+  const baseNote = [
+    `${data.packageType} style`,
+    proteinDescriptions.length > 0 ? `Proteins: ${proteinDescriptions.join(", ")}` : null,
+    data.customizations?.bases?.length
+      ? `Bases: ${data.customizations.bases.map((b) => `${b.name} x${b.quantity}`).join(", ")}`
+      : null,
+    data.customizations?.sides?.length
+      ? `Sides: ${data.customizations.sides.map((s) => `${s.name} x${s.quantity}`).join(", ")}`
+      : null,
+    data.customizations?.noPeanuts ? "No Peanuts" : null,
+    data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut"
+      ? `Egg Roll Cut: ${data.customizations.eggRollCut}`
+      : null,
+  ].filter(Boolean).join(" | ");
+
+  lineItems.push({
+    catalogObjectId: CATALOG.cateringPerPerson,
+    quantity: String(data.guestCount),
+    note: baseNote || undefined,
+  });
+
+  // Protein upcharges (per person with that protein)
+  for (const item of data.items) {
+    const protein = PROTEINS.find((p) => p.name === item.itemName);
+    const catalogId = PROTEIN_UPCHARGE_MAP[item.itemName];
+    if (protein && protein.upcharge > 0 && item.quantity > 0 && catalogId) {
       lineItems.push({
-        name: `${item.itemName} (${data.packageType})`,
+        catalogObjectId: catalogId,
+        quantity: String(item.quantity),
+      });
+    } else if (protein && protein.upcharge > 0 && item.quantity > 0) {
+      // Fallback for proteins without a catalog item
+      lineItems.push({
+        name: `${item.itemName} Upcharge`,
         quantity: String(item.quantity),
         basePriceMoney: {
-          amount: BigInt(item.unitPrice ?? 2000),
-          currency: "USD" as const,
+          amount: BigInt(protein.upcharge),
+          currency: "USD",
         },
       });
     }
-  } else {
-    // Fallback: single line item for the whole order
+  }
+
+  // Big Up surcharge
+  if (data.customizations?.bigUpActive) {
     lineItems.push({
-      name: `${data.packageType} Catering (${data.guestCount} guests)`,
-      quantity: "1",
-      basePriceMoney: {
-        amount: BigInt(data.totalAmount),
-        currency: "USD" as const,
-      },
+      catalogObjectId: CATALOG.bigUp,
+      quantity: String(data.guestCount),
     });
   }
 
-  // Add delivery fee as separate line item
+  // Extra protein servings (beyond baseline)
+  const totalProtein = data.items.reduce((s, i) => s + i.quantity, 0);
+  const proteinBaseline = data.customizations?.bigUpActive
+    ? Math.ceil(1.5 * data.guestCount)
+    : data.guestCount;
+  const extraProteinCount = Math.max(0, totalProtein - proteinBaseline);
+  if (extraProteinCount > 0) {
+    lineItems.push({
+      catalogObjectId: CATALOG.extraProtein,
+      quantity: String(extraProteinCount),
+    });
+  }
+
+  // Extra side servings (beyond baseline, buffet only)
+  if (data.customizations?.sides?.length) {
+    const totalSides = data.customizations.sides.reduce((s, sd) => s + sd.quantity, 0);
+    const extraSideCount = Math.max(0, totalSides - data.guestCount);
+    if (extraSideCount > 0) {
+      lineItems.push({
+        catalogObjectId: CATALOG.extraSide,
+        quantity: String(extraSideCount),
+      });
+    }
+  }
+
+  // Delivery fee (variable pricing)
   if (data.deliveryFee > 0) {
     lineItems.push({
-      name: "Delivery Fee",
+      catalogObjectId: CATALOG.deliveryFee,
       quantity: "1",
       basePriceMoney: {
         amount: BigInt(data.deliveryFee),
-        currency: "USD" as const,
+        currency: "USD",
       },
     });
   }

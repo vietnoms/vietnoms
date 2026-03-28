@@ -318,11 +318,12 @@ export async function POST(request: Request) {
     }
 
     // Accumulate loyalty points (auto-enrolls new customers if phone is available)
+    let loyaltyResult: { pointsEarned: number; balance: number; enrolled: boolean } | null = null as { pointsEarned: number; balance: number; enrolled: boolean } | null;
     if (customerId) {
       postPaymentTasks.push(
-        accumulateLoyaltyPoints(customerId, order.id, customerInfo.phone).catch((err) =>
-          console.error("Loyalty points accumulation failed:", err)
-        )
+        accumulateLoyaltyPoints(customerId, order.id, customerInfo.phone)
+          .then((result) => { loyaltyResult = result; })
+          .catch((err) => console.error("Loyalty points accumulation failed:", err))
       );
     }
 
@@ -397,11 +398,16 @@ export async function POST(request: Request) {
       console.error("Post-payment tasks error:", err)
     );
 
-    // Store receipt URL and tip in purchase metadata
+    // Store receipt URL, tip, and loyalty info in purchase metadata
     {
       const meta: Record<string, unknown> = {};
       if (receiptUrl) meta.receiptUrl = receiptUrl;
       if (tipAmount) meta.tipAmount = tipAmount;
+      if (loyaltyResult) {
+        meta.loyaltyPointsEarned = loyaltyResult.pointsEarned;
+        meta.loyaltyBalance = loyaltyResult.balance;
+        meta.loyaltyEnrolled = loyaltyResult.enrolled;
+      }
       if (Object.keys(meta).length > 0) {
         const db = (await import("@/lib/turso")).getTurso();
         await db.execute({

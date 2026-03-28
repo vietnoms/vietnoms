@@ -111,7 +111,18 @@ export async function accumulateLoyaltyPoints(customerId: string, orderId: strin
       idempotencyKey: crypto.randomUUID(),
     });
 
-    return response?.event || null;
+    const pointsEarned = Number(response?.event?.accumulatePoints?.points ?? 0);
+
+    // Re-fetch account to get updated balance
+    const updatedAccount = await getLoyaltyAccount(customerId);
+
+    return {
+      event: response?.event || null,
+      pointsEarned,
+      balance: updatedAccount?.balance ?? account.balance + pointsEarned,
+      lifetimePoints: updatedAccount?.lifetimePoints ?? account.lifetimePoints + pointsEarned,
+      enrolled: true,
+    };
   } catch (error) {
     console.error("Failed to accumulate loyalty points:", error);
     return null;
