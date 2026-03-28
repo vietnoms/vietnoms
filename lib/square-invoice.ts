@@ -1,22 +1,60 @@
 import { getSquare, LOCATION_ID } from "./square";
 import { randomUUID } from "crypto";
-import { PROTEINS } from "./catering-pricing";
+import { getDeliveryFee } from "./catering-pricing";
 
 // Square catalog variation IDs for catering items
-const CATALOG = {
-  cateringPerPerson: "HEH3EO77DNTOZAVXUHCVRF3A",    // $20.00/person
-  beefUpcharge: "N5K45MBM5FFW7Q2ZMW4PAH32",          // $1.00/person
-  shrimpUpcharge: "EA6PSWLG2VD2XJXDI2D4TYB6",        // $2.50/person
-  bigUp: "Q4UFIOE53WKVYUONJVKL2MK2",                 // $4.00/person
-  extraProtein: "FT2WV4NDNEZEONNAOYRJWC3O",           // $4.00/serving
-  extraSide: "O6LUWLSKRVFGZNCTGO6SOIRC",              // $3.00/serving
-  deliveryFee: "36UE7H2ZZ37JXWD5NLNKMLK5",            // variable
+const CAT = {
+  // Base
+  cateringPerPerson: "HEH3EO77DNTOZAVXUHCVRF3A", // $20.00
+
+  // Proteins (free ones at $0, upcharge ones at their price)
+  lemongrassChicken: "M6UFOEYPKT3KJ4YD2H6MHCTB", // $0
+  lemongrassPork: "64BQBSU6ACX4WLGTSWIEUKLW",     // $0
+  redHotBeef: "3FZDEAN54FMPTBT2D422CBBT",          // $1.00
+  grilledShrimp: "VIJAJGVDK5JVBV37BW6CV4ZG",       // $2.50
+  stirFriedTofu: "I4W7TJRQDMFQKDPX4MCYDMWY",      // $0
+
+  // Bases (half/full trays, $0)
+  halfTrayRice: "EPNP3R77J4PC2MA4VZ54SI2I",
+  fullTrayRice: "EAZYUXZJSQMXAMJ4RYABKMIT",
+  halfTrayVermicelli: "6R2V4SGHCREFUZMYDT563TTD",
+  fullTrayVermicelli: "PSGUEMEA5ZPOWSKFHGI4QOFG",
+  halfTraySlaw: "OXKQBY3OPBJDKSLO7GCLSE6Y",
+  fullTraySlaw: "WWYUOWC3LER2BRE7UFL3DZTK",
+
+  // Sides ($0)
+  shreddedPork: "DW54NALP2E4BURMDDKYYLHWM",
+  porkShrimpEggRoll: "P5RXK7F4RADKO5FXQVFQEK7L",
+  veganEggRoll: "PF6AW2YNK6KPFANQWAHWI7ZL",
+
+  // Surcharges
+  bigUp: "Q4UFIOE53WKVYUONJVKL2MK2",              // $4.00
+  extraProtein: "FT2WV4NDNEZEONNAOYRJWC3O",         // $4.00
+  extraSide: "O6LUWLSKRVFGZNCTGO6SOIRC",            // $3.00
+  deliveryFee: "36UE7H2ZZ37JXWD5NLNKMLK5",          // variable
 };
 
-// Map protein names to their upcharge catalog items
-const PROTEIN_UPCHARGE_MAP: Record<string, string> = {
-  "Red Hot Beef": CATALOG.beefUpcharge,
-  "Grilled Shrimp": CATALOG.shrimpUpcharge,
+// Map protein names to catalog variation IDs
+const PROTEIN_CATALOG: Record<string, string> = {
+  "Lemongrass Chicken": CAT.lemongrassChicken,
+  "Lemongrass Pork": CAT.lemongrassPork,
+  "Red Hot Beef": CAT.redHotBeef,
+  "Grilled Shrimp": CAT.grilledShrimp,
+  "Stir-fried Tofu": CAT.stirFriedTofu,
+};
+
+// Map side names to catalog variation IDs
+const SIDE_CATALOG: Record<string, string> = {
+  "Shredded Pork": CAT.shreddedPork,
+  "Pork & Shrimp Egg Roll": CAT.porkShrimpEggRoll,
+  "Vegan Egg Roll": CAT.veganEggRoll,
+};
+
+// Map base names to half/full tray catalog IDs
+const BASE_TRAY_CATALOG: Record<string, { half: string; full: string }> = {
+  "Rice": { half: CAT.halfTrayRice, full: CAT.fullTrayRice },
+  "Vermicelli Noodles": { half: CAT.halfTrayVermicelli, full: CAT.fullTrayVermicelli },
+  "Salad": { half: CAT.halfTraySlaw, full: CAT.fullTraySlaw },
 };
 
 interface InvoiceData {
@@ -26,9 +64,12 @@ interface InvoiceData {
   eventDate: string;
   guestCount: number;
   packageType: string;
-  totalAmount: number; // cents
+  totalAmount: number;
   items: { itemName: string; quantity: number; unitPrice?: number | null }[];
   deliveryFee: number;
+  deliveryDistance?: number | null;
+  deliveryAddress?: string | null;
+  deliveryType?: string;
   notes?: string | null;
   customizations?: {
     bases?: { name: string; quantity: number }[];
@@ -40,47 +81,19 @@ interface InvoiceData {
   } | null;
 }
 
-function buildOrderNote(data: InvoiceData): string {
-  const parts: string[] = [
-    `${data.packageType} style - ${data.guestCount} guests`,
-    `Event Date: ${data.eventDate}`,
-  ];
+function formatInvoiceTitle(data: InvoiceData): string {
+  const date = new Date(data.eventDate + "T12:00:00");
+  const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "America/Los_Angeles" });
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const year = String(date.getFullYear()).slice(2);
+  const dateStr = `${month}/${day}/${year}`;
 
-  if (data.customizations?.bases?.length) {
-    const baseStr = data.customizations.bases
-      .map((b) => `${b.name} x${b.quantity}`)
-      .join(", ");
-    parts.push(`Bases: ${baseStr}`);
-  }
+  const location = data.deliveryType === "delivery" && data.deliveryAddress
+    ? data.deliveryAddress
+    : "Pickup at Vietnoms";
 
-  if (data.customizations?.sides?.length) {
-    const sideStr = data.customizations.sides
-      .map((s) => `${s.name} x${s.quantity}`)
-      .join(", ");
-    parts.push(`Sides: ${sideStr}`);
-  }
-
-  if (data.customizations?.bigUpActive) parts.push("Big Up: Yes");
-  if (data.customizations?.noPeanuts) parts.push("No Peanuts: Yes");
-  if (
-    data.customizations?.eggRollCut &&
-    data.customizations.eggRollCut !== "Uncut"
-  ) {
-    parts.push(`Egg Roll Cut: ${data.customizations.eggRollCut}`);
-  }
-
-  if (data.customizations?.utensils) {
-    const selected = Object.entries(data.customizations.utensils)
-      .filter(([, v]) => v)
-      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
-    if (selected.length > 0) {
-      parts.push(`Utensils: ${selected.join(", ")}`);
-    }
-  }
-
-  if (data.notes) parts.push(`Notes: ${data.notes}`);
-
-  return parts.join("\n");
+  return `${dayName}, ${dateStr} Catering - ${location}`;
 }
 
 async function findOrCreateCustomer(data: {
@@ -125,7 +138,7 @@ export async function createDraftInvoice(
     phone: data.contactPhone,
   });
 
-  // 2. Build line items using catalog items
+  // 2. Build line items
   type LineItem = {
     catalogObjectId?: string;
     name?: string;
@@ -135,108 +148,126 @@ export async function createDraftInvoice(
   };
   const lineItems: LineItem[] = [];
 
-  // Base catering per person
-  const proteinDescriptions: string[] = [];
-  for (const item of data.items) {
-    if (item.quantity > 0) {
-      proteinDescriptions.push(`${item.itemName} x${item.quantity}`);
-    }
+  // Catering per person (base charge) with customer notes
+  const noteLines: string[] = [];
+  if (data.customizations?.noPeanuts) noteLines.push("No Peanuts");
+  if (data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut") {
+    noteLines.push(`Egg Roll Cut: ${data.customizations.eggRollCut}`);
   }
-
-  const baseNote = [
-    `${data.packageType} style`,
-    proteinDescriptions.length > 0 ? `Proteins: ${proteinDescriptions.join(", ")}` : null,
-    data.customizations?.bases?.length
-      ? `Bases: ${data.customizations.bases.map((b) => `${b.name} x${b.quantity}`).join(", ")}`
-      : null,
-    data.customizations?.sides?.length
-      ? `Sides: ${data.customizations.sides.map((s) => `${s.name} x${s.quantity}`).join(", ")}`
-      : null,
-    data.customizations?.noPeanuts ? "No Peanuts" : null,
-    data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut"
-      ? `Egg Roll Cut: ${data.customizations.eggRollCut}`
-      : null,
-  ].filter(Boolean).join(" | ");
+  if (data.customizations?.utensils) {
+    const selected = Object.entries(data.customizations.utensils)
+      .filter(([, v]) => v)
+      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+    if (selected.length > 0) noteLines.push(`Utensils: ${selected.join(", ")}`);
+  }
+  if (data.notes) noteLines.push(data.notes);
 
   lineItems.push({
-    catalogObjectId: CATALOG.cateringPerPerson,
+    catalogObjectId: CAT.cateringPerPerson,
     quantity: String(data.guestCount),
-    note: baseNote || undefined,
+    note: noteLines.length > 0 ? noteLines.join(" | ") : undefined,
   });
 
-  // Protein upcharges (per person with that protein)
+  // Proteins (each listed separately at their price — $0 for free, upcharge for premium)
   for (const item of data.items) {
-    const protein = PROTEINS.find((p) => p.name === item.itemName);
-    const catalogId = PROTEIN_UPCHARGE_MAP[item.itemName];
-    if (protein && protein.upcharge > 0 && item.quantity > 0 && catalogId) {
+    if (item.quantity <= 0) continue;
+    const catId = PROTEIN_CATALOG[item.itemName];
+    if (catId) {
       lineItems.push({
-        catalogObjectId: catalogId,
+        catalogObjectId: catId,
         quantity: String(item.quantity),
       });
-    } else if (protein && protein.upcharge > 0 && item.quantity > 0) {
-      // Fallback for proteins without a catalog item
+    } else {
+      // Fallback for unknown proteins
       lineItems.push({
-        name: `${item.itemName} Upcharge`,
+        name: `Catering - ${item.itemName}`,
         quantity: String(item.quantity),
-        basePriceMoney: {
-          amount: BigInt(protein.upcharge),
-          currency: "USD",
-        },
+        basePriceMoney: { amount: BigInt(item.unitPrice ?? 0), currency: "USD" },
       });
     }
   }
 
-  // Big Up surcharge
-  if (data.customizations?.bigUpActive) {
-    lineItems.push({
-      catalogObjectId: CATALOG.bigUp,
-      quantity: String(data.guestCount),
-    });
+  // Bases as half/full trays (buffet style: 10 = half tray, 20 = full tray)
+  if (data.customizations?.bases?.length && data.packageType === "buffet") {
+    for (const base of data.customizations.bases) {
+      if (base.quantity <= 0) continue;
+      const trayIds = BASE_TRAY_CATALOG[base.name];
+      if (!trayIds) continue;
+
+      const fullTrays = Math.floor(base.quantity / 20);
+      const remaining = base.quantity % 20;
+      const halfTrays = Math.ceil(remaining / 10);
+
+      if (fullTrays > 0) {
+        lineItems.push({ catalogObjectId: trayIds.full, quantity: String(fullTrays) });
+      }
+      if (halfTrays > 0) {
+        lineItems.push({ catalogObjectId: trayIds.half, quantity: String(halfTrays) });
+      }
+    }
   }
 
-  // Extra protein servings (beyond baseline)
+  // Sides (listed at $0)
+  if (data.customizations?.sides?.length) {
+    for (const side of data.customizations.sides) {
+      if (side.quantity <= 0) continue;
+      const catId = SIDE_CATALOG[side.name];
+      if (catId) {
+        lineItems.push({ catalogObjectId: catId, quantity: String(side.quantity) });
+      } else {
+        lineItems.push({
+          name: `Catering - ${side.name}`,
+          quantity: String(side.quantity),
+          basePriceMoney: { amount: BigInt(0), currency: "USD" },
+        });
+      }
+    }
+  }
+
+  // Big Up surcharge ($4/person)
+  if (data.customizations?.bigUpActive) {
+    lineItems.push({ catalogObjectId: CAT.bigUp, quantity: String(data.guestCount) });
+  }
+
+  // Extra protein servings
   const totalProtein = data.items.reduce((s, i) => s + i.quantity, 0);
   const proteinBaseline = data.customizations?.bigUpActive
     ? Math.ceil(1.5 * data.guestCount)
     : data.guestCount;
   const extraProteinCount = Math.max(0, totalProtein - proteinBaseline);
   if (extraProteinCount > 0) {
-    lineItems.push({
-      catalogObjectId: CATALOG.extraProtein,
-      quantity: String(extraProteinCount),
-    });
+    lineItems.push({ catalogObjectId: CAT.extraProtein, quantity: String(extraProteinCount) });
   }
 
-  // Extra side servings (beyond baseline, buffet only)
+  // Extra side servings
   if (data.customizations?.sides?.length) {
     const totalSides = data.customizations.sides.reduce((s, sd) => s + sd.quantity, 0);
     const extraSideCount = Math.max(0, totalSides - data.guestCount);
     if (extraSideCount > 0) {
-      lineItems.push({
-        catalogObjectId: CATALOG.extraSide,
-        quantity: String(extraSideCount),
-      });
+      lineItems.push({ catalogObjectId: CAT.extraSide, quantity: String(extraSideCount) });
     }
   }
 
-  // Delivery fee (variable pricing)
-  if (data.deliveryFee > 0) {
+  // Delivery fee (calculated from distance)
+  const deliveryFeeAmount = data.deliveryDistance
+    ? getDeliveryFee(data.deliveryDistance)
+    : data.deliveryFee > 0 ? data.deliveryFee : null;
+
+  if (deliveryFeeAmount && deliveryFeeAmount > 0) {
     lineItems.push({
-      catalogObjectId: CATALOG.deliveryFee,
+      catalogObjectId: CAT.deliveryFee,
       quantity: "1",
-      basePriceMoney: {
-        amount: BigInt(data.deliveryFee),
-        currency: "USD",
-      },
+      basePriceMoney: { amount: BigInt(deliveryFeeAmount), currency: "USD" },
     });
   }
 
-  // 3. Create Square order
+  // 3. Create Square order with auto-apply taxes
   const orderResult = await square.orders.create({
     order: {
       locationId: LOCATION_ID,
       customerId,
       lineItems,
+      pricingOptions: { autoApplyTaxes: true },
       metadata: {
         source: "catering_inquiry",
         guestCount: String(data.guestCount),
@@ -247,25 +278,21 @@ export async function createDraftInvoice(
   });
 
   const orderId = orderResult.order!.id!;
-  const orderNote = buildOrderNote(data);
 
   // 4. Create draft invoice
+  const title = formatInvoiceTitle(data);
   const invoiceResult = await square.invoices.create({
     invoice: {
       orderId,
       locationId: LOCATION_ID,
-      primaryRecipient: {
-        customerId,
-      },
-      paymentRequests: [
-        {
-          requestType: "BALANCE",
-          dueDate: data.eventDate,
-        },
-      ],
+      primaryRecipient: { customerId },
+      paymentRequests: [{
+        requestType: "BALANCE",
+        dueDate: data.eventDate,
+      }],
       deliveryMethod: "EMAIL",
-      title: `Vietnoms Catering - ${data.packageType} (${data.guestCount} guests)`,
-      description: orderNote,
+      title,
+      description: "Thanks for picking Vietnoms to cater for you. We hope we can cater again for you soon!",
       acceptedPaymentMethods: {
         card: true,
         bankAccount: false,
@@ -278,10 +305,7 @@ export async function createDraftInvoice(
   });
 
   const invoiceId = invoiceResult.invoice!.id!;
-
-  console.log(
-    `Draft invoice created: invoiceId=${invoiceId}, orderId=${orderId}, customerId=${customerId}`
-  );
+  console.log(`Draft invoice created: invoiceId=${invoiceId}, orderId=${orderId}, customerId=${customerId}`);
 
   return { invoiceId, orderId, customerId };
 }

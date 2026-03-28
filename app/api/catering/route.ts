@@ -93,7 +93,7 @@ export async function POST(request: Request) {
       customizations: customizations ?? undefined,
     }).catch((err) => console.error("Failed to send catering inquiry emails:", err));
 
-    // Create draft Square invoice (non-blocking)
+    // Create draft Square invoice (non-blocking) and store invoice ID
     createDraftInvoice({
       contactName,
       contactEmail,
@@ -104,8 +104,14 @@ export async function POST(request: Request) {
       totalAmount,
       items: items || [],
       deliveryFee: deliveryFee ?? 0,
+      deliveryDistance: deliveryDistance,
+      deliveryAddress: deliveryAddress,
+      deliveryType: deliveryType || "pickup",
       notes,
       customizations: customizations ?? undefined,
+    }).then(async (result) => {
+      const { updateCateringInvoiceId } = await import("@/lib/db/catering");
+      await updateCateringInvoiceId(id, result.invoiceId);
     }).catch((err) => console.error("Failed to create draft invoice:", err));
 
     return NextResponse.json({ success: true, id });

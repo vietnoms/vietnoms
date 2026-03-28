@@ -56,6 +56,9 @@ export async function POST(
         unitPrice: i.unitPrice,
       })),
       deliveryFee: req.deliveryFee ?? 0,
+      deliveryDistance: req.deliveryDistance,
+      deliveryAddress: req.deliveryAddress,
+      deliveryType: req.deliveryType,
       notes: req.notes,
       customizations,
     });
