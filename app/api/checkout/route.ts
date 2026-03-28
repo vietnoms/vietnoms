@@ -182,8 +182,8 @@ export async function POST(request: Request) {
 
     // Generate stable idempotency keys from request data to prevent duplicates on retry
     const idempotencySeed = `${customerInfo.phone}-${customerInfo.name}-${paymentToken.slice(0, 16)}-${lineItems.length}`;
-    const orderIdempotencyKey = crypto.createHash("sha256").update(`order-${idempotencySeed}`).digest("hex");
-    const paymentIdempotencyKey = crypto.createHash("sha256").update(`payment-${idempotencySeed}`).digest("hex");
+    const orderIdempotencyKey = crypto.createHash("sha256").update(`order-${idempotencySeed}`).digest("hex").slice(0, 45);
+    const paymentIdempotencyKey = crypto.createHash("sha256").update(`payment-${idempotencySeed}`).digest("hex").slice(0, 45);
 
     // Log purchase attempt
     const { id: purchaseId } = await createPurchase({

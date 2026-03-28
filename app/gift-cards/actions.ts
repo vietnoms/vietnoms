@@ -121,7 +121,7 @@ export async function createGiftCard(
 
     // 2. Create the gift card
     const gcResponse = await square.giftCards.create({
-      idempotencyKey: `gc-create-${idempotencyKey}`,
+      idempotencyKey: `gc-c-${idempotencyKey}`.slice(0, 45),
       locationId: LOCATION_ID,
       giftCard: { type: "DIGITAL" },
     });
@@ -138,7 +138,7 @@ export async function createGiftCard(
     // 3. Process payment
     const paymentResponse = await square.payments.create({
       sourceId: paymentToken,
-      idempotencyKey: `gc-pay-${idempotencyKey}`,
+      idempotencyKey: `gc-p-${idempotencyKey}`.slice(0, 45),
       amountMoney: {
         amount: BigInt(data.amount),
         currency: "USD",
@@ -160,7 +160,7 @@ export async function createGiftCard(
     // 4. Activate the gift card
     try {
       await square.giftCards.activities.create({
-        idempotencyKey: `gc-activate-${idempotencyKey}`,
+        idempotencyKey: `gc-a-${idempotencyKey}`.slice(0, 45),
         giftCardActivity: {
           giftCardId,
           type: "ACTIVATE",
@@ -178,7 +178,7 @@ export async function createGiftCard(
 
       try {
         await square.refunds.refundPayment({
-          idempotencyKey: `gc-refund-${idempotencyKey}`,
+          idempotencyKey: `gc-r-${idempotencyKey}`.slice(0, 45),
           paymentId,
           amountMoney: {
             amount: BigInt(data.amount),
@@ -353,7 +353,7 @@ export async function contributeToGiftCard(data: {
     // Process payment
     const paymentResponse = await square.payments.create({
       sourceId: data.paymentToken,
-      idempotencyKey: `gc-contrib-pay-${data.idempotencyKey}`,
+      idempotencyKey: `gcp-${data.idempotencyKey}`.slice(0, 45),
       amountMoney: {
         amount: BigInt(data.amount),
         currency: "USD",
@@ -372,7 +372,7 @@ export async function contributeToGiftCard(data: {
     // Load funds onto the gift card
     try {
       await square.giftCards.activities.create({
-        idempotencyKey: `gc-contrib-load-${data.idempotencyKey}`,
+        idempotencyKey: `gcl-${data.idempotencyKey}`.slice(0, 45),
         giftCardActivity: {
           giftCardId: contribution.giftCardId,
           type: "LOAD",
@@ -390,7 +390,7 @@ export async function contributeToGiftCard(data: {
 
       try {
         await square.refunds.refundPayment({
-          idempotencyKey: `gc-contrib-refund-${data.idempotencyKey}`,
+          idempotencyKey: `gcr-${data.idempotencyKey}`.slice(0, 45),
           paymentId,
           amountMoney: {
             amount: BigInt(data.amount),
