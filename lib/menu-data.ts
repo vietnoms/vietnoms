@@ -156,13 +156,14 @@ export const getMenuItems = unstable_cache(
         }
       }
 
-      // Also check sold_out overrides from variations
-      for (const { obj, variations } of rawItems) {
-        const hasOverride = (variations as any[]).some(
-          (v: any) => v._soldOutOverride
-        );
-        if (hasOverride) {
-          soldOutItemIds.add(obj.id!);
+      // Build per-variation sold-out map
+      const variationSoldOutMap = new Map<string, boolean>();
+      for (const { variations } of rawItems) {
+        for (const v of variations as any[]) {
+          const stock = variationStockMap.get(v.id);
+          const overrideSoldOut = !!v._soldOutOverride;
+          const inventorySoldOut = stock !== null && stock !== undefined && stock <= 0;
+          variationSoldOutMap.set(v.id, overrideSoldOut || inventorySoldOut);
         }
       }
 
@@ -185,11 +186,13 @@ export const getMenuItems = unstable_cache(
           ({ _soldOutOverride, ...v }: any) => ({
             ...v,
             stockQuantity: variationStockMap.get(v.id) ?? null,
+            soldOut: variationSoldOutMap.get(v.id) ?? false,
           } as MenuVariation)
         );
         const basePrice = cleanVariations[0]?.price || 0;
         const imageId = item.imageIds?.[0];
-        const soldOut = soldOutItemIds.has(obj.id!);
+        // Item is only sold out if ALL variations are sold out
+        const soldOut = cleanVariations.length > 0 && cleanVariations.every((v) => v.soldOut);
 
         // Look up modifier lists for this item
         const itemModifierLists: ModifierList[] = [];

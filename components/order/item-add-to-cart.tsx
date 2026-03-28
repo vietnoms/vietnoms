@@ -18,7 +18,7 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
   const router = useRouter();
 
   const [selectedVariationId, setSelectedVariationId] = useState(
-    item.variations[0]?.id || ""
+    (item.variations.find((v) => !v.soldOut) || item.variations[0])?.id || ""
   );
   const [selectedModifiers, setSelectedModifiers] = useState<
     Record<string, Set<string>>
@@ -165,16 +165,21 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
               <button
                 key={v.id}
                 onClick={() => {
-                  setSelectedVariationId(v.id);
-                  onVariationChange?.(v.id);
+                  if (!v.soldOut) {
+                    setSelectedVariationId(v.id);
+                    onVariationChange?.(v.id);
+                  }
                 }}
+                disabled={v.soldOut}
                 className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-                  selectedVariationId === v.id
-                    ? "border-brand-red bg-brand-red/5 text-brand-red"
-                    : "border-gray-600 text-gray-300 hover:border-gray-300"
+                  v.soldOut
+                    ? "border-gray-700 text-gray-600 line-through cursor-not-allowed"
+                    : selectedVariationId === v.id
+                      ? "border-brand-red bg-brand-red/5 text-brand-red"
+                      : "border-gray-600 text-gray-300 hover:border-gray-300"
                 }`}
               >
-                {v.name} &mdash; {v.formattedPrice}
+                {v.name} &mdash; {v.soldOut ? "Sold Out" : v.formattedPrice}
               </button>
             ))}
           </div>

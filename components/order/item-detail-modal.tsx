@@ -77,7 +77,8 @@ export function ItemDetailModal({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (item) {
-      setSelectedVariationId(item.variations[0]?.id || "");
+      const firstAvailable = item.variations.find((v) => !v.soldOut);
+      setSelectedVariationId(firstAvailable?.id || item.variations[0]?.id || "");
       setSelectedModifiers({});
       setQuantity(1);
       setAdded(false);
@@ -323,14 +324,17 @@ export function ItemDetailModal({
                 {item.variations.map((v) => (
                   <button
                     key={v.id}
-                    onClick={() => setSelectedVariationId(v.id)}
+                    onClick={() => !v.soldOut && setSelectedVariationId(v.id)}
+                    disabled={v.soldOut}
                     className={`px-4 py-2 rounded-full border text-sm font-medium transition-colors ${
-                      selectedVariationId === v.id
-                        ? "border-brand-red bg-brand-red/5 text-brand-red"
-                        : "border-gray-600 text-gray-300 hover:border-gray-300"
+                      v.soldOut
+                        ? "border-gray-700 text-gray-600 line-through cursor-not-allowed"
+                        : selectedVariationId === v.id
+                          ? "border-brand-red bg-brand-red/5 text-brand-red"
+                          : "border-gray-600 text-gray-300 hover:border-gray-300"
                     }`}
                   >
-                    {v.name} &mdash; {v.formattedPrice}
+                    {v.name} &mdash; {v.soldOut ? "Sold Out" : v.formattedPrice}
                   </button>
                 ))}
               </div>

@@ -264,6 +264,17 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                             </p>
                           )}
 
+                          {/* Variation names (flavors) for multi-variation items */}
+                          {item.variations.length > 1 && (
+                            <p className="text-xs mt-0.5 line-clamp-1">
+                              {item.variations.map((v, vi) => (
+                                <span key={v.id} className={v.soldOut ? "text-gray-600 line-through" : "text-gray-400"}>
+                                  {v.name}{vi < item.variations.length - 1 ? ", " : ""}
+                                </span>
+                              ))}
+                            </p>
+                          )}
+
                           {/* Stats row: badges + rating + likes */}
                           <div className="flex items-center gap-2 mt-1">
                             {item.dietaryLabels.map((label) => (
