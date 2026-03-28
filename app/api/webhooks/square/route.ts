@@ -36,15 +36,19 @@ export async function POST(request: NextRequest) {
   try {
     const event = JSON.parse(body);
 
-    // Handle catalog updates — revalidate menu data
+    console.log(`Square webhook received: type=${event.type}`);
+
+    // Handle catalog and inventory updates — revalidate menu data
     if (
       event.type === "catalog.version.updated" ||
       event.type === "inventory.count.updated"
     ) {
       revalidateTag("menu");
+      console.log("Menu cache revalidated via webhook");
       return NextResponse.json({ ok: true, revalidated: true });
     }
 
+    console.log(`Webhook ignored: ${event.type}`);
     return NextResponse.json({ ok: true, ignored: true });
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });

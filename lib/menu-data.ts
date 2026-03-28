@@ -128,7 +128,6 @@ export const getMenuItems = unstable_cache(
           const countsPage = await square.inventory.batchGetCounts({
             catalogObjectIds: allVariationIds,
             locationIds: [LOCATION_ID],
-            states: ["IN_STOCK"],
           });
 
           // Build a set of variation IDs that have inventory tracked and are at 0
@@ -230,7 +229,7 @@ export const getMenuItems = unstable_cache(
     }
   },
   ["menu-items-v3"],
-  { tags: ["menu"], revalidate: 3600 }
+  { tags: ["menu"], revalidate: 300 }
 );
 
 /**
@@ -271,7 +270,7 @@ export const getMenuCategories = unstable_cache(
     }
   },
   ["menu-categories-v3"],
-  { tags: ["menu"], revalidate: 3600 }
+  { tags: ["menu"], revalidate: 300 }
 );
 
 /**
