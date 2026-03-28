@@ -71,10 +71,12 @@ export async function POST(
       invoiceId: result.invoiceId,
       orderId: result.orderId,
     });
-  } catch (error) {
-    console.error("Failed to create invoice:", error);
+  } catch (error: any) {
+    const sqErrors = error?.errors || error?.body?.errors;
+    const detail = sqErrors?.[0]?.detail || error?.message || String(error);
+    console.error("Failed to create invoice:", detail, JSON.stringify(sqErrors || error));
     return NextResponse.json(
-      { error: "Failed to create invoice" },
+      { error: `Failed to create invoice: ${detail}` },
       { status: 500 }
     );
   }

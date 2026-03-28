@@ -4,28 +4,28 @@ import { getDeliveryFee } from "./catering-pricing";
 
 // Square catalog variation IDs for catering items
 const CAT = {
-  // Base
+  // Base charge
   cateringPerPerson: "HEH3EO77DNTOZAVXUHCVRF3A", // $20.00
 
-  // Proteins (free ones at $0, upcharge ones at their price)
-  lemongrassChicken: "M6UFOEYPKT3KJ4YD2H6MHCTB", // $0
-  lemongrassPork: "64BQBSU6ACX4WLGTSWIEUKLW",     // $0
-  redHotBeef: "3FZDEAN54FMPTBT2D422CBBT",          // $1.00
-  grilledShrimp: "VIJAJGVDK5JVBV37BW6CV4ZG",       // $2.50
-  stirFriedTofu: "I4W7TJRQDMFQKDPX4MCYDMWY",      // $0
+  // Proteins (variations under "Catering - Protein")
+  lemongrassChicken: "OWOB32R52VVOXIV5VK2M3TYK", // $0
+  lemongrassPork: "2UJ64DAJTMVGHSM2XJUUIUCL",    // $0
+  redHotBeef: "IDR6GKQRB7YDPSMSGM6G4M2P",         // $1.00
+  grilledShrimp: "IKWETMTHSYVMBCEJE7QYIUP4",      // $2.50
+  stirFriedTofu: "Q62P4KPCFVAHYCPSMJK47AHA",      // $0
 
-  // Bases (half/full trays, $0)
-  halfTrayRice: "EPNP3R77J4PC2MA4VZ54SI2I",
-  fullTrayRice: "EAZYUXZJSQMXAMJ4RYABKMIT",
-  halfTrayVermicelli: "6R2V4SGHCREFUZMYDT563TTD",
-  fullTrayVermicelli: "PSGUEMEA5ZPOWSKFHGI4QOFG",
-  halfTraySlaw: "OXKQBY3OPBJDKSLO7GCLSE6Y",
-  fullTraySlaw: "WWYUOWC3LER2BRE7UFL3DZTK",
+  // Bases (variations under "Catering - Base Tray")
+  halfTrayRice: "DVA7YLH76GEYPL4MWXKXXWIC",
+  fullTrayRice: "IKM7M72HPIZCCX2HYNTXMCGJ",
+  halfTrayVermicelli: "7QGH45CD6N2W57U7T6TCP3EX",
+  fullTrayVermicelli: "6CIQ2GJQOFWLDUGKQU2VZYO2",
+  halfTraySlaw: "N5SDS7VW2NYLP5E4UCXK5QXV",
+  fullTraySlaw: "UR7VTP2UGYD5Y2O7Y6ZX5BR5",
 
-  // Sides ($0)
-  shreddedPork: "DW54NALP2E4BURMDDKYYLHWM",
-  porkShrimpEggRoll: "P5RXK7F4RADKO5FXQVFQEK7L",
-  veganEggRoll: "PF6AW2YNK6KPFANQWAHWI7ZL",
+  // Sides (variations under "Catering - Side")
+  shreddedPork: "RELZ3LXM65EOGYMY6DA6R5RB",
+  porkShrimpEggRoll: "DCFYVY7LVIR65YUK5DMV6XMI",
+  veganEggRoll: "NXUXORLABFJTIY45AG2X6MCV",
 
   // Surcharges
   bigUp: "Q4UFIOE53WKVYUONJVKL2MK2",              // $4.00
@@ -34,7 +34,8 @@ const CAT = {
   deliveryFee: "36UE7H2ZZ37JXWD5NLNKMLK5",          // variable
 };
 
-// Map protein names to catalog variation IDs
+const SALES_TAX_ID = "KR7SC5SER26A2DI2QS36KSRN"; // 9.375%
+
 const PROTEIN_CATALOG: Record<string, string> = {
   "Lemongrass Chicken": CAT.lemongrassChicken,
   "Lemongrass Pork": CAT.lemongrassPork,
@@ -43,14 +44,12 @@ const PROTEIN_CATALOG: Record<string, string> = {
   "Stir-fried Tofu": CAT.stirFriedTofu,
 };
 
-// Map side names to catalog variation IDs
 const SIDE_CATALOG: Record<string, string> = {
   "Shredded Pork": CAT.shreddedPork,
   "Pork & Shrimp Egg Roll": CAT.porkShrimpEggRoll,
   "Vegan Egg Roll": CAT.veganEggRoll,
 };
 
-// Map base names to half/full tray catalog IDs
 const BASE_TRAY_CATALOG: Record<string, { half: string; full: string }> = {
   "Rice": { half: CAT.halfTrayRice, full: CAT.fullTrayRice },
   "Vermicelli Noodles": { half: CAT.halfTrayVermicelli, full: CAT.fullTrayVermicelli },
@@ -168,17 +167,13 @@ export async function createDraftInvoice(
     note: noteLines.length > 0 ? noteLines.join(" | ") : undefined,
   });
 
-  // Proteins (each listed separately at their price — $0 for free, upcharge for premium)
+  // Proteins
   for (const item of data.items) {
     if (item.quantity <= 0) continue;
     const catId = PROTEIN_CATALOG[item.itemName];
     if (catId) {
-      lineItems.push({
-        catalogObjectId: catId,
-        quantity: String(item.quantity),
-      });
+      lineItems.push({ catalogObjectId: catId, quantity: String(item.quantity) });
     } else {
-      // Fallback for unknown proteins
       lineItems.push({
         name: `Catering - ${item.itemName}`,
         quantity: String(item.quantity),
@@ -187,7 +182,7 @@ export async function createDraftInvoice(
     }
   }
 
-  // Bases as half/full trays (buffet style: 10 = half tray, 20 = full tray)
+  // Bases as half/full trays (buffet: 10 = half tray, 20 = full tray)
   if (data.customizations?.bases?.length && data.packageType === "buffet") {
     for (const base of data.customizations.bases) {
       if (base.quantity <= 0) continue;
@@ -196,7 +191,7 @@ export async function createDraftInvoice(
 
       const fullTrays = Math.floor(base.quantity / 20);
       const remaining = base.quantity % 20;
-      const halfTrays = Math.ceil(remaining / 10);
+      const halfTrays = remaining > 0 ? 1 : 0;
 
       if (fullTrays > 0) {
         lineItems.push({ catalogObjectId: trayIds.full, quantity: String(fullTrays) });
@@ -207,24 +202,18 @@ export async function createDraftInvoice(
     }
   }
 
-  // Sides (listed at $0)
+  // Sides
   if (data.customizations?.sides?.length) {
     for (const side of data.customizations.sides) {
       if (side.quantity <= 0) continue;
       const catId = SIDE_CATALOG[side.name];
       if (catId) {
         lineItems.push({ catalogObjectId: catId, quantity: String(side.quantity) });
-      } else {
-        lineItems.push({
-          name: `Catering - ${side.name}`,
-          quantity: String(side.quantity),
-          basePriceMoney: { amount: BigInt(0), currency: "USD" },
-        });
       }
     }
   }
 
-  // Big Up surcharge ($4/person)
+  // Big Up surcharge
   if (data.customizations?.bigUpActive) {
     lineItems.push({ catalogObjectId: CAT.bigUp, quantity: String(data.guestCount) });
   }
@@ -248,12 +237,19 @@ export async function createDraftInvoice(
     }
   }
 
-  // Delivery fee (calculated from distance)
-  const deliveryFeeAmount = data.deliveryDistance
-    ? getDeliveryFee(data.deliveryDistance)
-    : data.deliveryFee > 0 ? data.deliveryFee : null;
+  // Delivery fee
+  let deliveryFeeAmount = 0;
+  if (data.deliveryType === "delivery") {
+    if (data.deliveryDistance) {
+      const calculated = getDeliveryFee(data.deliveryDistance);
+      deliveryFeeAmount = calculated ?? 2000; // $20 min for over-max distance
+    }
+    if (!deliveryFeeAmount && data.deliveryFee > 0) {
+      deliveryFeeAmount = data.deliveryFee;
+    }
+  }
 
-  if (deliveryFeeAmount && deliveryFeeAmount > 0) {
+  if (deliveryFeeAmount > 0) {
     lineItems.push({
       catalogObjectId: CAT.deliveryFee,
       quantity: "1",
@@ -261,13 +257,16 @@ export async function createDraftInvoice(
     });
   }
 
-  // 3. Create Square order with auto-apply taxes
+  // 3. Create Square order with tax applied via catalog tax_ids
   const orderResult = await square.orders.create({
     order: {
       locationId: LOCATION_ID,
       customerId,
       lineItems,
-      pricingOptions: { autoApplyTaxes: true },
+      taxes: [{
+        catalogObjectId: SALES_TAX_ID,
+        scope: "ORDER",
+      }],
       metadata: {
         source: "catering_inquiry",
         guestCount: String(data.guestCount),

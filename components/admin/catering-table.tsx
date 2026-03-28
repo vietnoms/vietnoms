@@ -93,6 +93,15 @@ export function CateringTable() {
     fetchRequests();
   }, [fetchRequests]);
 
+  // Auto-fetch invoice status for all orders with invoices
+  useEffect(() => {
+    for (const req of requests) {
+      if (req.squareInvoiceId && !invoiceInfo[req.id]) {
+        fetchInvoiceStatus(req.id);
+      }
+    }
+  }, [requests]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const toggleExpand = async (id: number) => {
     if (expandedId === id) {
       setExpandedId(null);
@@ -195,13 +204,14 @@ export function CateringTable() {
       ) : (
         <div className="space-y-2">
           {/* Header */}
-          <div className="hidden md:grid grid-cols-8 gap-4 px-4 py-2 text-xs font-semibold text-gray-400 uppercase">
+          <div className="hidden md:grid grid-cols-9 gap-4 px-4 py-2 text-xs font-semibold text-gray-400 uppercase">
             <div>Status</div>
             <div>Contact</div>
             <div>Event Date</div>
             <div>Guests</div>
             <div>Package</div>
             <div>Total</div>
+            <div>Invoice</div>
             <div>Created</div>
             <div>Actions</div>
           </div>
@@ -212,7 +222,7 @@ export function CateringTable() {
                 {/* Row */}
                 <button
                   onClick={() => toggleExpand(req.id)}
-                  className="w-full text-left px-4 py-3 grid grid-cols-2 md:grid-cols-8 gap-4 items-center hover:bg-surface-alt/50 transition-colors"
+                  className="w-full text-left px-4 py-3 grid grid-cols-2 md:grid-cols-9 gap-4 items-center hover:bg-surface-alt/50 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <Badge
@@ -236,6 +246,24 @@ export function CateringTable() {
                     {req.totalAmount != null
                       ? formatMoney(req.totalAmount)
                       : "—"}
+                  </div>
+                  <div className="text-xs" onClick={(e) => e.stopPropagation()}>
+                    {invoiceInfo[req.id]?.publicUrl ? (
+                      <a
+                        href={invoiceInfo[req.id].publicUrl!}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-brand-red hover:underline"
+                      >
+                        {invoiceInfo[req.id].status === "PAID" ? "Paid" :
+                         invoiceInfo[req.id].status === "SENT" || invoiceInfo[req.id].status === "PUBLISHED" ? "Sent" :
+                         "Draft"}
+                      </a>
+                    ) : req.squareInvoiceId ? (
+                      <span className="text-yellow-400">Draft</span>
+                    ) : (
+                      <span className="text-gray-600">—</span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-500">
                     {new Date(req.createdAt).toLocaleDateString()}
