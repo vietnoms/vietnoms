@@ -249,23 +249,34 @@ export async function createDraftInvoice(
     }
   }
 
+  // Apply tax to all line items so far (before delivery fee)
+  const taxUid = "catering-sales-tax";
+  const taxableItems = lineItems.map((item, i) => ({
+    ...item,
+    uid: `item-${i}`,
+    appliedTaxes: [{ taxUid }],
+  }));
+
+  // Delivery fee (NOT taxed — added separately without appliedTaxes)
   if (deliveryFeeAmount > 0) {
-    lineItems.push({
+    taxableItems.push({
       catalogObjectId: CAT.deliveryFee,
       quantity: "1",
       basePriceMoney: { amount: BigInt(deliveryFeeAmount), currency: "USD" },
-    });
+      uid: `item-delivery`,
+    } as typeof taxableItems[number]);
   }
 
-  // 3. Create Square order with tax applied via catalog tax_ids
+  // 3. Create Square order with line-item-level tax (excludes delivery fee)
   const orderResult = await square.orders.create({
     order: {
       locationId: LOCATION_ID,
       customerId,
-      lineItems,
+      lineItems: taxableItems,
       taxes: [{
+        uid: taxUid,
         catalogObjectId: SALES_TAX_ID,
-        scope: "ORDER",
+        scope: "LINE_ITEM",
       }],
       metadata: {
         source: "catering_inquiry",
@@ -280,6 +291,17 @@ export async function createDraftInvoice(
 
   // 4. Create draft invoice
   const title = formatInvoiceTitle(data);
+
+  // Due date: 1 week before event, or upon receipt if under 1 week away
+  const eventMs = new Date(data.eventDate + "T00:00:00").getTime();
+  const oneWeekMs = 7 * 24 * 60 * 60 * 1000;
+  const oneWeekBefore = new Date(eventMs - oneWeekMs);
+  const now = new Date();
+  const isUnderOneWeek = oneWeekBefore <= now;
+  const dueDate = isUnderOneWeek
+    ? new Date().toISOString().split("T")[0] // today (upon receipt)
+    : oneWeekBefore.toISOString().split("T")[0];
+
   const invoiceResult = await square.invoices.create({
     invoice: {
       orderId,
@@ -287,18 +309,22 @@ export async function createDraftInvoice(
       primaryRecipient: { customerId },
       paymentRequests: [{
         requestType: "BALANCE",
-        dueDate: data.eventDate,
+        dueDate,
+        tippingEnabled: true,
       }],
       deliveryMethod: "EMAIL",
       title,
       description: "Thanks for picking Vietnoms to cater for you. We hope we can cater again for you soon!",
       acceptedPaymentMethods: {
         card: true,
-        bankAccount: false,
-        squareGiftCard: false,
+        bankAccount: true,
+        squareGiftCard: true,
         buyNowPayLater: false,
         cashAppPay: true,
       },
+      storePaymentMethodEnabled: true,
+      scheduledAt: undefined,
+      saleOrServiceDate: data.eventDate,
     },
     idempotencyKey: randomUUID(),
   });
