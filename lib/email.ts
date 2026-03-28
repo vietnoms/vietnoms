@@ -6,8 +6,8 @@ function getResend() {
   return new Resend(key);
 }
 
-const FROM_CATERING = "Vietnoms Catering <catering@vietnoms.com>";
-const FROM_ORDERS = "Vietnoms <orders@vietnoms.com>";
+const FROM_CATERING = "Vietnoms Catering <catering@updates.vietnoms.com>";
+const FROM_ORDERS = "Vietnoms <orders@updates.vietnoms.com>";
 const ADMIN_EMAIL = "catering@vietnoms.com";
 
 interface CateringEmailData {
