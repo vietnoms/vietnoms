@@ -457,7 +457,9 @@ export function CheckoutForm() {
       setStep("success");
 
       setTimeout(() => {
-        router.push(`/order/confirmation?orderId=${data.orderId}`);
+        const params = new URLSearchParams({ orderId: data.orderId });
+        if (data.receiptUrl) params.set("receiptUrl", data.receiptUrl);
+        router.push(`/order/confirmation?${params}`);
       }, 3000);
     } catch (err) {
       setError(
@@ -871,7 +873,7 @@ export function CheckoutForm() {
               </div>
             </div>
 
-            {/* Marketing opt-in */}
+            {/* SMS consent (required for A2P 10DLC compliance) */}
             <div className="space-y-2 pt-1">
               <label className="flex items-start gap-2 cursor-pointer">
                 <input
@@ -879,9 +881,14 @@ export function CheckoutForm() {
                   checked={optInText}
                   onChange={(e) => setOptInText(e.target.checked)}
                   className="mt-0.5 accent-brand-red"
+                  required
                 />
                 <span className="text-sm text-gray-400">
-                  Opt-in to receive promos and special deals via text message
+                  I agree to receive SMS messages from Vietnoms regarding order updates and
+                  catering alerts. Message and data rates may apply. Reply STOP to opt out.{" "}
+                  <a href="/privacy" target="_blank" className="text-brand-red hover:underline">Privacy Policy</a>{" "}
+                  &amp;{" "}
+                  <a href="/terms" target="_blank" className="text-brand-red hover:underline">Terms</a>
                 </span>
               </label>
               <label className="flex items-start gap-2 cursor-pointer">

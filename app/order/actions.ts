@@ -42,6 +42,7 @@ export async function getOrderDetails(orderId: string) {
               recipientName:
                 pickupDetails.recipient?.displayName || "",
               pickupAt: pickupDetails.pickupAt || null,
+              scheduleType: pickupDetails.scheduleType || "ASAP",
               note: pickupDetails.note || null,
             }
           : null,

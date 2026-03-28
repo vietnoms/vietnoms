@@ -57,7 +57,7 @@ function getSquareErrorMessage(error: unknown): string {
 export async function POST(request: Request) {
   try {
     const body: CheckoutRequest = await request.json();
-    const { lineItems, customerInfo, paymentToken, rewardTierId, tipAmount, receiptPreference } = body;
+    const { lineItems, customerInfo, paymentToken, rewardTierId, tipAmount, receiptPreference, optInText, optInEmail } = body;
 
     if (!lineItems?.length) {
       return NextResponse.json({ error: "No items in order" }, { status: 400 });
@@ -148,36 +148,46 @@ export async function POST(request: Request) {
       }
     }
 
-    // Validate and build pickup time
+    // Validate and build pickup time (restaurant is in America/Los_Angeles)
+    const RESTAURANT_TZ = "America/Los_Angeles";
     let pickupAt: string | undefined;
     if (customerInfo.pickupTime) {
-      let date: Date;
-      if (customerInfo.pickupDate) {
-        const [year, month, day] = customerInfo.pickupDate.split("-").map(Number);
-        date = new Date(year, month - 1, day);
+      const dateStr = customerInfo.pickupDate || new Date().toLocaleDateString("en-CA", { timeZone: RESTAURANT_TZ });
+      const [year, month, day] = dateStr.split("-").map(Number);
 
-        // Backend validation: pickup date must be within allowed range
-        const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        const maxDate = new Date(today);
-        maxDate.setDate(maxDate.getDate() + MAX_ADVANCE_DAYS);
-        if (date < today) {
-          return NextResponse.json({ error: "Pickup date cannot be in the past" }, { status: 400 });
-        }
-        if (date > maxDate) {
-          return NextResponse.json({ error: `Pickup date cannot be more than ${MAX_ADVANCE_DAYS} days in advance` }, { status: 400 });
-        }
-      } else {
-        date = new Date();
+      // Backend validation: pickup date must be within allowed range
+      const nowInTz = new Date(new Date().toLocaleString("en-US", { timeZone: RESTAURANT_TZ }));
+      const todayInTz = new Date(nowInTz.getFullYear(), nowInTz.getMonth(), nowInTz.getDate());
+      const requestedDate = new Date(year, month - 1, day);
+      const maxDate = new Date(todayInTz);
+      maxDate.setDate(maxDate.getDate() + MAX_ADVANCE_DAYS);
+      if (requestedDate < todayInTz) {
+        return NextResponse.json({ error: "Pickup date cannot be in the past" }, { status: 400 });
       }
-      const [hours, minutes] = customerInfo.pickupTime.split(":");
-      date.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+      if (requestedDate > maxDate) {
+        return NextResponse.json({ error: `Pickup date cannot be more than ${MAX_ADVANCE_DAYS} days in advance` }, { status: 400 });
+      }
 
-      // Reject pickup times in the past instead of silently bumping
-      if (date < new Date()) {
+      // Build the pickup time in the restaurant's timezone, then convert to UTC
+      // Determine the UTC offset for this specific date in the restaurant timezone
+      const localIso = `${dateStr}T${customerInfo.pickupTime}:00`;
+      const offsetParts = new Intl.DateTimeFormat("en-US", {
+        timeZone: RESTAURANT_TZ,
+        timeZoneName: "shortOffset",
+      }).formatToParts(new Date(localIso));
+      const gmtOffset = offsetParts.find((p) => p.type === "timeZoneName")?.value || "GMT-7";
+      // Convert "GMT-7" → "-07:00", "GMT-8" → "-08:00"
+      const offsetMatch = gmtOffset.match(/GMT([+-])(\d+)/);
+      const tzOffset = offsetMatch
+        ? `${offsetMatch[1]}${offsetMatch[2].padStart(2, "0")}:00`
+        : "-07:00";
+      const pickupDate = new Date(`${localIso}${tzOffset}`);
+
+      // Reject pickup times in the past
+      if (pickupDate < new Date()) {
         return NextResponse.json({ error: "Pickup time has already passed. Please select a later time." }, { status: 400 });
       }
-      pickupAt = date.toISOString();
+      pickupAt = pickupDate.toISOString();
     }
 
     // Generate stable idempotency keys from request data to prevent duplicates on retry
@@ -224,6 +234,7 @@ export async function POST(request: Request) {
               },
             },
           ],
+          pricingOptions: { autoApplyTaxes: true },
           ...(customerId ? { customerId } : {}),
         },
         idempotencyKey: orderIdempotencyKey,
@@ -248,7 +259,7 @@ export async function POST(request: Request) {
         sourceId: paymentToken,
         idempotencyKey: paymentIdempotencyKey,
         amountMoney: {
-          amount: (order.totalMoney?.amount ?? BigInt(0)) + BigInt(tipAmount || 0),
+          amount: order.totalMoney?.amount ?? BigInt(0),
           currency: "USD",
         },
         ...(tipAmount ? {
@@ -306,10 +317,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Accumulate loyalty points (only if account already exists — no silent auto-enrollment)
+    // Accumulate loyalty points (auto-enrolls new customers if phone is available)
     if (customerId) {
       postPaymentTasks.push(
-        accumulateLoyaltyPoints(customerId, order.id).catch((err) =>
+        accumulateLoyaltyPoints(customerId, order.id, customerInfo.phone).catch((err) =>
           console.error("Loyalty points accumulation failed:", err)
         )
       );
@@ -332,14 +343,33 @@ export async function POST(request: Request) {
       );
     }
 
+    // Store SMS/email consent in local database
+    if (customerId && (optInText || optInEmail)) {
+      postPaymentTasks.push(
+        (async () => {
+          const { upsertCustomer } = await import("@/lib/db/customers");
+          await upsertCustomer({
+            id: customerId!,
+            phone: customerInfo.phone,
+            givenName: customerInfo.name.split(" ")[0],
+            familyName: customerInfo.name.split(" ").slice(1).join(" ") || undefined,
+            email: customerInfo.email || undefined,
+            smsOptIn: !!optInText,
+            emailOptIn: !!optInEmail,
+          });
+        })().catch((err) => console.error("Consent storage failed:", err))
+      );
+    }
+
     // Send receipt based on preference
     const receiptUrl = payment.receiptUrl;
     const totalStr = order.totalMoney?.amount
       ? `$${(Number(order.totalMoney.amount) / 100).toFixed(2)}`
       : "";
 
-    if (receiptUrl && receiptPreference) {
-      if ((receiptPreference === "email" || receiptPreference === "both") && customerInfo.email) {
+    if (receiptUrl) {
+      // Always send email receipt when email is provided
+      if (customerInfo.email) {
         postPaymentTasks.push(
           sendOrderReceiptLink({
             customerEmail: customerInfo.email,
@@ -349,23 +379,43 @@ export async function POST(request: Request) {
           }).catch((err) => console.error("Receipt email failed:", err))
         );
       }
+      // Send text receipt if preference includes text
       if ((receiptPreference === "text" || receiptPreference === "both") && customerInfo.phone) {
         postPaymentTasks.push(
           sendSms(
             customerInfo.phone,
             `Thanks for your Vietnoms order! Total: ${totalStr}. View your receipt: ${receiptUrl}`
-          ).catch((err) => console.error("Receipt SMS failed:", err))
+          ).then((result) => {
+            if (!result.success) console.error("Receipt SMS failed:", result.error);
+          }).catch((err) => console.error("Receipt SMS error:", err))
         );
       }
     }
 
-    // Fire all post-payment tasks without blocking response
-    Promise.all(postPaymentTasks).catch(() => {});
+    // Await post-payment tasks before returning (prevents Vercel from killing in-flight tasks)
+    await Promise.all(postPaymentTasks).catch((err) =>
+      console.error("Post-payment tasks error:", err)
+    );
+
+    // Store receipt URL and tip in purchase metadata
+    {
+      const meta: Record<string, unknown> = {};
+      if (receiptUrl) meta.receiptUrl = receiptUrl;
+      if (tipAmount) meta.tipAmount = tipAmount;
+      if (Object.keys(meta).length > 0) {
+        const db = (await import("@/lib/turso")).getTurso();
+        await db.execute({
+          sql: `UPDATE purchases SET metadata = ? WHERE id = ?`,
+          args: [JSON.stringify(meta), purchaseId],
+        }).catch((err) => console.error("Failed to store purchase metadata:", err));
+      }
+    }
 
     return NextResponse.json({
       success: true,
       orderId: order.id,
       paymentId: payment.id,
+      receiptUrl: receiptUrl || null,
     });
   } catch (error) {
     console.error("Checkout error:", error);

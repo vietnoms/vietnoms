@@ -52,12 +52,10 @@ export default function TermsPage() {
 
         <h2>SMS / Text Messages</h2>
         <p>
-          By providing your phone number, you consent to receive one-time text
-          messages from {RESTAURANT.name} for identity verification (OTP codes)
-          and gift card delivery. Message and data rates may apply. Message
-          frequency varies based on your activity. You may opt out at any time
-          by replying <strong>STOP</strong> to any message or contacting us at{" "}
-          {RESTAURANT.phone}.
+          By providing your phone number and opting in, you agree to receive
+          text messages from Vietnoms. Message and data rates may apply. Message
+          frequency varies based on your order activity. You can reply STOP at
+          any time to cancel, or HELP for customer support.
         </p>
 
         <h2>Gift Cards</h2>

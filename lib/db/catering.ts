@@ -38,6 +38,8 @@ export async function ensureCateringTables() {
       notes TEXT
     )
   `);
+  // Add invoice column if missing
+  await db.execute("ALTER TABLE catering_requests ADD COLUMN square_invoice_id TEXT").catch(() => {});
   tablesEnsured = true;
 }
 
@@ -58,6 +60,7 @@ export interface CateringRequestRow {
   totalAmount: number | null;
   squareOrderId: string | null;
   squarePaymentId: string | null;
+  squareInvoiceId: string | null;
   notes: string | null;
   fulfillmentType: string;
   createdAt: string;
@@ -117,6 +120,7 @@ function mapRow(row: Record<string, unknown>): CateringRequestRow {
     totalAmount: row.total_amount != null ? Number(row.total_amount) : null,
     squareOrderId: row.square_order_id as string | null,
     squarePaymentId: row.square_payment_id as string | null,
+    squareInvoiceId: (row.square_invoice_id as string) || null,
     notes: row.notes as string | null,
     fulfillmentType: row.fulfillment_type as string,
     createdAt: row.created_at as string,
@@ -231,6 +235,17 @@ export async function updateCateringRequestStatus(
   await db.execute({
     sql: `UPDATE catering_requests SET status = ?, updated_at = datetime('now') WHERE id = ?`,
     args: [status, id],
+  });
+}
+
+export async function updateCateringInvoiceId(
+  id: number,
+  squareInvoiceId: string
+): Promise<void> {
+  const db = getTurso();
+  await db.execute({
+    sql: `UPDATE catering_requests SET square_invoice_id = ?, updated_at = datetime('now') WHERE id = ?`,
+    args: [squareInvoiceId, id],
   });
 }
 

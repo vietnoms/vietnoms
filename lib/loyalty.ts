@@ -80,12 +80,26 @@ export async function createLoyaltyAccount(programId: string, phoneNumber: strin
   }
 }
 
-export async function accumulateLoyaltyPoints(customerId: string, orderId: string) {
+export async function accumulateLoyaltyPoints(customerId: string, orderId: string, phoneNumber?: string) {
   try {
     const square = getSquare();
 
-    // Only accumulate if loyalty account already exists (no silent auto-enrollment)
-    const account = await getLoyaltyAccount(customerId);
+    // Look up existing loyalty account, or auto-enroll if phone is available
+    let account = await getLoyaltyAccount(customerId);
+    if (!account?.id && phoneNumber) {
+      const program = await getLoyaltyProgram();
+      if (program?.id) {
+        const newAccount = await createLoyaltyAccount(program.id, phoneNumber);
+        if (newAccount?.id) {
+          account = {
+            id: newAccount.id,
+            balance: 0,
+            lifetimePoints: 0,
+            customerId,
+          };
+        }
+      }
+    }
     if (!account?.id) return null;
 
     const response = await square.loyalty.accounts.accumulatePoints({

@@ -27,10 +27,18 @@ interface CateringRequest {
   totalAmount: number | null;
   squareOrderId: string | null;
   squarePaymentId: string | null;
+  squareInvoiceId: string | null;
   notes: string | null;
   fulfillmentType: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface InvoiceInfo {
+  invoiceId: string;
+  status: string;
+  publicUrl: string | null;
+  invoiceNumber: string | null;
 }
 
 interface CateringItem {
@@ -61,6 +69,8 @@ export function CateringTable() {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [expandedItems, setExpandedItems] = useState<CateringItem[]>([]);
+  const [invoiceInfo, setInvoiceInfo] = useState<Record<number, InvoiceInfo>>({});
+  const [invoiceLoading, setInvoiceLoading] = useState<number | null>(null);
 
   const fetchRequests = useCallback(async () => {
     setLoading(true);
@@ -96,6 +106,42 @@ export function CateringTable() {
       setExpandedItems(data.items || []);
     } catch {
       setExpandedItems([]);
+    }
+    // Fetch invoice status if invoice exists
+    const req = requests.find((r) => r.id === id);
+    if (req?.squareInvoiceId) {
+      fetchInvoiceStatus(id);
+    }
+  };
+
+  const fetchInvoiceStatus = async (id: number) => {
+    try {
+      const res = await fetch(`/api/catering/${id}/invoice`);
+      if (res.ok) {
+        const data = await res.json();
+        setInvoiceInfo((prev) => ({ ...prev, [id]: data }));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const generateInvoice = async (id: number) => {
+    setInvoiceLoading(id);
+    try {
+      const res = await fetch(`/api/catering/${id}/invoice`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        // Refresh the list and fetch invoice status
+        await fetchRequests();
+        await fetchInvoiceStatus(id);
+      } else {
+        alert(data.error || "Failed to create invoice");
+      }
+    } catch {
+      alert("Failed to create invoice");
+    } finally {
+      setInvoiceLoading(null);
     }
   };
 
@@ -278,6 +324,53 @@ export function CateringTable() {
                         </div>
                       </div>
                     )}
+
+                    {/* Invoice */}
+                    <div className="border-t border-gray-800 pt-3">
+                      <h4 className="text-sm font-semibold text-white mb-2">Invoice</h4>
+                      {invoiceInfo[req.id] ? (
+                        <div className="text-sm space-y-1">
+                          <p className="text-gray-400">
+                            <strong className="text-white">Status:</strong>{" "}
+                            <span className={
+                              invoiceInfo[req.id].status === "PAID" ? "text-green-400" :
+                              invoiceInfo[req.id].status === "DRAFT" ? "text-yellow-400" :
+                              invoiceInfo[req.id].status === "SENT" || invoiceInfo[req.id].status === "PUBLISHED" ? "text-blue-400" :
+                              "text-gray-400"
+                            }>
+                              {invoiceInfo[req.id].status}
+                            </span>
+                          </p>
+                          {invoiceInfo[req.id].invoiceNumber && (
+                            <p className="text-gray-400">
+                              <strong className="text-white">Invoice #:</strong>{" "}
+                              {invoiceInfo[req.id].invoiceNumber}
+                            </p>
+                          )}
+                          {invoiceInfo[req.id].publicUrl && (
+                            <a
+                              href={invoiceInfo[req.id].publicUrl!}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block text-brand-red hover:underline text-sm"
+                            >
+                              View Invoice
+                            </a>
+                          )}
+                        </div>
+                      ) : req.squareInvoiceId ? (
+                        <p className="text-gray-500 text-sm">Loading invoice...</p>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={invoiceLoading === req.id}
+                          onClick={() => generateInvoice(req.id)}
+                        >
+                          {invoiceLoading === req.id ? "Generating..." : "Generate Square Invoice"}
+                        </Button>
+                      )}
+                    </div>
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">

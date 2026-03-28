@@ -12,9 +12,20 @@ interface Purchase {
   squareOrderId: string | null;
   customerName: string | null;
   customerEmail: string | null;
+  customerPhone: string | null;
   giftCardGan: string | null;
+  metadata: string | null;
   errorMessage: string | null;
   createdAt: string;
+}
+
+function parseMeta(metadata: string | null): Record<string, unknown> {
+  if (!metadata) return {};
+  try {
+    return JSON.parse(metadata);
+  } catch {
+    return {};
+  }
 }
 
 const TABS = [
@@ -58,6 +69,8 @@ export function PurchasesTable() {
   useEffect(() => {
     fetchPurchases();
   }, [fetchPurchases]);
+
+  const showGiftCardCol = filterType === "gift_card" || (!filterType && purchases.some((p) => p.type === "gift_card"));
 
   return (
     <div className="space-y-4">
@@ -106,55 +119,80 @@ export function PurchasesTable() {
                 <th className="px-3 py-2">ID</th>
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Amount</th>
+                <th className="px-3 py-2">Tip</th>
                 <th className="px-3 py-2">Customer</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Payment ID</th>
-                <th className="px-3 py-2">Gift Card #</th>
+                <th className="px-3 py-2">Receipt</th>
+                {showGiftCardCol && <th className="px-3 py-2">Gift Card #</th>}
                 <th className="px-3 py-2">Date</th>
               </tr>
             </thead>
             <tbody>
-              {purchases.map((p) => (
-                <tr key={p.id} className="border-b border-gray-800/50 hover:bg-surface-alt/50">
-                  <td className="px-3 py-2 text-gray-300">{p.id}</td>
-                  <td className="px-3 py-2">
-                    <span className="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-xs rounded capitalize">
-                      {p.type.replace("_", " ")}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 text-white font-medium">{formatMoney(p.amount)}</td>
-                  <td className="px-3 py-2">
-                    <div className="text-white">{p.customerName || "—"}</div>
-                    {p.customerEmail && (
-                      <div className="text-xs text-gray-500">{p.customerEmail}</div>
+              {purchases.map((p) => {
+                const meta = parseMeta(p.metadata);
+                const receiptUrl = (meta.receiptUrl as string) || null;
+                const tipAmount = (meta.tipAmount as number) || 0;
+
+                return (
+                  <tr key={p.id} className="border-b border-gray-800/50 hover:bg-surface-alt/50">
+                    <td className="px-3 py-2 text-gray-300">{p.id}</td>
+                    <td className="px-3 py-2">
+                      <span className="px-1.5 py-0.5 bg-gray-700 text-gray-300 text-xs rounded capitalize">
+                        {p.type.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-white font-medium">
+                      {formatMoney(p.amount)}
+                    </td>
+                    <td className="px-3 py-2 text-gray-300">
+                      {tipAmount > 0 ? (
+                        <span className="text-green-400">{formatMoney(tipAmount)}</span>
+                      ) : (
+                        <span className="text-gray-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="text-white">{p.customerName || "—"}</div>
+                      {p.customerEmail && (
+                        <div className="text-xs text-gray-500">{p.customerEmail}</div>
+                      )}
+                      {p.customerPhone && (
+                        <div className="text-xs text-gray-500">{p.customerPhone}</div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span className={`px-1.5 py-0.5 text-xs rounded ${STATUS_COLORS[p.status] || "bg-gray-700 text-gray-300"}`}>
+                        {p.status}
+                      </span>
+                      {p.errorMessage && (
+                        <div className="text-xs text-red-400 mt-0.5 max-w-[200px] truncate" title={p.errorMessage}>
+                          {p.errorMessage}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {receiptUrl ? (
+                        <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="text-brand-red hover:underline">
+                          View
+                        </a>
+                      ) : "—"}
+                    </td>
+                    {showGiftCardCol && (
+                      <td className="px-3 py-2 text-gray-400 text-xs font-mono">
+                        {p.giftCardGan || "—"}
+                      </td>
                     )}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className={`px-1.5 py-0.5 text-xs rounded ${STATUS_COLORS[p.status] || "bg-gray-700 text-gray-300"}`}>
-                      {p.status}
-                    </span>
-                    {p.errorMessage && (
-                      <div className="text-xs text-red-400 mt-0.5 max-w-[200px] truncate" title={p.errorMessage}>
-                        {p.errorMessage}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-2 text-gray-400 text-xs font-mono max-w-[120px] truncate">
-                    {p.squarePaymentId || "—"}
-                  </td>
-                  <td className="px-3 py-2 text-gray-400 text-xs font-mono">
-                    {p.giftCardGan || "—"}
-                  </td>
-                  <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
-                    {new Date(p.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </td>
-                </tr>
-              ))}
+                    <td className="px-3 py-2 text-gray-400 text-xs whitespace-nowrap">
+                      {new Date(p.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

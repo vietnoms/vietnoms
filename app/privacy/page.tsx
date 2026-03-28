@@ -80,10 +80,10 @@ export default function PrivacyPage() {
 
         <h2>Mobile Information Protection</h2>
         <p>
-          We will not share, sell, or provide your mobile phone number or SMS
-          opt-in data to third parties or affiliates for marketing or
-          promotional purposes. Your mobile information is used solely for the
-          transactional purposes described above.
+          No mobile information will be shared with third parties/affiliates for
+          marketing/promotional purposes. All the above categories exclude text
+          messaging originator opt-in data and consent; this information will not
+          be shared with any third parties.
         </p>
 
         <h2>Payment Security</h2>
