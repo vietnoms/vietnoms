@@ -218,7 +218,18 @@ export function CateringWizard() {
   );
 
   const forceEmailOnly = state.deliveryType === "delivery" && state.deliveryDistance > MAX_DELIVERY_MILES;
-  const canPayOnline = state.guestCount < SMALL_ORDER_MAX_GUESTS && !forceEmailOnly;
+
+  // Calculate hours until event
+  const hoursUntilEvent = useMemo(() => {
+    if (!state.eventDate) return Infinity;
+    const eventDateStr = state.eventTime
+      ? `${state.eventDate}T${state.eventTime}:00`
+      : `${state.eventDate}T12:00:00`;
+    return (new Date(eventDateStr).getTime() - Date.now()) / (1000 * 60 * 60);
+  }, [state.eventDate, state.eventTime]);
+
+  const isShortNotice = hoursUntilEvent < 120; // under 5 days
+  const canPayOnline = state.guestCount < SMALL_ORDER_MAX_GUESTS && !forceEmailOnly && !isShortNotice;
 
   const estimate = useMemo(
     () => calculateEstimate(
@@ -235,7 +246,8 @@ export function CateringWizard() {
   const grandTotal = estimate.total + taxAmount;
 
   const minDate = useMemo(() => {
-    const d = new Date(); d.setDate(d.getDate() + 7);
+    const d = new Date();
+    d.setTime(d.getTime() + 48 * 60 * 60 * 1000); // 48 hours ahead
     return d.toISOString().split("T")[0];
   }, []);
 
@@ -498,7 +510,7 @@ export function CateringWizard() {
               <Label htmlFor="eventDate">Event Date *</Label>
               <Input id="eventDate" type="date" required min={minDate} value={state.eventDate}
                 onChange={(e) => update("eventDate", e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">Minimum 7 days in advance</p>
+              <p className="text-xs text-gray-500 mt-1">Minimum 48 hours in advance</p>
             </div>
             <div>
               <Label htmlFor="eventTime">Pickup/Delivery Time</Label>
@@ -628,6 +640,12 @@ export function CateringWizard() {
 
           {/* Right: Contact + Payment */}
           <div className="lg:col-span-3 space-y-5">
+            {isShortNotice && (
+              <div className="p-3 bg-amber-900/30 border border-amber-800 rounded-lg text-sm text-amber-400">
+                We are able to complete most orders submitted within 24 hour notice, but inquiries will require manual review by a team member. Submit your inquiry and we&apos;ll get back to you within 24 hours.
+              </div>
+            )}
+
             <h2 className="font-display text-xl font-bold text-white">Your Information</h2>
 
             <div className="space-y-3">
