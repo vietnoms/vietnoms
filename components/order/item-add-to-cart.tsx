@@ -16,6 +16,14 @@ const MODIFIER_LABELS: Record<string, string[]> = {
   "Stir-fried Tofu": ["Vegan", "Vegetarian"],
   "Stir-Fried Tofu": ["Vegan", "Vegetarian"],
   "Vegan Egg Roll": ["Vegan", "Vegetarian"],
+  "Shredded Pork": ["Gluten-Free"],
+  "Extra Chicken": ["Customer Favorite"],
+  "Extra Pork": ["Customer Favorite"],
+  "Extra Beef": ["Spicy", "Gluten-Free"],
+  "Extra Tofu": ["Vegan", "Vegetarian"],
+  "Extra Shrimp": [],
+  "Garlic Pepper Shrimp": [],
+  "Grilled Shrimp": [],
 };
 
 interface ItemAddToCartProps {

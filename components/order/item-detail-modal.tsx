@@ -31,7 +31,13 @@ const MODIFIER_LABELS: Record<string, string[]> = {
   "Stir-Fried Tofu": ["Vegan", "Vegetarian"],
   "Vegan Egg Roll": ["Vegan", "Vegetarian"],
   "Pork & Shrimp Egg Roll": [],
-  "Shredded Pork": [],
+  "Shredded Pork": ["Gluten-Free"],
+  "Extra Chicken": ["Customer Favorite"],
+  "Extra Pork": ["Customer Favorite"],
+  "Extra Beef": ["Spicy", "Gluten-Free"],
+  "Extra Tofu": ["Vegan", "Vegetarian"],
+  "Extra Shrimp": [],
+  "Garlic Pepper Shrimp": [],
 };
 
 function getModifierLabels(name: string): string[] {
