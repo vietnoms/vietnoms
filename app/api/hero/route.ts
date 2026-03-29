@@ -5,6 +5,7 @@ export const revalidate = 300; // Cache for 5 minutes
 
 export async function GET() {
   try {
+    // Only return visible hero slides for public consumption
     const slides = await listMedia({ category: "hero", galleryOnly: true });
     // Sort by gallery_order ascending
     slides.sort((a, b) => a.galleryOrder - b.galleryOrder);

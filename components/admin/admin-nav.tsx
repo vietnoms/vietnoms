@@ -12,9 +12,11 @@ import {
   LogOut,
   Wand2,
   Receipt,
+  Film,
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/admin/hero", label: "Hero", icon: Film },
   { href: "/admin/catering", label: "Catering", icon: UtensilsCrossed },
   { href: "/admin/purchases", label: "Purchases", icon: Receipt },
   { href: "/admin/content", label: "Content", icon: PenTool },
