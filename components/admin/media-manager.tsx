@@ -46,6 +46,7 @@ interface MediaItem {
 }
 
 const CATEGORIES = [
+  "hero",
   "food",
   "interior",
   "events",
@@ -120,11 +121,12 @@ export function MediaManager() {
     const errors: string[] = [];
     for (const file of selectedFiles) {
       try {
-        // Compress image to stay under Vercel's 4.5MB serverless body limit
-        const compressed = await compressImage(file);
+        // Compress images (skip for videos)
+        const isVideo = file.type.startsWith("video/");
+        const fileToUpload = isVideo ? file : await compressImage(file);
 
         const formData = new FormData();
-        formData.append("file", compressed, file.name);
+        formData.append("file", fileToUpload, file.name);
         formData.append("altText", uploadAlt);
         formData.append("category", uploadCategory);
         formData.append("tags", uploadTags);
@@ -241,7 +243,7 @@ export function MediaManager() {
             <input
               ref={fileRef}
               type="file"
-              accept="image/*"
+              accept="image/*,video/mp4,video/webm,video/quicktime"
               multiple
               className="hidden"
               onChange={(e) => handleFilesSelected(e.target.files)}
