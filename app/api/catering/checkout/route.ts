@@ -206,6 +206,32 @@ export async function POST(request: Request) {
       customizations: body.customizations ?? undefined,
     }).catch((err) => console.error("Failed to send catering order emails:", err));
 
+    // 6. Generate Square invoice (non-blocking)
+    import("@/lib/square-invoice").then(async ({ createDraftInvoice }) => {
+      try {
+        const result = await createDraftInvoice({
+          contactName: body.contactName,
+          contactEmail: body.contactEmail,
+          contactPhone: body.contactPhone,
+          eventDate: body.eventDate,
+          guestCount: body.guestCount,
+          packageType: body.packageType,
+          totalAmount: body.totalAmount,
+          items: body.items || [],
+          deliveryFee: body.deliveryFee ?? 0,
+          deliveryDistance: body.deliveryDistance,
+          deliveryAddress: body.deliveryAddress,
+          deliveryType: body.deliveryType,
+          notes: body.notes,
+          customizations: body.customizations ?? undefined,
+        });
+        const { updateCateringInvoiceId } = await import("@/lib/db/catering");
+        await updateCateringInvoiceId(id, result.invoiceId);
+      } catch (err) {
+        console.error("Failed to generate catering invoice:", err);
+      }
+    });
+
     return NextResponse.json({
       success: true,
       requestId: id,
