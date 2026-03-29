@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Pause, Play } from "lucide-react";
 
 interface Slide {
   id: number;
@@ -9,18 +10,17 @@ interface Slide {
   alt: string;
 }
 
-const TRANSITION_INTERVAL = 6000; // 6 seconds for images
-const FADE_DURATION = 1000; // 1 second crossfade
+const IMAGE_INTERVAL = 6000;
+const FADE_DURATION = 1000;
 
 export function HeroSlideshow() {
   const [slides, setSlides] = useState<Slide[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextIndex, setNextIndex] = useState<number | null>(null);
-  const [fading, setFading] = useState(false);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fetch hero slides
+  // Fetch slides
   useEffect(() => {
     fetch("/api/hero")
       .then((r) => r.json())
@@ -30,132 +30,133 @@ export function HeroSlideshow() {
       .catch(() => {});
   }, []);
 
-  const advanceSlide = useCallback(() => {
-    if (slides.length <= 1) return;
-    const next = (currentIndex + 1) % slides.length;
-    setNextIndex(next);
-    setFading(true);
-    setTimeout(() => {
-      setCurrentIndex(next);
-      setNextIndex(null);
-      setFading(false);
-    }, FADE_DURATION);
-  }, [currentIndex, slides.length]);
+  const goTo = useCallback((index: number) => {
+    setActiveIndex(index);
+  }, []);
 
-  // Auto-advance timer
-  useEffect(() => {
+  const advance = useCallback(() => {
     if (slides.length <= 1) return;
-    const current = slides[currentIndex];
+    setActiveIndex((prev) => (prev + 1) % slides.length);
+  }, [slides.length]);
+
+  // Handle auto-advance
+  useEffect(() => {
+    if (slides.length <= 1 || paused) return;
+    const current = slides[activeIndex];
     if (!current) return;
 
-    // For videos, wait until the video ends
-    if (current.type === "video" && videoRef.current) {
-      const vid = videoRef.current;
-      const onEnded = () => advanceSlide();
-      vid.addEventListener("ended", onEnded);
-      return () => vid.removeEventListener("ended", onEnded);
+    if (current.type === "video") {
+      const vid = videoRefs.current.get(current.id);
+      if (vid) {
+        // Reset and play the active video
+        vid.currentTime = 0;
+        vid.play().catch(() => {});
+        const onEnded = () => advance();
+        vid.addEventListener("ended", onEnded);
+        return () => vid.removeEventListener("ended", onEnded);
+      }
+      // Fallback if ref not ready yet — advance after 10s
+      timerRef.current = setTimeout(advance, 10000);
+      return () => { if (timerRef.current) clearTimeout(timerRef.current); };
     }
 
-    // For images, advance after interval
-    timerRef.current = setTimeout(advanceSlide, TRANSITION_INTERVAL);
+    // Image: advance after interval
+    timerRef.current = setTimeout(advance, IMAGE_INTERVAL);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [currentIndex, slides, advanceSlide]);
+  }, [activeIndex, slides, paused, advance]);
 
-  // Fallback: static hero image
+  // Pause/play active video when paused state changes
+  useEffect(() => {
+    const current = slides[activeIndex];
+    if (!current || current.type !== "video") return;
+    const vid = videoRefs.current.get(current.id);
+    if (!vid) return;
+    if (paused) { vid.pause(); }
+    else { vid.play().catch(() => {}); }
+  }, [paused, activeIndex, slides]);
+
+  // Try to autoplay on mobile by calling play() after mount
+  useEffect(() => {
+    const current = slides[activeIndex];
+    if (!current || current.type !== "video" || paused) return;
+    // Small delay for ref to attach
+    const t = setTimeout(() => {
+      const vid = videoRefs.current.get(current.id);
+      if (vid) vid.play().catch(() => {});
+    }, 100);
+    return () => clearTimeout(t);
+  }, [activeIndex, slides, paused]);
+
   if (slides.length === 0) {
     return (
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/hero.jpg')" }}
-      />
+      <div className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/images/hero.jpg')" }} />
     );
   }
 
-  const current = slides[currentIndex];
-  const next = nextIndex !== null ? slides[nextIndex] : null;
-
   return (
     <div className="absolute inset-0">
-      {/* Current slide */}
-      <div
-        className="absolute inset-0 transition-opacity"
-        style={{
-          opacity: fading ? 0 : 1,
-          transitionDuration: `${FADE_DURATION}ms`,
-        }}
-      >
-        {current.type === "video" ? (
-          <video
-            ref={videoRef}
-            key={current.id}
-            src={current.url}
-            autoPlay
-            muted
-            playsInline
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <img
-            src={current.url}
-            alt={current.alt}
-            className="h-full w-full object-cover"
-          />
-        )}
-      </div>
-
-      {/* Next slide (fades in on top) */}
-      {next && (
+      {/* Render ALL slides stacked, control visibility with opacity */}
+      {slides.map((slide, i) => (
         <div
-          className="absolute inset-0 transition-opacity"
+          key={slide.id}
+          className="absolute inset-0 transition-opacity ease-in-out"
           style={{
-            opacity: fading ? 1 : 0,
+            opacity: i === activeIndex ? 1 : 0,
             transitionDuration: `${FADE_DURATION}ms`,
+            zIndex: i === activeIndex ? 1 : 0,
           }}
         >
-          {next.type === "video" ? (
+          {slide.type === "video" ? (
             <video
-              key={next.id}
-              src={next.url}
+              ref={(el) => {
+                if (el) videoRefs.current.set(slide.id, el);
+              }}
+              src={slide.url}
               muted
               playsInline
+              preload="auto"
               className="h-full w-full object-cover"
             />
           ) : (
             <img
-              src={next.url}
-              alt={next.alt}
+              src={slide.url}
+              alt={slide.alt}
               className="h-full w-full object-cover"
+              loading={i === 0 ? "eager" : "lazy"}
             />
           )}
         </div>
-      )}
+      ))}
 
-      {/* Slide indicators */}
-      {slides.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
-          {slides.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                if (i !== currentIndex && !fading) {
-                  setNextIndex(i);
-                  setFading(true);
-                  setTimeout(() => {
-                    setCurrentIndex(i);
-                    setNextIndex(null);
-                    setFading(false);
-                  }, FADE_DURATION);
-                }
-              }}
-              className={`h-2 rounded-full transition-all ${
-                i === currentIndex
-                  ? "w-6 bg-white"
-                  : "w-2 bg-white/40 hover:bg-white/60"
-              }`}
-            />
-          ))}
-        </div>
-      )}
+      {/* Bottom controls */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-10">
+        {/* Pause/Play toggle */}
+        <button
+          onClick={() => setPaused((p) => !p)}
+          className="h-8 w-8 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white/80 hover:text-white hover:bg-black/60 transition-colors"
+          aria-label={paused ? "Play slideshow" : "Pause slideshow"}
+        >
+          {paused ? <Play className="h-3.5 w-3.5 ml-0.5" /> : <Pause className="h-3.5 w-3.5" />}
+        </button>
+
+        {/* Slide indicators */}
+        {slides.length > 1 && (
+          <div className="flex gap-2">
+            {slides.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => goTo(i)}
+                className={`h-2 rounded-full transition-all ${
+                  i === activeIndex
+                    ? "w-6 bg-white"
+                    : "w-2 bg-white/40 hover:bg-white/60"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

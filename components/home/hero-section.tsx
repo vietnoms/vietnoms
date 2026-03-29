@@ -12,8 +12,8 @@ export function HeroSection({ subtitle }: HeroSectionProps) {
       {/* Dynamic slideshow background (falls back to static hero.jpg) */}
       <HeroSlideshow />
 
-      {/* Dark overlay for text readability */}
-      <div className="absolute inset-0 bg-black/50" />
+      {/* Dark overlay for text readability (lighter to show more video) */}
+      <div className="absolute inset-0 bg-black/35" />
       {/* Radial glow behind heading */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,_rgba(255,51,51,0.12)_0%,_rgba(253,208,92,0.08)_30%,_transparent_70%)]" />
 
