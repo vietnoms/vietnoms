@@ -78,6 +78,28 @@ export async function POST(request: Request) {
       migrated = true;
     }
 
+    const contentType = request.headers.get("content-type") || "";
+
+    // JSON path: register a blob URL already uploaded client-side (for videos)
+    if (contentType.includes("application/json")) {
+      const body = await request.json();
+      const { blobUrl, filename, altText, category, tags, sizeBytes } = body;
+      if (!blobUrl || !filename) {
+        return NextResponse.json({ error: "Missing blobUrl or filename" }, { status: 400 });
+      }
+      const { id } = await insertMedia({
+        blobUrl,
+        filename,
+        altText: altText || "",
+        category: category || "uncategorized",
+        tags: tags || undefined,
+        source: "upload",
+        sizeBytes: sizeBytes || null,
+      });
+      return NextResponse.json({ id, blobUrl, filename });
+    }
+
+    // FormData path: upload file via server (for images)
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     const altText = (formData.get("altText") as string) || "";

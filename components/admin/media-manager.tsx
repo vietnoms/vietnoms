@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
+import { upload } from "@vercel/blob/client";
 import { Upload, Trash2, Pencil, X, Check, Loader2, Eye, EyeOff } from "lucide-react";
 
 function compressImage(file: File, maxDim = 1600, quality = 0.7): Promise<Blob> {
@@ -123,23 +124,49 @@ export function MediaManager() {
     const errors: string[] = [];
     for (const file of selectedFiles) {
       try {
-        // Compress images (skip for videos)
         const isVideo = file.type.startsWith("video/");
-        const fileToUpload = isVideo ? file : await compressImage(file);
 
-        const formData = new FormData();
-        formData.append("file", fileToUpload, file.name);
-        formData.append("altText", uploadAlt);
-        formData.append("category", uploadCategory);
-        formData.append("tags", uploadTags);
+        if (isVideo) {
+          // Large files: use client-side direct upload to Vercel Blob
+          const blob = await upload(`media/${Date.now()}-${file.name}`, file, {
+            access: "public",
+            handleUploadUrl: "/api/admin/media/upload-token",
+          });
 
-        const res = await fetch("/api/admin/media", {
-          method: "POST",
-          body: formData,
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => null);
-          errors.push(`${file.name}: ${data?.error || res.statusText}`);
+          // Register in database via a lightweight POST
+          const res = await fetch("/api/admin/media", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              blobUrl: blob.url,
+              filename: file.name,
+              altText: uploadAlt,
+              category: uploadCategory,
+              tags: uploadTags,
+              sizeBytes: file.size,
+            }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            errors.push(`${file.name}: ${data?.error || res.statusText}`);
+          }
+        } else {
+          // Images: compress and upload via formData
+          const compressed = await compressImage(file);
+          const formData = new FormData();
+          formData.append("file", compressed, file.name);
+          formData.append("altText", uploadAlt);
+          formData.append("category", uploadCategory);
+          formData.append("tags", uploadTags);
+
+          const res = await fetch("/api/admin/media", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            errors.push(`${file.name}: ${data?.error || res.statusText}`);
+          }
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
