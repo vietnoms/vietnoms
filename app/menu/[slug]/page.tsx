@@ -5,7 +5,7 @@ import { getMenuItems, getMenuItemBySlug } from "@/lib/menu-data";
 import { getItemStats } from "@/lib/db/reviews";
 import { getLikeCount } from "@/lib/db/likes";
 import { MenuItemSchema, BreadcrumbSchema } from "@/components/schema-markup";
-import { Badge } from "@/components/ui/badge";
+import { Badge, labelVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RESTAURANT } from "@/lib/constants";
 import { ItemPageClient } from "@/components/order/item-page-client";
@@ -119,18 +119,7 @@ export default async function MenuItemPage({
               {item.dietaryLabels.length > 0 && (
                 <div className="mt-3 flex gap-2">
                   {item.dietaryLabels.map((label) => (
-                    <Badge
-                      key={label}
-                      variant={
-                        label === "VG" || label === "V"
-                          ? "vegan"
-                          : label === "GF"
-                            ? "gf"
-                            : label === "Spicy"
-                              ? "spicy"
-                              : "secondary"
-                      }
-                    >
+                    <Badge key={label} variant={labelVariant(label)}>
                       {label}
                     </Badge>
                   ))}

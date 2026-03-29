@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, labelVariant } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
 import type { MenuItem } from "@/lib/types";
 import {
@@ -21,6 +21,21 @@ import {
   Heart,
   Loader2,
 } from "lucide-react";
+
+const MODIFIER_LABELS: Record<string, string[]> = {
+  "Lemongrass Chicken": ["Customer Favorite"],
+  "Lemongrass Pork": ["Customer Favorite"],
+  "Red Hot Beef": ["Spicy", "Gluten-Free"],
+  "Grilled Shrimp": [],
+  "Stir-fried Tofu": ["Vegan", "Vegetarian"],
+  "Vegan Egg Roll": ["Vegan", "Vegetarian"],
+  "Pork & Shrimp Egg Roll": [],
+  "Shredded Pork": [],
+};
+
+function getModifierLabels(name: string): string[] {
+  return MODIFIER_LABELS[name] || [];
+}
 
 interface ItemStats {
   averageRating: number;
@@ -281,7 +296,7 @@ export function ItemDetailModal({
             {item.dietaryLabels.length > 0 && (
               <div className="flex gap-1.5 mt-2">
                 {item.dietaryLabels.map((label) => (
-                  <Badge key={label} variant="secondary" className="text-xs">
+                  <Badge key={label} variant={labelVariant(label)} className="text-xs">
                     {label}
                   </Badge>
                 ))}
@@ -402,7 +417,12 @@ export function ItemDetailModal({
                           }
                           className="accent-brand-red"
                         />
-                        <span className="flex-1 text-sm">{mod.name}</span>
+                        <span className="flex-1 text-sm flex items-center gap-1.5">
+                          {mod.name}
+                          {getModifierLabels(mod.name).map((ml) => (
+                            <Badge key={ml} variant={labelVariant(ml)} className="text-[9px] px-1.5 py-0">{ml}</Badge>
+                          ))}
+                        </span>
                         {mod.price > 0 && (
                           <span className="text-sm text-gray-400">
                             +{mod.formattedPrice}

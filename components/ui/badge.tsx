@@ -13,6 +13,7 @@ const badgeVariants = cva(
         vegan: "border-transparent bg-green-900/40 text-green-400",
         spicy: "border-transparent bg-red-900/40 text-red-400",
         gf: "border-transparent bg-yellow-900/40 text-yellow-400",
+        favorite: "border-transparent bg-orange-900/40 text-orange-400",
       },
     },
     defaultVariants: {
@@ -31,4 +32,14 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   );
 }
 
-export { Badge, badgeVariants };
+/** Maps a dietary/feature label to a badge variant */
+function labelVariant(label: string): "vegan" | "gf" | "spicy" | "favorite" | "secondary" {
+  const l = label.toLowerCase();
+  if (l.includes("vegan") || l.includes("vegetarian")) return "vegan";
+  if (l.includes("gluten")) return "gf";
+  if (l.includes("spicy")) return "spicy";
+  if (l.includes("favorite") || l.includes("fan")) return "favorite";
+  return "secondary";
+}
+
+export { Badge, badgeVariants, labelVariant };

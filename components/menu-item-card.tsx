@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, labelVariant } from "@/components/ui/badge";
 import type { MenuItem } from "@/lib/types";
 
 interface MenuItemCardProps {
@@ -59,18 +59,7 @@ export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
         {item.dietaryLabels.length > 0 && (
           <div className="mt-2 flex gap-1.5">
             {item.dietaryLabels.map((label) => (
-              <Badge
-                key={label}
-                variant={
-                  label === "VG" || label === "V"
-                    ? "vegan"
-                    : label === "GF"
-                      ? "gf"
-                      : label === "Spicy"
-                        ? "spicy"
-                        : "secondary"
-                }
-              >
+              <Badge key={label} variant={labelVariant(label)}>
                 {label}
               </Badge>
             ))}

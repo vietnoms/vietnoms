@@ -219,7 +219,7 @@ export const getMenuItems = unstable_cache(
           imageUrl: imageId ? (imageMap.get(imageId) || null) : null,
           variations: cleanVariations,
           modifierLists: itemModifierLists,
-          dietaryLabels: parseDietaryLabels(item.description || ""),
+          dietaryLabels: parseDietaryLabels(item.description || "", item.name || ""),
           available: !soldOut && !(item.isArchived || item.isDeleted),
           soldOut,
         };
@@ -336,19 +336,48 @@ function getCategoryIds(item: any): string[] {
   return ids;
 }
 
-/** Parses dietary labels from item description text */
-function parseDietaryLabels(description: string): string[] {
+/** Name-based label overrides for specific items */
+const ITEM_LABEL_MAP: Record<string, string[]> = {
+  // Vegan menu items — Vegan + Vegetarian
+  "Vegancelli": ["Vegan", "Vegetarian"],
+  "Vegarice": ["Vegan", "Vegetarian"],
+  "Vegan Salad": ["Vegan", "Vegetarian"],
+  "Vegan Banh Mi (NO MAYO)": ["Vegan", "Vegetarian"],
+  "Vegan Egg Roll (1)": ["Vegan", "Vegetarian"],
+
+  // Classic Noms — can be made Vegan/Vegetarian
+  "Bun Bowl (vermicelli noodle)": ["Fan Favorite", "Vegan Option", "Vegetarian Option"],
+  "Rice bowl": ["Vegan Option", "Vegetarian Option"],
+  "Salad Bowl": ["Vegan Option", "Vegetarian Option"],
+  "Banh Mi": ["Vegan Option", "Vegetarian Option"],
+
+  // Special items
+  "Hell Yea (Heo Gà) Bowl": ["Customer Favorite"],
+  "The Big Classic": ["Customer Favorite"],
+  "Our GF (Gluten-Free)": ["Gluten-Free"],
+
+  // Sides
+  "Side of Stir-Fried Tofu": ["Vegan", "Vegetarian"],
+  "Side of Red Hot Beef": ["Spicy", "Gluten-Free"],
+
+  // Egg rolls
+  "Pork & Shrimp Egg Roll (1)": [],
+  "1x Shrimp Egg roll": [],
+};
+
+/** Generates dietary/feature labels for menu items */
+function parseDietaryLabels(description: string, itemName?: string): string[] {
+  // Use name-based overrides if available
+  if (itemName && ITEM_LABEL_MAP[itemName]) {
+    return ITEM_LABEL_MAP[itemName];
+  }
+
+  // Fallback: parse from description text
   const labels: string[] = [];
   const lower = description.toLowerCase();
-  if (lower.includes("vegan") || lower.includes("(vg)")) labels.push("VG");
-  if (
-    lower.includes("vegetarian") ||
-    lower.includes("(v)") ||
-    lower.includes("veggie")
-  )
-    labels.push("V");
-  if (lower.includes("gluten-free") || lower.includes("(gf)"))
-    labels.push("GF");
+  if (lower.includes("vegan") || lower.includes("(vg)")) labels.push("Vegan");
+  if (lower.includes("vegetarian") || lower.includes("(v)") || lower.includes("veggie")) labels.push("Vegetarian");
+  if (lower.includes("gluten-free") || lower.includes("(gf)")) labels.push("Gluten-Free");
   if (lower.includes("spicy")) labels.push("Spicy");
   return labels;
 }

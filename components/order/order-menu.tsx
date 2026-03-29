@@ -5,7 +5,7 @@ import { useCart } from "@/lib/cart-context";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Badge, labelVariant } from "@/components/ui/badge";
 import { ItemDetailModal } from "./item-detail-modal";
 import type { MenuCategory, MenuItem } from "@/lib/types";
 import { Plus, Star, Heart, ShoppingBag } from "lucide-react";
@@ -280,7 +280,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
                             {item.dietaryLabels.map((label) => (
                               <Badge
                                 key={label}
-                                variant="secondary"
+                                variant={labelVariant(label)}
                                 className="text-[10px] px-1.5 py-0"
                               >
                                 {label}
