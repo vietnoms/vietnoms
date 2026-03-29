@@ -28,6 +28,7 @@ const MODIFIER_LABELS: Record<string, string[]> = {
   "Red Hot Beef": ["Spicy", "Gluten-Free"],
   "Grilled Shrimp": [],
   "Stir-fried Tofu": ["Vegan", "Vegetarian"],
+  "Stir-Fried Tofu": ["Vegan", "Vegetarian"],
   "Vegan Egg Roll": ["Vegan", "Vegetarian"],
   "Pork & Shrimp Egg Roll": [],
   "Shredded Pork": [],

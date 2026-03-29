@@ -14,6 +14,7 @@ const MODIFIER_LABELS: Record<string, string[]> = {
   "Lemongrass Pork": ["Customer Favorite"],
   "Red Hot Beef": ["Spicy", "Gluten-Free"],
   "Stir-fried Tofu": ["Vegan", "Vegetarian"],
+  "Stir-Fried Tofu": ["Vegan", "Vegetarian"],
   "Vegan Egg Roll": ["Vegan", "Vegetarian"],
 };
 
