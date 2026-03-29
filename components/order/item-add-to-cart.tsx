@@ -6,7 +6,16 @@ import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import type { MenuItem } from "@/lib/types";
+import { Badge, labelVariant } from "@/components/ui/badge";
 import { ShoppingCart, Check, Minus, Plus } from "lucide-react";
+
+const MODIFIER_LABELS: Record<string, string[]> = {
+  "Lemongrass Chicken": ["Customer Favorite"],
+  "Lemongrass Pork": ["Customer Favorite"],
+  "Red Hot Beef": ["Spicy", "Gluten-Free"],
+  "Stir-fried Tofu": ["Vegan", "Vegetarian"],
+  "Vegan Egg Roll": ["Vegan", "Vegetarian"],
+};
 
 interface ItemAddToCartProps {
   item: MenuItem;
@@ -245,7 +254,12 @@ export function ItemAddToCart({ item, onVariationChange }: ItemAddToCartProps) {
                       }
                       className="accent-brand-red"
                     />
-                    <span className="flex-1 text-sm">{mod.name}</span>
+                    <span className="flex-1 text-sm flex items-center gap-1.5">
+                      {mod.name}
+                      {(MODIFIER_LABELS[mod.name] || []).map((ml) => (
+                        <Badge key={ml} variant={labelVariant(ml)} className="text-[9px] px-1.5 py-0">{ml}</Badge>
+                      ))}
+                    </span>
                     {mod.soldOut ? (
                       <span className="text-xs text-red-400">Sold Out</span>
                     ) : mod.price > 0 ? (
