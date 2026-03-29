@@ -99,9 +99,11 @@ export function MediaManager() {
 
   function handleFilesSelected(files: FileList | null) {
     if (!files) return;
-    const imageFiles = Array.from(files).filter((f) => f.type.startsWith("image/"));
-    setSelectedFiles(imageFiles);
-    setPreviews(imageFiles.map((f) => URL.createObjectURL(f)));
+    const allowed = Array.from(files).filter(
+      (f) => f.type.startsWith("image/") || f.type.startsWith("video/")
+    );
+    setSelectedFiles(allowed);
+    setPreviews(allowed.map((f) => URL.createObjectURL(f)));
   }
 
   function clearSelection() {
@@ -232,7 +234,7 @@ export function MediaManager() {
           <>
             <Upload className="mx-auto h-10 w-10 text-gray-500 mb-3" />
             <p className="text-gray-400 mb-2">
-              Drag and drop images here, or click to browse
+              Drag and drop images or videos here, or click to browse
             </p>
             <button
               onClick={() => fileRef.current?.click()}
@@ -254,8 +256,12 @@ export function MediaManager() {
             {/* Previews */}
             <div className="flex flex-wrap gap-3 justify-center">
               {previews.map((url, i) => (
-                <div key={i} className="relative w-24 h-24 rounded-md overflow-hidden">
-                  <Image src={url} alt="" fill className="object-cover" unoptimized />
+                <div key={i} className="relative w-24 h-24 rounded-md overflow-hidden bg-gray-800">
+                  {selectedFiles[i]?.type.startsWith("video/") ? (
+                    <video src={url} muted className="h-full w-full object-cover" />
+                  ) : (
+                    <Image src={url} alt="" fill className="object-cover" unoptimized />
+                  )}
                 </div>
               ))}
             </div>
