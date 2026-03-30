@@ -95,7 +95,7 @@ export function HeroSlideshow() {
   }
 
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0 z-[1]">
       {/* Render ALL slides stacked, control visibility with opacity */}
       {slides.map((slide, i) => (
         <div
@@ -104,7 +104,6 @@ export function HeroSlideshow() {
           style={{
             opacity: i === activeIndex ? 1 : 0,
             transitionDuration: `${FADE_DURATION}ms`,
-            zIndex: i === activeIndex ? 1 : 0,
           }}
         >
           {slide.type === "video" ? (
@@ -130,7 +129,7 @@ export function HeroSlideshow() {
       ))}
 
       {/* Bottom controls */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-10">
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 z-[4]">
         {/* Pause/Play toggle */}
         <button
           onClick={() => setPaused((p) => !p)}

@@ -12,12 +12,12 @@ export function HeroSection({ subtitle }: HeroSectionProps) {
       {/* Dynamic slideshow background (falls back to static hero.jpg) */}
       <HeroSlideshow />
 
-      {/* Dark overlay for text readability (lighter to show more video) */}
-      <div className="absolute inset-0 bg-black/35" />
+      {/* Dark overlay for text readability */}
+      <div className="absolute inset-0 z-[2] bg-black/35" />
       {/* Radial glow behind heading */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_30%_50%,_rgba(255,51,51,0.12)_0%,_rgba(253,208,92,0.08)_30%,_transparent_70%)]" />
+      <div className="absolute inset-0 z-[2] bg-[radial-gradient(ellipse_at_30%_50%,_rgba(255,51,51,0.12)_0%,_rgba(253,208,92,0.08)_30%,_transparent_70%)]" />
 
-      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-32 md:py-40 lg:py-48" style={{ willChange: "transform" }}>
+      <div className="relative z-[3] mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-32 md:py-40 lg:py-48" style={{ willChange: "transform" }}>
         <div className="max-w-2xl">
           <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
             Authentic
