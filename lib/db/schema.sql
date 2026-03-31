@@ -122,6 +122,34 @@ CREATE TABLE IF NOT EXISTS contribution_invites (
 
 CREATE INDEX IF NOT EXISTS idx_invites_contribution ON contribution_invites(contribution_id);
 
+-- Convention Events & Forecast
+
+CREATE TABLE IF NOT EXISTS convention_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  event_name TEXT NOT NULL,
+  start_date TEXT NOT NULL,             -- YYYY-MM-DD
+  end_date TEXT NOT NULL,               -- YYYY-MM-DD
+  expected_attendance INTEGER,
+  event_type TEXT,                       -- convention, conference, trade_show, concert, festival, etc.
+  notes TEXT,
+  source TEXT NOT NULL DEFAULT 'csv',    -- csv, manual
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_convention_events_dates ON convention_events(start_date, end_date);
+
+CREATE TABLE IF NOT EXISTS daily_sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL UNIQUE,             -- YYYY-MM-DD
+  revenue INTEGER NOT NULL,              -- cents
+  transaction_count INTEGER,
+  notes TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_daily_sales_date ON daily_sales(date);
+
 -- Purchases
 
 CREATE TABLE IF NOT EXISTS purchases (

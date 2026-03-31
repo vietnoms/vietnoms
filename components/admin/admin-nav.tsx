@@ -14,6 +14,7 @@ import {
   Receipt,
   Film,
   PenSquare,
+  TrendingUp,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -24,6 +25,7 @@ const NAV_ITEMS = [
   { href: "/admin/content", label: "Content", icon: PenTool },
   { href: "/admin/media", label: "Media", icon: ImageIcon },
   { href: "/admin/seo", label: "SEO Audit", icon: CheckSquare },
+  { href: "/admin/forecast", label: "Forecast", icon: TrendingUp },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
   { href: "/admin/schema", label: "Schema", icon: Code },
   { href: "/admin/image-studio", label: "Studio", icon: Wand2 },
