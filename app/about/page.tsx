@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
-import { reader } from "@/lib/keystatic";
+import { getAllContent } from "@/lib/db/site-content";
 
 export const metadata: Metadata = {
   title: "About Vietnoms | Our Story | Vietnamese Restaurant San Jose",
@@ -15,7 +15,13 @@ export const metadata: Metadata = {
 };
 
 export default async function AboutPage() {
-  const about = await reader.singletons.aboutPage.read().catch(() => null);
+  const content = await getAllContent().catch(() => ({} as Record<string, string>));
+  const about = {
+    heroSubtitle: content.about_hero_subtitle || null,
+    originTitle: content.about_origin_title || null,
+    originText1: content.about_text1 || null,
+    originText2: content.about_text2 || null,
+  };
   return (
     <>
       <BreadcrumbSchema
@@ -71,14 +77,11 @@ export default async function AboutPage() {
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full" />
 
           <div className="mt-12 grid sm:grid-cols-3 gap-8">
-            {(about?.values && about.values.length > 0
-              ? about.values.map((v) => ({ title: v.title, desc: v.description }))
-              : [
+            {[
                   { title: "Authenticity", desc: "Traditional recipes made the way they were meant to be. No shortcuts, no compromises." },
                   { title: "Fresh Ingredients", desc: "We source the freshest herbs, produce, and proteins daily to ensure quality in every dish." },
                   { title: "Community", desc: "We're proud to be part of the San Jose community, serving neighbors and friends alike." },
-                ]
-            ).map((value) => (
+            ].map((value) => (
               <div key={value.title} className="text-center">
                 <h3 className="font-display text-xl font-semibold text-white">
                   {value.title}

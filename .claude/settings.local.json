@@ -7,7 +7,9 @@
       "Bash(curl -s \"https://vietnoms-vietnoms.aws-us-west-2.turso.io/v2/pipeline\" -H \"Authorization: Bearer eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzQ2NzgyNzAsImlkIjoiMDE5Y2JhNTctNDQwMS03YWNjLTk4NjAtYjAzZDRiYjVjYzM0IiwicmlkIjoiNWUxNDllY2MtMzZmMi00ZWRiLTg2ZjEtZmJjMDk1NGY4ODg3In0.zrWvtotWtYnPrFQmy7vo-jBBNszZOutVm_vUesACD4nJtTyl90VtKHm_9XKBNCjK9DmK6rhLys3I_E6V7MUcBw\" -H \"Content-Type: application/json\" -d \"{\"\"requests\"\":[{\"\"type\"\":\"\"execute\"\",\"\"stmt\"\":{\"\"sql\"\":\"\"PRAGMA table_info\\(customers\\)\"\"}}]}\")",
       "Bash(node -e \":*)",
       "Bash(curl -s \"https://connect.squareup.com/v2/catalog/search\" -H \"Authorization: Bearer EAAAlyXq7qVw6OnszKBueGK9hBG_49IRNq65XlhZIiSRgMnKoGdJzvw2AaAyVuOh\" -H \"Content-Type: application/json\" -d '{\"\"\"\"object_types\"\"\"\":[\"\"\"\"MODIFIER_LIST\"\"\"\"],\"\"\"\"limit\"\"\"\":50}')",
-      "Bash(head -30 '/c/Vietnoms Site/vietnoms/content/menu-items'*)"
+      "Bash(head -30 '/c/Vietnoms Site/vietnoms/content/menu-items'*)",
+      "Bash(grep -r keystatic '/c/Vietnoms Site/vietnoms' --include=*.ts --include=*.tsx --include=*.js --include=*.jsx --exclude-dir=node_modules --exclude-dir=.next)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

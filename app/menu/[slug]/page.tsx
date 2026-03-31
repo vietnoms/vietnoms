@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { RESTAURANT } from "@/lib/constants";
 import { ItemPageClient } from "@/components/order/item-page-client";
 import { ItemReviews } from "@/components/order/item-reviews";
-import { reader } from "@/lib/keystatic";
 
 export const dynamicParams = true;
 
@@ -19,13 +18,8 @@ export async function generateStaticParams() {
   return items.map((item) => ({ slug: item.slug }));
 }
 
-async function getMenuItemContent(itemId: string) {
-  try {
-    const allContent = await reader.collections.menuItemContent.all();
-    return allContent.find((c) => c.entry.squareItemId === itemId)?.entry || null;
-  } catch {
-    return null;
-  }
+async function getMenuItemContent(_itemId: string): Promise<{ story?: string; seoDescription?: string } | null> {
+  return null;
 }
 
 export async function generateMetadata({
