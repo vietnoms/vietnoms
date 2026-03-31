@@ -7,10 +7,23 @@ import {
 } from "@/lib/db/convention-events";
 import { parseEventsCsv } from "@/lib/forecast";
 
-export async function GET(req: NextRequest) {
+async function authorize(req: NextRequest): Promise<boolean> {
+  // Service-to-service auth via API key (used by Vietnoms Tools on Railway)
+  const apiKey = req.headers.get("x-api-key");
+  if (apiKey && process.env.FORECAST_API_KEY && apiKey === process.env.FORECAST_API_KEY) {
+    return true;
+  }
+  // Fall back to admin cookie auth
   try {
     await requireAdmin();
+    return true;
   } catch {
+    return false;
+  }
+}
+
+export async function GET(req: NextRequest) {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
 
@@ -23,9 +36,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    await requireAdmin();
-  } catch {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
 
@@ -88,9 +99,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  try {
-    await requireAdmin();
-  } catch {
+  if (!(await authorize(req))) {
     return NextResponse.json({ error: "Not authorized" }, { status: 401 });
   }
 
