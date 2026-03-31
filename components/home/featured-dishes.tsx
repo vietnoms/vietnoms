@@ -13,9 +13,11 @@ export const FEATURED_NAMES = [
 
 interface FeaturedDishesProps {
   items: MenuItem[];
+  heading?: string;
+  subtext?: string;
 }
 
-export function FeaturedDishes({ items }: FeaturedDishesProps) {
+export function FeaturedDishes({ items, heading, subtext }: FeaturedDishesProps) {
   if (items.length === 0) return null;
 
   return (
@@ -23,12 +25,11 @@ export function FeaturedDishes({ items }: FeaturedDishesProps) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
-            Signature Dishes
+            {heading || "Signature Dishes"}
           </h2>
           <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
           <p className="mt-4 text-gray-400 max-w-xl mx-auto">
-            Explore our most-loved dishes, made fresh daily with authentic
-            Vietnamese flavors.
+            {subtext || "Explore our most-loved dishes, made fresh daily with authentic Vietnamese flavors."}
           </p>
         </div>
 

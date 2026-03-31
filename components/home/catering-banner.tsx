@@ -1,27 +1,33 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export function CateringBanner() {
+interface CateringBannerProps {
+  heading?: string;
+  text?: string;
+  imageUrl?: string;
+}
+
+export function CateringBanner({ heading, text, imageUrl }: CateringBannerProps) {
   return (
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gray-800 order-2 md:order-1">
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-              Catering Photo
-            </div>
+            {imageUrl ? (
+              <img src={imageUrl} alt="Catering" className="h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
+                Catering Photo
+              </div>
+            )}
           </div>
           <div className="order-1 md:order-2">
             <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
-              Catering for Your
-              <br />
-              Next Event
+              {heading || "Catering for Your\nNext Event"}
             </h2>
             <div className="mt-2 h-1 w-16 bg-brand-yellow rounded-full" />
             <p className="mt-6 text-gray-400 leading-relaxed">
-              From corporate lunches to wedding celebrations, our Vietnamese
-              catering brings bold flavors to any occasion. Choose from our bun
-              bowl bar, party platters, or pre-made bowl packages.
+              {text || "From corporate lunches to wedding celebrations, our Vietnamese catering brings bold flavors to any occasion. Choose from our bun bowl bar, party platters, or pre-made bowl packages."}
             </p>
             <Button asChild size="lg" className="mt-6">
               <Link href="/catering">Explore Catering</Link>

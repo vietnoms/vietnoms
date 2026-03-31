@@ -5,9 +5,10 @@ interface AboutSnippetProps {
   heading?: string;
   text1?: string;
   text2?: string;
+  imageUrl?: string;
 }
 
-export function AboutSnippet({ heading, text1, text2 }: AboutSnippetProps) {
+export function AboutSnippet({ heading, text1, text2, imageUrl }: AboutSnippetProps) {
   return (
     <section className="py-16 md:py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -28,10 +29,13 @@ export function AboutSnippet({ heading, text1, text2 }: AboutSnippetProps) {
             </Button>
           </div>
           <div className="relative aspect-[4/3] rounded-lg overflow-hidden bg-gray-800">
-            {/* Placeholder for restaurant/team photo */}
-            <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-              <span className="text-sm">Restaurant Photo</span>
-            </div>
+            {imageUrl ? (
+              <img src={imageUrl} alt="About Vietnoms" className="h-full w-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                <span className="text-sm">Restaurant Photo</span>
+              </div>
+            )}
           </div>
         </div>
       </div>

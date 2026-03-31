@@ -13,9 +13,11 @@ import {
   Wand2,
   Receipt,
   Film,
+  PenSquare,
 } from "lucide-react";
 
 const NAV_ITEMS = [
+  { href: "/admin/homepage", label: "Homepage", icon: PenSquare },
   { href: "/admin/hero", label: "Hero", icon: Film },
   { href: "/admin/catering", label: "Catering", icon: UtensilsCrossed },
   { href: "/admin/purchases", label: "Purchases", icon: Receipt },
