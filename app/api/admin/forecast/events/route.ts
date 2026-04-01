@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   // Single event JSON
   const body = await req.json();
-  const { eventName, startDate, endDate, expectedAttendance, eventType, notes } = body;
+  const { eventName, startDate, endDate, expectedAttendance, eventType, notes, source } = body;
 
   if (!eventName || !startDate) {
     return NextResponse.json(
@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
     expectedAttendance: expectedAttendance ? parseInt(expectedAttendance, 10) : undefined,
     eventType,
     notes,
-    source: "manual",
+    source: source || "manual",
   });
 
   return NextResponse.json({ id: result.id });
