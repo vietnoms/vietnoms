@@ -116,4 +116,6 @@ export interface GiftCardOrder {
   message?: string;
   sendToSelf?: boolean;
   deliveryMethod?: "email" | "sms";
+  optInText?: boolean;
+  optInEmail?: boolean;
 }

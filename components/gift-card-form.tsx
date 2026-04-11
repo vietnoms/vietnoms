@@ -45,6 +45,9 @@ export function GiftCardForm() {
   const submittingRef = useRef(false);
   const idempotencyKeyRef = useRef(crypto.randomUUID());
 
+  const [optInText, setOptInText] = useState(false);
+  const [optInEmail, setOptInEmail] = useState(false);
+
   const [info, setInfo] = useState({
     senderName: "",
     senderEmail: "",
@@ -146,6 +149,8 @@ export function GiftCardForm() {
         message: info.message.trim(),
         sendToSelf,
         deliveryMethod,
+        optInText,
+        optInEmail,
       },
       token,
       recaptchaToken,
@@ -544,6 +549,24 @@ export function GiftCardForm() {
           >
             Back
           </Button>
+
+          {/* SMS & Email Opt-Ins */}
+          <div className="space-y-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={optInText} onChange={(e) => setOptInText(e.target.checked)}
+                className="mt-0.5 accent-brand-red" required />
+              <span className="text-sm text-gray-400">
+                I agree to receive SMS messages from Vietnoms regarding order updates and catering alerts. Message and data rates may apply. Reply STOP to opt out.{" "}
+                <a href="/privacy" target="_blank" className="text-brand-red hover:underline">Privacy Policy</a> &amp;{" "}
+                <a href="/terms" target="_blank" className="text-brand-red hover:underline">Terms</a>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input type="checkbox" checked={optInEmail} onChange={(e) => setOptInEmail(e.target.checked)}
+                className="mt-0.5 accent-brand-red" />
+              <span className="text-sm text-gray-400">Opt-in to receive promos and special deals via e-mail</span>
+            </label>
+          </div>
 
           {deliveryMethod === "sms" && (
             <p className="text-xs text-gray-400 text-center">

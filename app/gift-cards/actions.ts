@@ -201,6 +201,31 @@ export async function createGiftCard(
     // 5. Mark purchase as completed
     await updatePurchasePayment(purchaseId, paymentId);
 
+    // 5b. Store SMS/email consent (non-blocking)
+    if (data.senderPhone && (data.optInText || data.optInEmail)) {
+      (async () => {
+        const { findCustomerByPhone, createSquareCustomer } = await import("@/lib/square-customers");
+        const { upsertCustomer } = await import("@/lib/db/customers");
+        const normalized = normalizePhone(data.senderPhone);
+        const existing = await findCustomerByPhone(normalized);
+        const customer = existing ?? await createSquareCustomer({
+          phone: normalized,
+          givenName: data.senderName.split(" ")[0],
+        });
+        if (customer?.id) {
+          await upsertCustomer({
+            id: customer.id,
+            phone: normalized,
+            givenName: data.senderName.split(" ")[0],
+            familyName: data.senderName.split(" ").slice(1).join(" ") || undefined,
+            email: data.senderEmail || undefined,
+            smsOptIn: !!data.optInText,
+            emailOptIn: !!data.optInEmail,
+          });
+        }
+      })().catch((err) => console.error("Gift card consent storage failed:", err));
+    }
+
     // 6. Deliver the gift card (non-blocking)
     if (gan) {
       if (deliveryMethod === "sms" && recipientPhone) {
