@@ -1,13 +1,26 @@
 "use client";
 
-import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCart } from "@/lib/cart-context";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 
+const CheckoutPanel = dynamic(
+  () => import("./checkout-panel").then((m) => ({ default: m.CheckoutPanel })),
+  { ssr: false }
+);
+
 export function CartSidebar() {
-  const { items, total, itemCount, updateQuantity, removeItem } = useCart();
+  const { items, total, itemCount, updateQuantity, removeItem, isCheckoutOpen, openCheckout } = useCart();
+
+  if (isCheckoutOpen && items.length > 0) {
+    return (
+      <div className="sticky top-24 bg-surface-alt rounded-lg border border-gray-700/50 overflow-hidden max-h-[calc(100vh-7rem)]">
+        <CheckoutPanel />
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (
@@ -85,15 +98,20 @@ export function CartSidebar() {
       </div>
 
       <div className="p-4 border-t border-gray-700/30 space-y-3">
-        <div className="flex justify-between font-semibold">
-          <span>Subtotal</span>
-          <span className="text-brand-red">{formatPrice(total)}</span>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">Subtotal</span>
+          <span className="text-white">{formatPrice(total)}</span>
         </div>
-        <p className="text-xs text-gray-500">
-          Tax calculated at checkout.
-        </p>
-        <Button asChild size="lg" className="w-full">
-          <Link href="/order/checkout">Proceed to Checkout</Link>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-400">Tax (est.)</span>
+          <span className="text-white">{formatPrice(Math.round(total * 0.10))}</span>
+        </div>
+        <div className="flex justify-between font-semibold border-t border-gray-700/30 pt-2">
+          <span>Total</span>
+          <span className="text-brand-red">{formatPrice(total + Math.round(total * 0.10))}</span>
+        </div>
+        <Button size="lg" className="w-full" onClick={openCheckout}>
+          Proceed to Checkout
         </Button>
       </div>
     </div>

@@ -466,7 +466,7 @@ export function CateringWizard() {
           </div>
         ))}
         <div className="flex justify-between text-gray-400">
-          <span>Tax (9.375%)</span><span>{formatMoney(taxAmount)}</span>
+          <span>Tax (10%)</span><span>{formatMoney(taxAmount)}</span>
         </div>
         <div className="border-t border-gray-700 pt-1 flex justify-between font-semibold text-white text-base">
           <span>Total</span>

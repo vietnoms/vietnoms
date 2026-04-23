@@ -169,6 +169,9 @@ interface CartContextType extends CartState {
   isCartOpen: boolean;
   openCart: () => void;
   closeCart: () => void;
+  isCheckoutOpen: boolean;
+  openCheckout: () => void;
+  closeCheckout: () => void;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
@@ -182,8 +185,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     itemCount: 0,
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const openCart = useCallback(() => setIsCartOpen(true), []);
-  const closeCart = useCallback(() => setIsCartOpen(false), []);
+  const closeCart = useCallback(() => { setIsCartOpen(false); setIsCheckoutOpen(false); }, []);
+  const openCheckout = useCallback(() => setIsCheckoutOpen(true), []);
+  const closeCheckout = useCallback(() => setIsCheckoutOpen(false), []);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -205,6 +211,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
+    // Auto-close checkout when cart becomes empty
+    if (state.items.length === 0) setIsCheckoutOpen(false);
   }, [state.items]);
 
   const value: CartContextType = {
@@ -217,6 +225,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     isCartOpen,
     openCart,
     closeCart,
+    isCheckoutOpen,
+    openCheckout,
+    closeCheckout,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

@@ -23,7 +23,7 @@ interface OrderMenuProps {
 }
 
 export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
-  const { addItem, openCart, itemCount } = useCart();
+  const { addItem, openCart, itemCount, isCheckoutOpen } = useCart();
   const { user, setShowLogin } = useAuth();
   const [activeCategory, setActiveCategory] = useState(
     categories[0]?.slug || ""
@@ -356,7 +356,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
       </div>
 
       {/* Desktop cart sidebar */}
-      <div className="hidden lg:block w-80 shrink-0">
+      <div className={`hidden lg:block shrink-0 transition-all duration-300 ${isCheckoutOpen ? "w-[28rem]" : "w-80"}`}>
         <CartSidebar />
       </div>
 

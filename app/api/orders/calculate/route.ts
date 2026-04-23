@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSquare, LOCATION_ID, toNumber } from "@/lib/square";
 
-const FALLBACK_TAX_RATE = 0.09375;
+const FALLBACK_TAX_RATE = 0.10;
 
 export async function POST(request: Request) {
   try {

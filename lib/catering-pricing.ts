@@ -1,5 +1,5 @@
 export const BASE_PRICE_PER_PERSON = 2000; // $20.00 in cents
-export const CATERING_TAX_RATE = 0.09375; // 9.375% sales tax
+export const CATERING_TAX_RATE = 0.10; // 10% sales tax
 
 export const RESTAURANT_ORIGIN = "387 S 1st St, San Jose, CA 95113";
 
