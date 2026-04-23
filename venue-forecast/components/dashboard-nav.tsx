@@ -6,8 +6,8 @@ import { TrendingUp, Settings, LogOut } from "lucide-react";
 import { config } from "@/lib/config";
 
 const NAV_ITEMS = [
-  { href: "/", label: "Forecast", icon: TrendingUp },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Forecast", icon: TrendingUp },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
 export function DashboardNav() {
@@ -31,8 +31,8 @@ export function DashboardNav() {
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;
               const active =
-                item.href === "/"
-                  ? pathname === "/"
+                item.href === "/dashboard"
+                  ? pathname === "/dashboard"
                   : pathname.startsWith(item.href);
               return (
                 <Link

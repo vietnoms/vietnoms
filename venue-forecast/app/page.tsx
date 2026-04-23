@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarDays, Upload, TrendingUp, Bell } from "lucide-react";
 import { config } from "@/lib/config";
+import { isAuth } from "@/lib/auth";
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  if (await isAuth()) redirect("/dashboard");
   return (
     <div className="min-h-screen bg-surface">
       <header className="border-b border-gray-800">
