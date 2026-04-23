@@ -53,6 +53,9 @@ describe("impactLevelFromScore", () => {
 describe("buildForecast", () => {
   const makeEvent = (overrides: Partial<ConventionEventRow>): ConventionEventRow => ({
     id: 1,
+    tenantId: 1,
+    venueId: null,
+    venueName: null,
     eventName: "Test Convention",
     startDate: "2026-04-10",
     endDate: "2026-04-12",
@@ -60,6 +63,7 @@ describe("buildForecast", () => {
     eventType: "convention",
     notes: null,
     source: "csv",
+    starred: false,
     createdAt: "2026-01-01",
     updatedAt: "2026-01-01",
     ...overrides,
@@ -98,7 +102,7 @@ describe("buildForecast", () => {
   });
 
   it("includes historical revenue when provided", () => {
-    const sales = [{ id: 1, date: "2026-04-10", revenue: 150000, transactionCount: 85, notes: null, createdAt: "" }];
+    const sales = [{ id: 1, tenantId: 1, date: "2026-04-10", revenue: 150000, transactionCount: 85, avgTicket: null, posSource: null, notes: null, createdAt: "" }];
     const days = buildForecast("2026-04-10", "2026-04-10", [], sales);
     expect(days[0].historicalRevenue).toBe(150000);
   });
@@ -109,9 +113,10 @@ describe("groupByWeek", () => {
     // 2026-04-06 is a Monday
     const events = [
       {
-        id: 1, eventName: "Big Show", startDate: "2026-04-07", endDate: "2026-04-09",
+        id: 1, tenantId: 1, venueId: null, venueName: null,
+        eventName: "Big Show", startDate: "2026-04-07", endDate: "2026-04-09",
         expectedAttendance: 8000, eventType: "convention", notes: null,
-        source: "csv", createdAt: "", updatedAt: "",
+        source: "csv", starred: false, createdAt: "", updatedAt: "",
       },
     ] satisfies ConventionEventRow[];
 
