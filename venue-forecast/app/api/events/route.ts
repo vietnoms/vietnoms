@@ -44,8 +44,17 @@ export async function POST(req: NextRequest) {
   if (contentType.includes("multipart/form-data")) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
+    const venueIdRaw = formData.get("venueId");
+    const venueId = venueIdRaw ? parseInt(String(venueIdRaw), 10) : NaN;
+
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    }
+    if (!venueId || isNaN(venueId)) {
+      return NextResponse.json(
+        { error: "venueId is required for CSV import" },
+        { status: 400 }
+      );
     }
 
     const csvText = await file.text();
@@ -71,6 +80,7 @@ export async function POST(req: NextRequest) {
       await upsertConventionEvent({
         ...event,
         tenantId: session.tenantId,
+        venueId,
         source: "csv",
       });
       imported++;
@@ -83,16 +93,16 @@ export async function POST(req: NextRequest) {
   const { eventName, startDate, endDate, expectedAttendance, eventType, notes, venueId } =
     body;
 
-  if (!eventName || !startDate) {
+  if (!eventName || !startDate || !venueId) {
     return NextResponse.json(
-      { error: "eventName and startDate are required" },
+      { error: "eventName, startDate, and venueId are required" },
       { status: 400 }
     );
   }
 
   const result = await upsertConventionEvent({
     tenantId: session.tenantId,
-    venueId: venueId ? parseInt(venueId, 10) : undefined,
+    venueId: parseInt(venueId, 10),
     eventName,
     startDate,
     endDate: endDate || startDate,

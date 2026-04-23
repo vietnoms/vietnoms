@@ -1,10 +1,10 @@
 import { getTurso } from "@/lib/turso";
+import { slugify } from "@/lib/utils";
 
 export interface ConventionEventRow {
   id: number;
-  tenantId: number;
-  venueId: number | null;
-  venueName: string | null;
+  venueId: number;
+  venueName: string;
   eventName: string;
   startDate: string;
   endDate: string;
@@ -31,10 +31,10 @@ export interface DailySalesRow {
 
 export interface VenueRow {
   id: number;
-  tenantId: number;
   name: string;
   slug: string;
   address: string | null;
+  city: string | null;
   priority: number;
   createdAt: string;
 }
@@ -42,9 +42,8 @@ export interface VenueRow {
 function mapEventRow(row: Record<string, unknown>): ConventionEventRow {
   return {
     id: Number(row.id),
-    tenantId: Number(row.tenant_id),
-    venueId: row.venue_id ? Number(row.venue_id) : null,
-    venueName: (row.venue_name as string) || null,
+    venueId: Number(row.venue_id),
+    venueName: row.venue_name as string,
     eventName: row.event_name as string,
     startDate: row.start_date as string,
     endDate: row.end_date as string,
@@ -79,52 +78,84 @@ function mapSalesRow(row: Record<string, unknown>): DailySalesRow {
 function mapVenueRow(row: Record<string, unknown>): VenueRow {
   return {
     id: Number(row.id),
-    tenantId: Number(row.tenant_id),
     name: row.name as string,
     slug: row.slug as string,
     address: (row.address as string) || null,
-    priority: Number(row.priority),
+    city: (row.city as string) || null,
+    priority: Number(row.priority ?? 0),
     createdAt: row.created_at as string,
   };
 }
 
-// --- Convention Events ---
+// --- Venues (canonical + subscriptions) ---
 
-export async function createConventionEvent(input: {
-  tenantId: number;
-  venueId?: number;
-  eventName: string;
-  startDate: string;
-  endDate: string;
-  expectedAttendance?: number;
-  eventType?: string;
-  notes?: string;
-  source?: string;
+export async function findOrCreateVenue(input: {
+  name: string;
+  address?: string;
+  city?: string;
 }): Promise<{ id: number }> {
   const db = getTurso();
+  const slug = slugify(input.name);
+  const existing = await db.execute({
+    sql: `SELECT id FROM venues WHERE slug = ?`,
+    args: [slug],
+  });
+  if (existing.rows.length > 0) {
+    return { id: Number(existing.rows[0].id) };
+  }
   const result = await db.execute({
-    sql: `INSERT INTO convention_events
-          (tenant_id, venue_id, event_name, start_date, end_date,
-           expected_attendance, event_type, notes, source)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      input.tenantId,
-      input.venueId ?? null,
-      input.eventName,
-      input.startDate,
-      input.endDate,
-      input.expectedAttendance ?? null,
-      input.eventType ?? null,
-      input.notes ?? null,
-      input.source ?? "csv",
-    ],
+    sql: `INSERT INTO venues (name, slug, address, city) VALUES (?, ?, ?, ?)`,
+    args: [input.name, slug, input.address ?? null, input.city ?? null],
   });
   return { id: Number(result.lastInsertRowid) };
 }
 
+export async function subscribeTenantToVenue(input: {
+  tenantId: number;
+  venueId: number;
+  priority?: number;
+}): Promise<void> {
+  const db = getTurso();
+  await db.execute({
+    sql: `INSERT INTO tenant_venues (tenant_id, venue_id, priority)
+          VALUES (?, ?, ?)
+          ON CONFLICT(tenant_id, venue_id) DO UPDATE SET priority = excluded.priority`,
+    args: [input.tenantId, input.venueId, input.priority ?? 0],
+  });
+}
+
+export async function unsubscribeTenantFromVenue(
+  tenantId: number,
+  venueId: number
+): Promise<void> {
+  const db = getTurso();
+  await db.execute({
+    sql: `DELETE FROM tenant_venues WHERE tenant_id = ? AND venue_id = ?`,
+    args: [tenantId, venueId],
+  });
+}
+
+export async function listVenues(tenantId: number): Promise<VenueRow[]> {
+  const db = getTurso();
+  const result = await db.execute({
+    sql: `SELECT v.id, v.name, v.slug, v.address, v.city, v.created_at,
+                 tv.priority
+          FROM venues v
+          INNER JOIN tenant_venues tv ON tv.venue_id = v.id
+          WHERE tv.tenant_id = ?
+          ORDER BY tv.priority DESC, v.name ASC`,
+    args: [tenantId],
+  });
+  return result.rows.map((row) =>
+    mapVenueRow(row as unknown as Record<string, unknown>)
+  );
+}
+
+// --- Convention Events (shared, per-venue) ---
+
 export async function upsertConventionEvent(input: {
   tenantId: number;
-  venueId?: number;
+  venueId: number;
   eventName: string;
   startDate: string;
   endDate: string;
@@ -136,23 +167,25 @@ export async function upsertConventionEvent(input: {
   const db = getTurso();
   const existing = await db.execute({
     sql: `SELECT id FROM convention_events
-          WHERE tenant_id = ? AND event_name = ? AND start_date = ?`,
-    args: [input.tenantId, input.eventName, input.startDate],
+          WHERE venue_id = ? AND event_name = ? AND start_date = ?`,
+    args: [input.venueId, input.eventName, input.startDate],
   });
 
   if (existing.rows.length > 0) {
     const id = Number(existing.rows[0].id);
     await db.execute({
       sql: `UPDATE convention_events
-            SET end_date = ?, expected_attendance = ?, event_type = ?,
-                venue_id = COALESCE(?, venue_id), notes = ?,
-                source = ?, updated_at = datetime('now')
+            SET end_date = ?,
+                expected_attendance = COALESCE(?, expected_attendance),
+                event_type = COALESCE(?, event_type),
+                notes = COALESCE(?, notes),
+                source = ?,
+                updated_at = datetime('now')
             WHERE id = ?`,
       args: [
         input.endDate,
         input.expectedAttendance ?? null,
         input.eventType ?? null,
-        input.venueId ?? null,
         input.notes ?? null,
         input.source ?? "csv",
         id,
@@ -161,7 +194,24 @@ export async function upsertConventionEvent(input: {
     return { id };
   }
 
-  return createConventionEvent(input);
+  const result = await db.execute({
+    sql: `INSERT INTO convention_events
+          (venue_id, event_name, start_date, end_date, expected_attendance,
+           event_type, notes, source, added_by_tenant)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      input.venueId,
+      input.eventName,
+      input.startDate,
+      input.endDate,
+      input.expectedAttendance ?? null,
+      input.eventType ?? null,
+      input.notes ?? null,
+      input.source ?? "csv",
+      input.tenantId,
+    ],
+  });
+  return { id: Number(result.lastInsertRowid) };
 }
 
 export async function listConventionEvents(opts: {
@@ -169,11 +219,13 @@ export async function listConventionEvents(opts: {
   fromDate?: string;
   toDate?: string;
   venueId?: number;
-  limit?: number;
 }): Promise<ConventionEventRow[]> {
   const db = getTurso();
-  const conditions: string[] = ["ce.tenant_id = ?"];
-  const args: (string | number)[] = [opts.tenantId];
+  // SQL binds in positional order: JOIN predicate first, then WHERE clause.
+  const args: (string | number)[] = [opts.tenantId, opts.tenantId];
+  const conditions: string[] = [
+    `ce.venue_id IN (SELECT venue_id FROM tenant_venues WHERE tenant_id = ?)`,
+  ];
 
   if (opts.fromDate) {
     conditions.push("ce.end_date >= ?");
@@ -188,16 +240,16 @@ export async function listConventionEvents(opts: {
     args.push(opts.venueId);
   }
 
-  const where = `WHERE ${conditions.join(" AND ")}`;
-  const limit = opts.limit ?? 200;
-  args.push(limit);
-
   const result = await db.execute({
-    sql: `SELECT ce.*, v.name as venue_name
+    sql: `SELECT ce.*, v.name as venue_name,
+                 CASE WHEN tes.event_id IS NULL THEN 0 ELSE 1 END AS starred
           FROM convention_events ce
-          LEFT JOIN venues v ON ce.venue_id = v.id
-          ${where}
-          ORDER BY ce.start_date ASC LIMIT ?`,
+          INNER JOIN venues v ON ce.venue_id = v.id
+          LEFT JOIN tenant_event_stars tes
+            ON tes.event_id = ce.id AND tes.tenant_id = ?
+          WHERE ${conditions.join(" AND ")}
+          ORDER BY ce.start_date ASC
+          LIMIT 500`,
     args,
   });
 
@@ -212,26 +264,39 @@ export async function deleteConventionEvent(
 ): Promise<void> {
   const db = getTurso();
   await db.execute({
-    sql: `DELETE FROM convention_events WHERE id = ? AND tenant_id = ?`,
+    sql: `DELETE FROM convention_events
+          WHERE id = ? AND added_by_tenant = ?`,
     args: [id, tenantId],
+  });
+  await db.execute({
+    sql: `DELETE FROM tenant_event_stars WHERE event_id = ?`,
+    args: [id],
   });
 }
 
 export async function updateEventStarred(
   tenantId: number,
-  id: number,
+  eventId: number,
   starred: boolean
 ): Promise<void> {
   const db = getTurso();
-  await db.execute({
-    sql: `UPDATE convention_events
-          SET starred = ?, updated_at = datetime('now')
-          WHERE id = ? AND tenant_id = ?`,
-    args: [starred ? 1 : 0, id, tenantId],
-  });
+  if (starred) {
+    await db.execute({
+      sql: `INSERT INTO tenant_event_stars (tenant_id, event_id)
+            VALUES (?, ?)
+            ON CONFLICT(tenant_id, event_id) DO NOTHING`,
+      args: [tenantId, eventId],
+    });
+  } else {
+    await db.execute({
+      sql: `DELETE FROM tenant_event_stars
+            WHERE tenant_id = ? AND event_id = ?`,
+      args: [tenantId, eventId],
+    });
+  }
 }
 
-// --- Daily Sales ---
+// --- Daily Sales (per-tenant) ---
 
 export async function upsertDailySales(input: {
   tenantId: number;
@@ -283,66 +348,14 @@ export async function listDailySales(opts: {
     args.push(opts.toDate);
   }
 
-  const where = `WHERE ${conditions.join(" AND ")}`;
   const result = await db.execute({
-    sql: `SELECT * FROM daily_sales ${where} ORDER BY date ASC`,
+    sql: `SELECT * FROM daily_sales WHERE ${conditions.join(" AND ")} ORDER BY date ASC`,
     args,
   });
 
   return result.rows.map((row) =>
     mapSalesRow(row as unknown as Record<string, unknown>)
   );
-}
-
-// --- Venues ---
-
-export async function createVenue(input: {
-  tenantId: number;
-  name: string;
-  slug: string;
-  address?: string;
-  priority?: number;
-}): Promise<{ id: number }> {
-  const db = getTurso();
-  const result = await db.execute({
-    sql: `INSERT INTO venues (tenant_id, name, slug, address, priority)
-          VALUES (?, ?, ?, ?, ?)`,
-    args: [
-      input.tenantId,
-      input.name,
-      input.slug,
-      input.address ?? null,
-      input.priority ?? 0,
-    ],
-  });
-  return { id: Number(result.lastInsertRowid) };
-}
-
-export async function listVenues(tenantId: number): Promise<VenueRow[]> {
-  const db = getTurso();
-  const result = await db.execute({
-    sql: `SELECT * FROM venues WHERE tenant_id = ? ORDER BY priority DESC, name ASC`,
-    args: [tenantId],
-  });
-  return result.rows.map((row) =>
-    mapVenueRow(row as unknown as Record<string, unknown>)
-  );
-}
-
-export async function deleteVenue(
-  tenantId: number,
-  id: number
-): Promise<void> {
-  const db = getTurso();
-  await db.execute({
-    sql: `UPDATE convention_events SET venue_id = NULL
-          WHERE venue_id = ? AND tenant_id = ?`,
-    args: [id, tenantId],
-  });
-  await db.execute({
-    sql: `DELETE FROM venues WHERE id = ? AND tenant_id = ?`,
-    args: [id, tenantId],
-  });
 }
 
 export async function getTenantBySlug(

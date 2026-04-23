@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getTenantBySlug,
+  findOrCreateVenue,
+  subscribeTenantToVenue,
   upsertConventionEvent,
-  listVenues,
-  createVenue,
 } from "@/lib/db/convention-events";
-import { slugify } from "@/lib/utils";
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -30,34 +29,29 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Tenant not found" }, { status: 404 });
   }
 
-  const venues = await listVenues(tenant.id);
-  const venueMap = new Map(venues.map((v) => [v.slug, v.id]));
-
   let imported = 0;
   const errors: string[] = [];
 
   for (const event of events) {
     try {
-      let venueId: number | undefined;
-
-      if (event.venue) {
-        const venueSlug = slugify(event.venue);
-        if (venueMap.has(venueSlug)) {
-          venueId = venueMap.get(venueSlug);
-        } else {
-          const { id } = await createVenue({
-            tenantId: tenant.id,
-            name: event.venue,
-            slug: venueSlug,
-          });
-          venueId = id;
-          venueMap.set(venueSlug, id);
-        }
+      if (!event.venue) {
+        errors.push(`${event.eventName}: missing venue`);
+        continue;
       }
+
+      const venue = await findOrCreateVenue({
+        name: event.venue,
+        address: event.venueAddress,
+        city: event.venueCity,
+      });
+      await subscribeTenantToVenue({
+        tenantId: tenant.id,
+        venueId: venue.id,
+      });
 
       await upsertConventionEvent({
         tenantId: tenant.id,
-        venueId,
+        venueId: venue.id,
         eventName: event.eventName,
         startDate: event.startDate,
         endDate: event.endDate || event.startDate,

@@ -3,8 +3,8 @@ import { config } from "@/lib/config";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: config.brand.name,
-  description: config.brand.tagline,
+  title: config.appName,
+  description: "Event-driven sales forecasting for restaurants.",
 };
 
 export default function RootLayout({
@@ -13,15 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html
-      lang="en"
-      style={
-        {
-          "--color-primary": config.colors.primary,
-          "--color-primary-hover": config.colors.primaryHover,
-        } as React.CSSProperties
-      }
-    >
+    <html lang="en">
       <body className="min-h-screen bg-surface text-gray-200 antialiased">
         {children}
       </body>

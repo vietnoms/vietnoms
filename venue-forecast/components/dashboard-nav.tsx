@@ -26,7 +26,7 @@ export function DashboardNav() {
         <div className="flex h-14 items-center justify-between">
           <div className="flex items-center gap-1">
             <span className="text-xl font-bold text-primary mr-4">
-              {config.brand.name}
+              {config.appName}
             </span>
             {NAV_ITEMS.map((item) => {
               const Icon = item.icon;

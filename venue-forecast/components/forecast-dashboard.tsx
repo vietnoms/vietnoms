@@ -17,8 +17,8 @@ import {
 
 interface ConventionEvent {
   id: number;
-  venueId: number | null;
-  venueName: string | null;
+  venueId: number;
+  venueName: string;
   eventName: string;
   startDate: string;
   endDate: string;
@@ -29,6 +29,12 @@ interface ConventionEvent {
   starred: boolean;
 }
 
+interface PeerInsight {
+  upliftPercent: number;
+  peerCount: number;
+  projectedRevenue: number;
+}
+
 interface ForecastDay {
   date: string;
   dayOfWeek: number;
@@ -36,6 +42,7 @@ interface ForecastDay {
   totalAttendance: number;
   impactLevel: "low" | "medium" | "high" | "critical";
   impactScore: number;
+  peerInsight: PeerInsight | null;
 }
 
 interface ForecastWeek {
@@ -141,9 +148,19 @@ export function ForecastDashboard() {
   }, [fetchForecast]);
 
   const handleCsvUpload = async (file: File, type: "events" | "sales") => {
+    if (type === "events" && !venueFilter) {
+      setUploadStatus(
+        "Error: Select a venue from the filter bar before importing events CSV."
+      );
+      return;
+    }
+
     setUploadStatus(`Importing ${type}...`);
     const formData = new FormData();
     formData.append("file", file);
+    if (type === "events" && venueFilter) {
+      formData.append("venueId", String(venueFilter));
+    }
 
     try {
       const endpoint = type === "events" ? "/api/events" : "/api/sales";
@@ -397,12 +414,13 @@ export function ForecastDashboard() {
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Venue</label>
+            <label className="block text-xs text-gray-400 mb-1">Venue *</label>
             <select
               name="venueId"
+              required
               className="w-full rounded bg-surface-alt px-3 py-2 text-sm text-white border border-gray-700 focus:border-primary focus:outline-none"
             >
-              <option value="">— None —</option>
+              <option value="">— Select venue —</option>
               {venues.map((v) => (
                 <option key={v.id} value={v.id}>
                   {v.name}
@@ -679,6 +697,31 @@ export function ForecastDashboard() {
                     {selectedDay.totalAttendance.toLocaleString()}
                   </span>
                 </p>
+              )}
+
+              {selectedDay.peerInsight && (
+                <div className="mt-3 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-gray-300">
+                  <div className="font-medium text-primary">
+                    Peer insight · {selectedDay.peerInsight.peerCount} restaurants
+                  </div>
+                  <div className="mt-0.5 text-gray-400">
+                    Peers saw{" "}
+                    <span
+                      className={`font-semibold ${
+                        selectedDay.peerInsight.upliftPercent >= 0
+                          ? "text-green-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {selectedDay.peerInsight.upliftPercent >= 0 ? "+" : ""}
+                      {selectedDay.peerInsight.upliftPercent}%
+                    </span>{" "}
+                    revenue vs. their weekday baseline. Projection for you:{" "}
+                    <span className="text-white font-medium">
+                      ${(selectedDay.peerInsight.projectedRevenue / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </span>
+                  </div>
+                </div>
               )}
 
               {selectedDay.events.length === 0 ? (

@@ -9,6 +9,7 @@ interface Venue {
   name: string;
   slug: string;
   address: string | null;
+  city: string | null;
   priority: number;
 }
 
@@ -16,6 +17,7 @@ export default function SettingsPage() {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [priority, setPriority] = useState(false);
 
@@ -36,15 +38,21 @@ export default function SettingsPage() {
     await fetch("/api/venues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, address, priority: priority ? 1 : 0 }),
+      body: JSON.stringify({
+        name,
+        address,
+        city,
+        priority: priority ? 1 : 0,
+      }),
     });
     setName("");
+    setCity("");
     setAddress("");
     setPriority(false);
     fetchVenues();
   };
 
-  const handleDelete = async (id: number) => {
+  const handleUnsubscribe = async (id: number) => {
     await fetch(`/api/venues?id=${id}`, { method: "DELETE" });
     fetchVenues();
   };
@@ -54,22 +62,25 @@ export default function SettingsPage() {
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
         <h1 className="text-3xl font-bold text-white">Settings</h1>
         <p className="mt-2 text-gray-400">
-          Manage venues and configure {config.brand.name}.
+          Manage your venue subscriptions on {config.appName}.
         </p>
 
         <div className="mt-8 space-y-6">
           <div className="rounded-lg border border-gray-800 bg-surface p-6">
-            <h2 className="text-lg font-semibold text-white">Venues</h2>
+            <h2 className="text-lg font-semibold text-white">
+              Subscribed Venues
+            </h2>
             <p className="mt-1 text-sm text-gray-400">
-              Add the event venues near your business. Mark high-impact venues
-              with a star for priority filtering.
+              Subscribe to the event venues that drive traffic to your
+              restaurant. If a venue already exists in the network, you&apos;ll
+              automatically share anonymized event insights with peers.
             </p>
 
             <form
               onSubmit={handleAdd}
-              className="mt-4 flex flex-wrap gap-3 items-end"
+              className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3"
             >
-              <div className="flex-1 min-w-[200px]">
+              <div className="sm:col-span-2">
                 <label className="block text-xs text-gray-400 mb-1">
                   Venue Name
                 </label>
@@ -77,10 +88,22 @@ export default function SettingsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
+                  placeholder="Austin Convention Center"
                   className="w-full rounded bg-surface-alt px-3 py-2 text-sm text-white border border-gray-700 focus:border-primary focus:outline-none"
                 />
               </div>
-              <div className="flex-1 min-w-[200px]">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">
+                  City (optional)
+                </label>
+                <input
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Austin"
+                  className="w-full rounded bg-surface-alt px-3 py-2 text-sm text-white border border-gray-700 focus:border-primary focus:outline-none"
+                />
+              </div>
+              <div>
                 <label className="block text-xs text-gray-400 mb-1">
                   Address (optional)
                 </label>
@@ -90,32 +113,34 @@ export default function SettingsPage() {
                   className="w-full rounded bg-surface-alt px-3 py-2 text-sm text-white border border-gray-700 focus:border-primary focus:outline-none"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={priority}
-                  onChange={(e) => setPriority(e.target.checked)}
-                  className="rounded"
-                />
-                High Impact
-              </label>
-              <button
-                type="submit"
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
-              >
-                <Plus className="h-4 w-4" />
-                Add
-              </button>
+              <div className="flex items-end justify-between gap-3 sm:col-span-2">
+                <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={priority}
+                    onChange={(e) => setPriority(e.target.checked)}
+                    className="rounded"
+                  />
+                  High Impact (pin to top of filter)
+                </label>
+                <button
+                  type="submit"
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover"
+                >
+                  <Plus className="h-4 w-4" />
+                  Subscribe
+                </button>
+              </div>
             </form>
 
             {loading ? (
-              <p className="mt-4 text-sm text-gray-500">Loading...</p>
+              <p className="mt-6 text-sm text-gray-500">Loading...</p>
             ) : venues.length === 0 ? (
-              <p className="mt-4 text-sm text-gray-500">
-                No venues added yet. Add the event venues near your business.
+              <p className="mt-6 text-sm text-gray-500">
+                No subscriptions yet. Start by subscribing to a venue above.
               </p>
             ) : (
-              <div className="mt-4 divide-y divide-gray-800">
+              <div className="mt-6 divide-y divide-gray-800">
                 {venues.map((venue) => (
                   <div
                     key={venue.id}
@@ -123,22 +148,28 @@ export default function SettingsPage() {
                   >
                     <div className="flex items-center gap-2">
                       {venue.priority > 0 && (
-                        <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
+                        <Star
+                          className="h-4 w-4 text-amber-400"
+                          fill="currentColor"
+                        />
                       )}
                       <div>
                         <p className="text-sm font-medium text-white">
                           {venue.name}
                         </p>
-                        {venue.address && (
+                        {(venue.address || venue.city) && (
                           <p className="text-xs text-gray-400">
-                            {venue.address}
+                            {[venue.address, venue.city]
+                              .filter(Boolean)
+                              .join(", ")}
                           </p>
                         )}
                       </div>
                     </div>
                     <button
-                      onClick={() => handleDelete(venue.id)}
+                      onClick={() => handleUnsubscribe(venue.id)}
                       className="text-gray-600 hover:text-red-400 transition-colors"
+                      title="Unsubscribe from this venue"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

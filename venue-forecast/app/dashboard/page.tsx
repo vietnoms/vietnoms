@@ -3,7 +3,7 @@ import { config } from "@/lib/config";
 import { ForecastDashboard } from "@/components/forecast-dashboard";
 
 export const metadata: Metadata = {
-  title: `Forecast | ${config.brand.name}`,
+  title: `Forecast | ${config.appName}`,
 };
 
 export const dynamic = "force-dynamic";

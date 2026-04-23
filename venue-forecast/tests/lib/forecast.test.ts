@@ -53,9 +53,8 @@ describe("impactLevelFromScore", () => {
 describe("buildForecast", () => {
   const makeEvent = (overrides: Partial<ConventionEventRow>): ConventionEventRow => ({
     id: 1,
-    tenantId: 1,
-    venueId: null,
-    venueName: null,
+    venueId: 1,
+    venueName: "Convention Center",
     eventName: "Test Convention",
     startDate: "2026-04-10",
     endDate: "2026-04-12",
@@ -113,7 +112,7 @@ describe("groupByWeek", () => {
     // 2026-04-06 is a Monday
     const events = [
       {
-        id: 1, tenantId: 1, venueId: null, venueName: null,
+        id: 1, venueId: 1, venueName: "Convention Center",
         eventName: "Big Show", startDate: "2026-04-07", endDate: "2026-04-09",
         expectedAttendance: 8000, eventType: "convention", notes: null,
         source: "csv", starred: false, createdAt: "", updatedAt: "",

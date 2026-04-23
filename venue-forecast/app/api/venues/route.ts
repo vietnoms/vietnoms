@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth";
 import {
-  createVenue,
+  findOrCreateVenue,
   listVenues,
-  deleteVenue,
+  subscribeTenantToVenue,
+  unsubscribeTenantFromVenue,
 } from "@/lib/db/convention-events";
-import { slugify } from "@/lib/utils";
 
 export async function GET() {
   let session;
@@ -28,21 +28,20 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { name, address, priority } = body;
+  const { name, address, city, priority } = body;
 
   if (!name) {
     return NextResponse.json({ error: "name is required" }, { status: 400 });
   }
 
-  const result = await createVenue({
+  const venue = await findOrCreateVenue({ name, address, city });
+  await subscribeTenantToVenue({
     tenantId: session.tenantId,
-    name,
-    slug: slugify(name),
-    address,
+    venueId: venue.id,
     priority: priority ? parseInt(priority, 10) : 0,
   });
 
-  return NextResponse.json({ id: result.id });
+  return NextResponse.json({ id: venue.id });
 }
 
 export async function DELETE(req: NextRequest) {
@@ -59,6 +58,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
-  await deleteVenue(session.tenantId, parseInt(id, 10));
+  await unsubscribeTenantFromVenue(session.tenantId, parseInt(id, 10));
   return NextResponse.json({ ok: true });
 }

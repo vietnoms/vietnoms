@@ -46,7 +46,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6 rounded-lg border border-gray-800 bg-surface-alt p-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-white">
-            {config.brand.name}
+            {config.appName}
           </h1>
           <p className="mt-1 text-sm text-gray-400">Sign in to your account</p>
         </div>

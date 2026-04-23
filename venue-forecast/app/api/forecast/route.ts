@@ -5,6 +5,7 @@ import {
   listDailySales,
   listVenues,
 } from "@/lib/db/convention-events";
+import { getPeerSalesForVenue, type PeerSalesPoint } from "@/lib/db/peer-insights";
 import { buildForecast, groupByWeek } from "@/lib/forecast";
 
 export async function GET(req: NextRequest) {
@@ -30,6 +31,7 @@ export async function GET(req: NextRequest) {
     .toISOString()
     .split("T")[0];
 
+  // Full sales history (not just the forecast window) drives baseline
   const [events, sales, venues] = await Promise.all([
     listConventionEvents({
       tenantId: session.tenantId,
@@ -37,15 +39,27 @@ export async function GET(req: NextRequest) {
       toDate: endDate,
       venueId,
     }),
-    listDailySales({
-      tenantId: session.tenantId,
-      fromDate: startDate,
-      toDate: endDate,
-    }),
+    listDailySales({ tenantId: session.tenantId }),
     listVenues(session.tenantId),
   ]);
 
-  const forecast = buildForecast(startDate, endDate, events, sales);
+  // Peer history: one lookup per unique venue with upcoming events
+  const venueIds = Array.from(new Set(events.map((e) => e.venueId)));
+  const peerByVenue = new Map<number, PeerSalesPoint[]>();
+  await Promise.all(
+    venueIds.map(async (vid) => {
+      const peers = await getPeerSalesForVenue(vid, session.tenantId);
+      peerByVenue.set(vid, peers);
+    })
+  );
+
+  const forecast = buildForecast(
+    startDate,
+    endDate,
+    events,
+    sales,
+    peerByVenue
+  );
   const weeks = groupByWeek(forecast);
 
   const busyWeeks = weeks.filter(

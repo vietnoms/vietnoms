@@ -1,6 +1,13 @@
 import type { ConventionEventRow, DailySalesRow } from "@/lib/db/convention-events";
+import type { PeerSalesPoint } from "@/lib/db/peer-insights";
 
 export type ImpactLevel = "low" | "medium" | "high" | "critical";
+
+export interface PeerInsight {
+  upliftPercent: number;    // e.g., 45 means +45%
+  peerCount: number;        // tenants contributing (≥ 2 required)
+  projectedRevenue: number; // cents, applied to own baseline
+}
 
 export interface ForecastDay {
   date: string; // YYYY-MM-DD
@@ -10,6 +17,7 @@ export interface ForecastDay {
   impactLevel: ImpactLevel;
   impactScore: number; // 0-100
   historicalRevenue: number | null; // cents, from matching past event data
+  peerInsight: PeerInsight | null;
 }
 
 export interface ForecastWeek {
@@ -45,19 +53,30 @@ export function impactLevelFromScore(score: number): ImpactLevel {
 
 /**
  * Build a day-by-day forecast from events and optional historical sales.
+ *
+ * When ownSalesHistory and peerHistoryByVenue are provided, each day with an
+ * event at a matching venue gets a `peerInsight` derived from anonymized peer
+ * restaurant sales uplift patterns on past comparable days.
  */
 export function buildForecast(
   startDate: string,
   endDate: string,
   events: ConventionEventRow[],
-  salesHistory?: DailySalesRow[]
+  ownSalesHistory?: DailySalesRow[],
+  peerHistoryByVenue?: Map<number, PeerSalesPoint[]>
 ): ForecastDay[] {
-  const salesMap = new Map<string, DailySalesRow>();
-  if (salesHistory) {
-    for (const s of salesHistory) {
-      salesMap.set(s.date, s);
+  const ownSalesMap = new Map<string, DailySalesRow>();
+  if (ownSalesHistory) {
+    for (const s of ownSalesHistory) {
+      ownSalesMap.set(s.date, s);
     }
   }
+
+  // Own baselines per weekday (median of non-event days), used for projection.
+  const ownBaselineByDow = computeOwnBaselineByDow(
+    ownSalesHistory ?? [],
+    events
+  );
 
   const days: ForecastDay[] = [];
   const current = new Date(startDate + "T00:00:00");
@@ -65,8 +84,8 @@ export function buildForecast(
 
   while (current <= end) {
     const dateStr = current.toISOString().split("T")[0];
+    const dayOfWeek = current.getDay();
 
-    // Find events active on this date
     const activeEvents = events.filter(
       (e) => e.startDate <= dateStr && e.endDate >= dateStr
     );
@@ -80,22 +99,124 @@ export function buildForecast(
       ? Math.min(100, activeEvents.reduce((sum, e) => sum + scoreEventImpact(e.expectedAttendance ?? 0), 0))
       : 0;
 
-    const sales = salesMap.get(dateStr);
+    const sales = ownSalesMap.get(dateStr);
+
+    let peerInsight: PeerInsight | null = null;
+    if (peerHistoryByVenue && activeEvents.length > 0) {
+      const ownBaseline = ownBaselineByDow[dayOfWeek] ?? null;
+      // Use the highest-attendance active event's venue for peer matching
+      const primaryEvent = activeEvents.reduce((a, b) =>
+        (a.expectedAttendance ?? 0) >= (b.expectedAttendance ?? 0) ? a : b
+      );
+      const peerHistory = peerHistoryByVenue.get(primaryEvent.venueId);
+      if (peerHistory && ownBaseline !== null) {
+        peerInsight = buildPeerInsight(dayOfWeek, peerHistory, ownBaseline);
+      }
+    }
 
     days.push({
       date: dateStr,
-      dayOfWeek: current.getDay(),
+      dayOfWeek,
       events: activeEvents,
       totalAttendance,
       impactScore,
       impactLevel: impactLevelFromScore(impactScore),
       historicalRevenue: sales?.revenue ?? null,
+      peerInsight,
     });
 
     current.setDate(current.getDate() + 1);
   }
 
   return days;
+}
+
+/**
+ * Compute a per-weekday baseline (median revenue) from own sales on
+ * non-event days, for use in projecting event-day revenue via peer uplift.
+ */
+export function computeOwnBaselineByDow(
+  sales: DailySalesRow[],
+  events: ConventionEventRow[]
+): Record<number, number | null> {
+  const eventDates = new Set<string>();
+  for (const ev of events) {
+    const start = new Date(ev.startDate + "T00:00:00");
+    const end = new Date(ev.endDate + "T00:00:00");
+    const cur = new Date(start);
+    while (cur <= end) {
+      eventDates.add(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
+  const byDow: Record<number, number[]> = {};
+  for (const s of sales) {
+    if (eventDates.has(s.date)) continue;
+    const dow = new Date(s.date + "T00:00:00").getDay();
+    (byDow[dow] ??= []).push(s.revenue);
+  }
+
+  const out: Record<number, number | null> = {};
+  for (let dow = 0; dow < 7; dow++) {
+    out[dow] = byDow[dow]?.length ? median(byDow[dow]) : null;
+  }
+  return out;
+}
+
+/**
+ * Aggregate peer uplift for a given day-of-week, requiring k-anonymity (N≥2).
+ * Groups peer sales by tenant, computes each peer's event-day uplift vs their
+ * own non-event baseline, then returns the median uplift across peers.
+ */
+export function buildPeerInsight(
+  dayOfWeek: number,
+  peerHistory: PeerSalesPoint[],
+  ownBaseline: number
+): PeerInsight | null {
+  const byTenant = new Map<number, PeerSalesPoint[]>();
+  for (const pt of peerHistory) {
+    const arr = byTenant.get(pt.tenantId) ?? [];
+    arr.push(pt);
+    byTenant.set(pt.tenantId, arr);
+  }
+
+  const perPeerUplifts: number[] = [];
+  const tenantPoints: PeerSalesPoint[][] = Array.from(byTenant.values());
+  for (const points of tenantPoints) {
+    const baselineRevenues = points
+      .filter((p) => p.eventVenueId === null && p.dayOfWeek === dayOfWeek)
+      .map((p) => p.revenue);
+    const eventRevenues = points
+      .filter((p) => p.eventVenueId !== null && p.dayOfWeek === dayOfWeek)
+      .map((p) => p.revenue);
+
+    if (baselineRevenues.length === 0 || eventRevenues.length === 0) continue;
+
+    const peerBaseline = median(baselineRevenues);
+    if (peerBaseline <= 0) continue;
+
+    const eventMedian = median(eventRevenues);
+    perPeerUplifts.push((eventMedian - peerBaseline) / peerBaseline);
+  }
+
+  if (perPeerUplifts.length < 2) return null;
+
+  const medianUplift = median(perPeerUplifts);
+  return {
+    upliftPercent: Math.round(medianUplift * 100),
+    peerCount: perPeerUplifts.length,
+    projectedRevenue: Math.round(ownBaseline * (1 + medianUplift)),
+  };
+}
+
+function median(values: number[]): number {
+  const sorted = [...values].sort((a, b) => a - b);
+  const n = sorted.length;
+  if (n === 0) return 0;
+  return n % 2 === 0
+    ? (sorted[n / 2 - 1] + sorted[n / 2]) / 2
+    : sorted[(n - 1) / 2];
 }
 
 /**
