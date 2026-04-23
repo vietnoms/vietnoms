@@ -31,3 +31,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Hero video sources + encoder outputs (served from Vercel Blob, not tracked)
+/*.mov
+/*.mp4
+/*.webm
+/*.webp
