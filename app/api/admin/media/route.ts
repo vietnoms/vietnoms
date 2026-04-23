@@ -31,6 +31,10 @@ async function runMigrations() {
     "ALTER TABLE media ADD COLUMN gallery_visible INTEGER DEFAULT 1",
     "ALTER TABLE media ADD COLUMN gallery_order INTEGER DEFAULT 0",
     "ALTER TABLE media ADD COLUMN caption TEXT",
+    "ALTER TABLE media ADD COLUMN blob_url_av1 TEXT",
+    "ALTER TABLE media ADD COLUMN blob_url_webm TEXT",
+    "ALTER TABLE media ADD COLUMN blob_url_mobile TEXT",
+    "ALTER TABLE media ADD COLUMN poster_url TEXT",
   ];
   for (const sql of alterStatements) {
     try {

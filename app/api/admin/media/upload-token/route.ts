@@ -26,7 +26,14 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json(jsonResponse);
   } catch (error) {
-    console.error("Upload token error:", error);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error("Upload token error:", msg);
+    const hasToken = Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+    return NextResponse.json(
+      {
+        error: `Upload token generation failed: ${msg}${hasToken ? "" : " (BLOB_READ_WRITE_TOKEN env var is missing)"}`,
+      },
+      { status: 500 }
+    );
   }
 }

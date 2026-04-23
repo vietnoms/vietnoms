@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS catering_items (
 
 CREATE TABLE IF NOT EXISTS media (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  blob_url TEXT NOT NULL,
+  blob_url TEXT NOT NULL,                 -- desktop H.264 MP4 (canonical fallback)
   filename TEXT NOT NULL,
   alt_text TEXT NOT NULL DEFAULT '',
   category TEXT NOT NULL DEFAULT 'uncategorized',
@@ -84,6 +84,10 @@ CREATE TABLE IF NOT EXISTS media (
   width INTEGER,
   height INTEGER,
   size_bytes INTEGER,
+  blob_url_av1 TEXT,                      -- desktop AV1 WebM variant
+  blob_url_webm TEXT,                     -- desktop VP9 WebM variant
+  blob_url_mobile TEXT,                   -- mobile H.264 MP4 (720p, <1MB)
+  poster_url TEXT,                        -- WebP poster still
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

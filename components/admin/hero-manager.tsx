@@ -12,6 +12,8 @@ import {
   Image as ImageIcon,
   Loader2,
   RefreshCw,
+  Layers,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -23,7 +25,27 @@ interface HeroSlide {
   galleryVisible: number;
   galleryOrder: number;
   sizeBytes: number | null;
+  blobUrlAv1?: string | null;
+  blobUrlWebm?: string | null;
+  blobUrlMobile?: string | null;
+  posterUrl?: string | null;
 }
+
+type VariantSlot = "blobUrlAv1" | "blobUrlWebm" | "blobUrlMobile" | "posterUrl";
+
+interface VariantSlotDef {
+  key: VariantSlot;
+  label: string;
+  hint: string;
+  accept: string;
+}
+
+const VARIANT_SLOTS: VariantSlotDef[] = [
+  { key: "blobUrlAv1",    label: "AV1 WebM (desktop)",  hint: "1080p, ~1\u20133 MB",   accept: "video/webm" },
+  { key: "blobUrlWebm",   label: "VP9 WebM (desktop)",  hint: "1080p fallback",        accept: "video/webm" },
+  { key: "blobUrlMobile", label: "H.264 MP4 (mobile)",  hint: "720p, <1 MB",           accept: "video/mp4" },
+  { key: "posterUrl",     label: "Poster (WebP)",       hint: "First-frame still",     accept: "image/webp,image/jpeg,image/png" },
+];
 
 const TRANSITION_STYLES = [
   { value: "crossfade", label: "Crossfade" },
@@ -41,6 +63,26 @@ function formatSize(bytes: number | null): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+function describeError(err: unknown, fallback: string): string {
+  if (err instanceof Error) return err.message || fallback;
+  if (typeof err === "string") return err;
+  try { return JSON.stringify(err); } catch { return fallback; }
+}
+
+async function readErrorBody(res: Response): Promise<string> {
+  try {
+    const text = await res.text();
+    try {
+      const json = JSON.parse(text);
+      return json.error || json.message || text.slice(0, 300);
+    } catch {
+      return text.slice(0, 300);
+    }
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
 export function HeroManager() {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [allMedia, setAllMedia] = useState<HeroSlide[]>([]);
@@ -50,6 +92,9 @@ export function HeroManager() {
   const [transitionStyle, setTransitionStyle] = useState("crossfade");
   const [interval, setInterval_] = useState(6);
   const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [uploadingVariant, setUploadingVariant] = useState<string | null>(null); // `${id}:${slot}`
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const dragItem = useRef<number | null>(null);
   const dragOver = useRef<number | null>(null);
@@ -95,6 +140,57 @@ export function HeroManager() {
     } catch {} finally { setSaving(null); }
   };
 
+  // Upload a variant file (AV1/VP9/mobile/poster) and attach to existing slide
+  const uploadVariant = async (slide: HeroSlide, slot: VariantSlot, file: File) => {
+    const key = `${slide.id}:${slot}`;
+    setUploadingVariant(key);
+    setUploadError(null);
+    try {
+      const blob = await upload(`media/variants/${Date.now()}-${file.name}`, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/media/upload-token",
+      });
+      const res = await fetch(`/api/admin/media/${slide.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [slot]: blob.url }),
+      });
+      if (!res.ok) {
+        throw new Error(`PATCH failed: ${await readErrorBody(res)}`);
+      }
+      await fetchSlides();
+    } catch (err) {
+      const msg = describeError(err, "Unknown variant upload error");
+      console.error(`[hero-manager] variant upload failed (${slot}, ${file.name}): ${msg}`, err);
+      setUploadError(`${slot} (${file.name}): ${msg}`);
+    } finally {
+      setUploadingVariant(null);
+    }
+  };
+
+  const removeVariant = async (slide: HeroSlide, slot: VariantSlot) => {
+    const key = `${slide.id}:${slot}`;
+    setUploadingVariant(key);
+    setUploadError(null);
+    try {
+      const res = await fetch(`/api/admin/media/${slide.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [slot]: null }),
+      });
+      if (!res.ok) {
+        throw new Error(`PATCH failed: ${await readErrorBody(res)}`);
+      }
+      await fetchSlides();
+    } catch (err) {
+      const msg = describeError(err, "Unknown remove-variant error");
+      console.error(`[hero-manager] variant remove failed (${slot}): ${msg}`, err);
+      setUploadError(`Remove ${slot}: ${msg}`);
+    } finally {
+      setUploadingVariant(null);
+    }
+  };
+
   // Drag and drop reorder
   const handleDragStart = (index: number) => { dragItem.current = index; };
   const handleDragEnter = (index: number) => { dragOver.current = index; };
@@ -122,20 +218,20 @@ export function HeroManager() {
 
   // Upload new hero media
   const handleUpload = async (files: FileList | null) => {
-    if (!files) return;
+    if (!files || files.length === 0) return;
     setUploading(true);
-    const maxOrder = slides.reduce((m, s) => Math.max(m, s.galleryOrder), 0);
+    setUploadError(null);
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        const isVid = file.type.startsWith("video/");
+        const isVid = file.type.startsWith("video/") || /\.(mp4|webm|mov)$/i.test(file.name);
         if (isVid) {
           const blob = await upload(`media/${Date.now()}-${file.name}`, file, {
             access: "public",
             handleUploadUrl: "/api/admin/media/upload-token",
           });
-          await fetch("/api/admin/media", {
+          const res = await fetch("/api/admin/media", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -147,18 +243,25 @@ export function HeroManager() {
               sizeBytes: file.size,
             }),
           });
+          if (!res.ok) {
+            throw new Error(`DB register failed: ${await readErrorBody(res)}`);
+          }
         } else {
           const formData = new FormData();
           formData.append("file", file, file.name);
           formData.append("category", "hero");
           formData.append("altText", "");
-          await fetch("/api/admin/media", { method: "POST", body: formData });
+          const res = await fetch("/api/admin/media", { method: "POST", body: formData });
+          if (!res.ok) {
+            throw new Error(`Upload failed: ${await readErrorBody(res)}`);
+          }
         }
 
-        // Set order and visibility
         await fetchSlides();
       } catch (err) {
-        console.error(`Upload failed for ${file.name}:`, err);
+        const msg = describeError(err, "Unknown upload error");
+        console.error(`[hero-manager] upload failed for ${file.name}: ${msg}`, err);
+        setUploadError(`${file.name}: ${msg}`);
       }
     }
     setUploading(false);
@@ -189,6 +292,25 @@ export function HeroManager() {
 
   return (
     <div className="space-y-6">
+      {/* Error banner */}
+      {uploadError && (
+        <div className="flex items-start gap-3 bg-red-950/60 border border-red-800 rounded-md px-4 py-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-red-200">Upload failed</p>
+            <p className="text-sm text-red-100 break-words whitespace-pre-wrap font-mono">{uploadError}</p>
+            <p className="text-xs text-red-300/70 mt-1">
+              Check your browser DevTools console for the full stack trace. Common causes: missing
+              {" "}<span className="font-mono">BLOB_READ_WRITE_TOKEN</span> env var, admin session expired, or file over 100 MB.
+            </p>
+          </div>
+          <button onClick={() => setUploadError(null)}
+            className="p-1 rounded hover:bg-red-900/60 text-red-200 hover:text-white shrink-0"
+            title="Dismiss">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Controls bar */}
       <div className="flex flex-wrap items-center gap-4">
         <div>
@@ -273,72 +395,152 @@ export function HeroManager() {
         </div>
       ) : (
         <div className="space-y-2">
-          {slides.map((slide, index) => (
-            <div
-              key={slide.id}
-              draggable
-              onDragStart={() => handleDragStart(index)}
-              onDragEnter={() => handleDragEnter(index)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => e.preventDefault()}
-              className={`flex items-center gap-3 bg-surface-alt border border-gray-700 rounded-lg p-3 transition-colors ${
-                !slide.galleryVisible ? "opacity-50" : ""
-              }`}
-            >
-              {/* Drag handle */}
-              <div className="cursor-grab text-gray-500 hover:text-gray-300">
-                <GripVertical className="h-5 w-5" />
-              </div>
+          {slides.map((slide, index) => {
+            const slideIsVideo = isVideo(slide.filename);
+            const variantsAttached = slideIsVideo
+              ? VARIANT_SLOTS.filter((s) => slide[s.key]).length
+              : 0;
+            const isExpanded = expandedId === slide.id;
+            return (
+              <div key={slide.id} className="space-y-0">
+                <div
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragEnter={() => handleDragEnter(index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => e.preventDefault()}
+                  className={`flex items-center gap-3 bg-surface-alt border border-gray-700 ${
+                    isExpanded ? "rounded-t-lg border-b-0" : "rounded-lg"
+                  } p-3 transition-colors ${!slide.galleryVisible ? "opacity-50" : ""}`}
+                >
+                  {/* Drag handle */}
+                  <div className="cursor-grab text-gray-500 hover:text-gray-300">
+                    <GripVertical className="h-5 w-5" />
+                  </div>
 
-              {/* Order number */}
-              <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-sm font-semibold text-gray-400 shrink-0">
-                {index + 1}
-              </div>
+                  {/* Order number */}
+                  <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-sm font-semibold text-gray-400 shrink-0">
+                    {index + 1}
+                  </div>
 
-              {/* Preview */}
-              <div className="relative h-16 w-28 rounded-md overflow-hidden shrink-0 bg-gray-800">
-                {isVideo(slide.filename) ? (
-                  <>
-                    <video src={slide.blobUrl} muted className="h-full w-full object-cover" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Play className="h-6 w-6 text-white/80" />
-                    </div>
-                  </>
-                ) : (
-                  <img src={slide.blobUrl} alt={slide.altText} className="h-full w-full object-cover" />
+                  {/* Preview */}
+                  <div className="relative h-16 w-28 rounded-md overflow-hidden shrink-0 bg-gray-800">
+                    {slideIsVideo ? (
+                      <>
+                        <video src={slide.blobUrl} muted className="h-full w-full object-cover" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <Play className="h-6 w-6 text-white/80" />
+                        </div>
+                      </>
+                    ) : (
+                      <img src={slide.blobUrl} alt={slide.altText} className="h-full w-full object-cover" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white truncate">{slide.filename}</p>
+                    <p className="text-xs text-gray-500">
+                      {slideIsVideo ? "Video" : "Image"}
+                      {slide.sizeBytes ? ` \u00b7 ${formatSize(slide.sizeBytes)}` : ""}
+                      {slideIsVideo && (
+                        <span className={variantsAttached === VARIANT_SLOTS.length ? "text-green-400" : "text-amber-400"}>
+                          {" \u00b7 "}
+                          {variantsAttached}/{VARIANT_SLOTS.length} variants
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center gap-1 shrink-0">
+                    {saving === slide.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    ) : (
+                      <>
+                        {slideIsVideo && (
+                          <button onClick={() => setExpandedId(isExpanded ? null : slide.id)}
+                            className={`p-2 rounded-md hover:bg-gray-700 transition-colors ${
+                              isExpanded ? "bg-gray-700 text-white" : "text-gray-400 hover:text-white"
+                            }`}
+                            title="Manage codec variants">
+                            <Layers className="h-4 w-4" />
+                          </button>
+                        )}
+                        <button onClick={() => toggleVisibility(slide)}
+                          className="p-2 rounded-md hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
+                          title={slide.galleryVisible ? "Hide from slideshow" : "Show in slideshow"}>
+                          {slide.galleryVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </button>
+                        <button onClick={() => removeSlide(slide.id)}
+                          className="p-2 rounded-md hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Remove from hero">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Variants panel */}
+                {isExpanded && slideIsVideo && (
+                  <div className="bg-surface-alt border border-gray-700 rounded-b-lg p-3 space-y-2">
+                    <p className="text-xs text-gray-400 mb-2">
+                      Attach re-encoded variants. Browsers pick the smallest playable format.
+                      The base MP4 (<span className="font-mono text-gray-300">blob_url</span>) is always used as the final fallback.
+                    </p>
+                    {VARIANT_SLOTS.map((slotDef) => {
+                      const url = slide[slotDef.key];
+                      const busyKey = `${slide.id}:${slotDef.key}`;
+                      const busy = uploadingVariant === busyKey;
+                      return (
+                        <div key={slotDef.key}
+                          className="flex items-center gap-3 bg-gray-900/40 border border-gray-800 rounded-md p-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white">{slotDef.label}</p>
+                            <p className="text-xs text-gray-500">
+                              {slotDef.hint}
+                              {url ? (
+                                <>{" \u00b7 "}<span className="text-green-400">attached</span></>
+                              ) : (
+                                <>{" \u00b7 "}<span className="text-gray-500">not uploaded</span></>
+                              )}
+                            </p>
+                          </div>
+                          {busy ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                          ) : url ? (
+                            <>
+                              <a href={url} target="_blank" rel="noreferrer"
+                                className="text-xs text-gray-400 hover:text-white px-2 py-1 underline">
+                                view
+                              </a>
+                              <button onClick={() => removeVariant(slide, slotDef.key)}
+                                className="p-1.5 rounded-md hover:bg-red-900/30 text-gray-400 hover:text-red-400"
+                                title="Remove variant">
+                                <X className="h-4 w-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <label className="cursor-pointer inline-flex items-center gap-1 text-xs bg-gray-800 hover:bg-gray-700 text-white px-2.5 py-1.5 rounded-md">
+                              <Upload className="h-3.5 w-3.5" />
+                              Upload
+                              <input type="file" className="hidden" accept={slotDef.accept}
+                                onChange={(e) => {
+                                  const f = e.target.files?.[0];
+                                  if (f) uploadVariant(slide, slotDef.key, f);
+                                  e.target.value = "";
+                                }} />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white truncate">{slide.filename}</p>
-                <p className="text-xs text-gray-500">
-                  {isVideo(slide.filename) ? "Video" : "Image"}
-                  {slide.sizeBytes ? ` \u00b7 ${formatSize(slide.sizeBytes)}` : ""}
-                </p>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-1 shrink-0">
-                {saving === slide.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
-                ) : (
-                  <>
-                    <button onClick={() => toggleVisibility(slide)}
-                      className="p-2 rounded-md hover:bg-gray-700 text-gray-400 hover:text-white transition-colors"
-                      title={slide.galleryVisible ? "Hide from slideshow" : "Show in slideshow"}>
-                      {slide.galleryVisible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                    </button>
-                    <button onClick={() => removeSlide(slide.id)}
-                      className="p-2 rounded-md hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition-colors"
-                      title="Remove from hero">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

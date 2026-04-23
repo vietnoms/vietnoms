@@ -24,6 +24,10 @@ export async function PATCH(
       galleryVisible: body.galleryVisible,
       galleryOrder: body.galleryOrder,
       caption: body.caption,
+      blobUrlAv1: body.blobUrlAv1,
+      blobUrlWebm: body.blobUrlWebm,
+      blobUrlMobile: body.blobUrlMobile,
+      posterUrl: body.posterUrl,
     });
 
     return NextResponse.json({ success: true });

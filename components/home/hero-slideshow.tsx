@@ -3,11 +3,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Pause, Play } from "lucide-react";
 
+interface VideoSource {
+  src: string;
+  type: string;
+  media?: string;
+}
+
 interface Slide {
   id: number;
   url: string;
   type: "video" | "image";
   alt: string;
+  poster?: string | null;
+  sources?: VideoSource[];
 }
 
 const IMAGE_INTERVAL = 6000;
@@ -111,12 +119,19 @@ export function HeroSlideshow() {
               ref={(el) => {
                 if (el) videoRefs.current.set(slide.id, el);
               }}
-              src={slide.url}
               muted
               playsInline
-              preload="auto"
+              preload={i === 0 ? "auto" : "metadata"}
+              poster={slide.poster || undefined}
               className="h-full w-full object-cover"
-            />
+            >
+              {(slide.sources && slide.sources.length > 0
+                ? slide.sources
+                : [{ src: slide.url, type: "video/mp4" }]
+              ).map((s, idx) => (
+                <source key={idx} src={s.src} type={s.type} media={s.media} />
+              ))}
+            </video>
           ) : (
             <img
               src={slide.url}

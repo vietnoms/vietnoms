@@ -14,6 +14,10 @@ export interface MediaRow {
   galleryVisible: number;
   galleryOrder: number;
   caption: string | null;
+  blobUrlAv1: string | null;
+  blobUrlWebm: string | null;
+  blobUrlMobile: string | null;
+  posterUrl: string | null;
   createdAt: string;
 }
 
@@ -32,6 +36,10 @@ function mapRow(row: Record<string, unknown>): MediaRow {
     galleryVisible: row.gallery_visible != null ? Number(row.gallery_visible) : 1,
     galleryOrder: row.gallery_order != null ? Number(row.gallery_order) : 0,
     caption: (row.caption as string) || null,
+    blobUrlAv1: (row.blob_url_av1 as string) || null,
+    blobUrlWebm: (row.blob_url_webm as string) || null,
+    blobUrlMobile: (row.blob_url_mobile as string) || null,
+    posterUrl: (row.poster_url as string) || null,
     createdAt: row.created_at as string,
   };
 }
@@ -124,6 +132,10 @@ export async function updateMedia(
     galleryVisible?: number;
     galleryOrder?: number;
     caption?: string;
+    blobUrlAv1?: string | null;
+    blobUrlWebm?: string | null;
+    blobUrlMobile?: string | null;
+    posterUrl?: string | null;
   }
 ): Promise<void> {
   const db = getTurso();
@@ -153,6 +165,22 @@ export async function updateMedia(
   if (data.caption !== undefined) {
     sets.push("caption = ?");
     args.push(data.caption || null);
+  }
+  if (data.blobUrlAv1 !== undefined) {
+    sets.push("blob_url_av1 = ?");
+    args.push(data.blobUrlAv1);
+  }
+  if (data.blobUrlWebm !== undefined) {
+    sets.push("blob_url_webm = ?");
+    args.push(data.blobUrlWebm);
+  }
+  if (data.blobUrlMobile !== undefined) {
+    sets.push("blob_url_mobile = ?");
+    args.push(data.blobUrlMobile);
+  }
+  if (data.posterUrl !== undefined) {
+    sets.push("poster_url = ?");
+    args.push(data.posterUrl);
   }
 
   if (sets.length === 0) return;
