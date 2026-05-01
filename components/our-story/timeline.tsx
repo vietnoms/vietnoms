@@ -28,6 +28,18 @@ interface Engine {
   toggle: () => void;
 }
 
+function useIsMobile(breakpoint = 640) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    setIsMobile(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [breakpoint]);
+  return isMobile;
+}
+
 function useTimelineEngine(events: TimelineEvent[]): Engine {
   const [index, setIndex] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -85,6 +97,7 @@ export function OurStoryTimeline() {
   const events = EVENTS;
   const eng = useTimelineEngine(events);
   const cur = events[eng.index];
+  const isMobile = useIsMobile();
 
   const cameraTuning = {
     travelZoom: TUNING.travelZoom,
@@ -133,54 +146,135 @@ export function OurStoryTimeline() {
     ? { ...cameraTuning, dampMs: Math.max(900, cameraTuning.dampMs * 4) }
     : cameraTuning;
 
+  const globeVisuals = (
+    <>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: globeOp,
+          transition: "opacity 220ms linear",
+        }}
+      >
+        <Globe
+          size={1320}
+          event={globeEvent}
+          progress={eng.progress}
+          playing={eng.playing}
+          cameraTuning={globeCam}
+        />
+      </div>
+      {hasRegion && cur.intro && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: regionOp,
+            transition: "opacity 220ms linear",
+            pointerEvents: "none",
+          }}
+        >
+          <RegionMap regionKey={cur.intro.region} zoomT={regionZoomT} />
+        </div>
+      )}
+      {isInset && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            opacity: insetOp,
+            transition: "opacity 220ms linear",
+            pointerEvents: insetOp > 0.5 ? "auto" : "none",
+          }}
+        >
+          <InsetMap event={cur} progress={eng.progress} />
+        </div>
+      )}
+    </>
+  );
+
+  const eventPanel = (compact: boolean) => (
+    <div style={compact ? S.eventInnerCompact : S.eventInner}>
+      <div className="os-mono" style={S.eventMeta}>
+        <span>{cur.year}</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span>{cur.id.toUpperCase()}</span>
+      </div>
+      <h2 className="os-display" style={compact ? S.eventTitleCompact : S.eventTitle}>
+        {cur.title}
+      </h2>
+      {!compact && <p style={S.eventBody}>{cur.body}</p>}
+      {compact && <p style={S.eventBodyCompact}>{cur.body}</p>}
+      <div style={S.progressTrack}>
+        <div style={{ ...S.progressFill, width: `${(eng.progress * 100).toFixed(1)}%` }} />
+      </div>
+      {!compact && (
+        <div className="os-mono" style={S.legend}>
+          {cur.journeys?.map((j, i) => {
+            const span = j.end - j.start || 0.001;
+            const local = (eng.progress - j.start) / span;
+            const active = local > 0 && local < 1;
+            const done = local >= 1;
+            const dot = j.kind === "boat" ? "◆" : "▲";
+            return (
+              <span
+                key={i}
+                style={{
+                  ...S.chip,
+                  opacity: active ? 1 : done ? 0.55 : 0.4,
+                  borderColor: active ? "var(--os-ink)" : "var(--os-rule)",
+                }}
+              >
+                <span style={{ marginRight: 6 }}>{dot}</span>
+                {j.label || j.kind.toUpperCase()}
+                <span style={{ opacity: 0.6, marginLeft: 6 }}>
+                  {active ? `${Math.round(local * 100)}%` : done ? "✓" : "—"}
+                </span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <div className="os-root" style={S.shellMobile}>
+        <header style={S.topbarMobile}>
+          <div className="os-mono" style={S.kicker}>OUR STORY</div>
+          <div className="os-mono" style={S.counter}>
+            {String(eng.index + 1).padStart(2, "0")}{" "}
+            <span style={{ opacity: 0.4 }}>/</span> {String(events.length).padStart(2, "0")}
+          </div>
+        </header>
+
+        <div style={S.eventPanelMobile}>
+          {eventPanel(true)}
+        </div>
+
+        <div style={S.globeAreaMobile}>
+          <Whirl size={1600} innerR={700} playing={eng.playing} />
+          <div style={S.globeInnerMobile}>
+            {globeVisuals}
+          </div>
+        </div>
+
+        <div style={S.bottombarMobile}>
+          <Controls eng={eng} events={events} />
+          <Timeline eng={eng} events={events} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="os-root" style={S.shell}>
       <div style={S.globeLayer}>
         <div style={S.globeBox}>
           <Whirl size={1600} innerR={700} playing={eng.playing} />
           <div style={S.globeInner}>
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                opacity: globeOp,
-                transition: "opacity 220ms linear",
-              }}
-            >
-              <Globe
-                size={1320}
-                event={globeEvent}
-                progress={eng.progress}
-                playing={eng.playing}
-                cameraTuning={globeCam}
-              />
-            </div>
-            {hasRegion && cur.intro && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  opacity: regionOp,
-                  transition: "opacity 220ms linear",
-                  pointerEvents: "none",
-                }}
-              >
-                <RegionMap regionKey={cur.intro.region} zoomT={regionZoomT} />
-              </div>
-            )}
-            {isInset && (
-              <div
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  opacity: insetOp,
-                  transition: "opacity 220ms linear",
-                  pointerEvents: insetOp > 0.5 ? "auto" : "none",
-                }}
-              >
-                <InsetMap event={cur} progress={eng.progress} />
-              </div>
-            )}
+            {globeVisuals}
           </div>
         </div>
       </div>
@@ -202,47 +296,7 @@ export function OurStoryTimeline() {
       </div>
 
       <div style={S.eventOverlay}>
-        <div style={S.eventInner}>
-          <div className="os-mono" style={S.eventMeta}>
-            <span>{cur.year}</span>
-            <span style={{ opacity: 0.4 }}>·</span>
-            <span>{cur.id.toUpperCase()}</span>
-          </div>
-          <h2 className="os-display" style={S.eventTitle}>
-            {cur.title}
-          </h2>
-          <p style={S.eventBody}>{cur.body}</p>
-
-          <div style={S.progressTrack}>
-            <div style={{ ...S.progressFill, width: `${(eng.progress * 100).toFixed(1)}%` }} />
-          </div>
-
-          <div className="os-mono" style={S.legend}>
-            {cur.journeys?.map((j, i) => {
-              const span = j.end - j.start || 0.001;
-              const local = (eng.progress - j.start) / span;
-              const active = local > 0 && local < 1;
-              const done = local >= 1;
-              const dot = j.kind === "boat" ? "◆" : "▲";
-              return (
-                <span
-                  key={i}
-                  style={{
-                    ...S.chip,
-                    opacity: active ? 1 : done ? 0.55 : 0.4,
-                    borderColor: active ? "var(--os-ink)" : "var(--os-rule)",
-                  }}
-                >
-                  <span style={{ marginRight: 6 }}>{dot}</span>
-                  {j.label || j.kind.toUpperCase()}
-                  <span style={{ opacity: 0.6, marginLeft: 6 }}>
-                    {active ? `${Math.round(local * 100)}%` : done ? "✓" : "—"}
-                  </span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
+        {eventPanel(false)}
       </div>
 
       <div style={S.bottombar}>
@@ -548,5 +602,73 @@ const S: Record<string, CSSProperties> = {
     letterSpacing: "0.18em",
     paddingLeft: 10,
     borderLeft: "1px dashed var(--os-rule)",
+  },
+
+  // ── Mobile layout ────────────────────────────────────────────────
+  shellMobile: {
+    display: "flex",
+    flexDirection: "column",
+    width: "100%",
+    minHeight: "100dvh",
+    overflow: "hidden",
+    color: "var(--os-ink)",
+    background: "var(--os-bg)",
+    backgroundImage:
+      'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 256 256\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.9\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'0.04\'/%3E%3C/svg%3E")',
+  },
+  topbarMobile: {
+    padding: "12px 16px",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    fontSize: 11,
+    letterSpacing: "0.22em",
+    color: "var(--os-ink-3)",
+    borderBottom: "1px solid var(--os-rule)",
+    flexShrink: 0,
+  },
+  eventPanelMobile: {
+    flexShrink: 0,
+    borderBottom: "1px solid var(--os-rule)",
+  },
+  eventInnerCompact: {
+    background: "var(--os-bg)",
+    padding: "12px 16px 14px",
+  },
+  eventTitleCompact: {
+    fontSize: 20,
+    lineHeight: 1.1,
+    margin: "2px 0 6px",
+    color: "var(--os-ink)",
+  },
+  eventBodyCompact: {
+    fontSize: 12,
+    lineHeight: 1.5,
+    color: "var(--os-ink-2)",
+    margin: "0 0 8px",
+  },
+  globeAreaMobile: {
+    flex: 1,
+    position: "relative",
+    minHeight: 0,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  globeInnerMobile: {
+    position: "relative",
+    width: "90vw",
+    height: "90vw",
+    maxWidth: 400,
+    maxHeight: 400,
+  },
+  bottombarMobile: {
+    flexShrink: 0,
+    padding: "10px 16px 16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: 10,
+    borderTop: "1px solid var(--os-rule)",
   },
 };
