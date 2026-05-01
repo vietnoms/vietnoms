@@ -1,0 +1,29 @@
+/* Scoped styles for the Our Story timeline. The site palette is dark; this
+   page is a deliberate inversion to off-white, scoped to .os-root so it
+   does not affect the rest of the site. */
+
+.os-root {
+  --os-bg: #f4f1ea;
+  --os-bg-2: #ece7dc;
+  --os-ink: #1a1a1a;
+  --os-ink-2: #4a4a4a;
+  --os-ink-3: #8a8579;
+  --os-rule: #d8d2c4;
+  --os-yellow: #fdd05c;
+  --os-red: #ff3333;
+  font-family: 'Inter', sans-serif;
+}
+
+.os-root .os-display {
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 0.05em;
+}
+
+.os-root .os-mono {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+@keyframes os-whirl-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
