@@ -3,6 +3,8 @@ import { ServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/schema-
 import { RESTAURANT } from "@/lib/constants";
 import { CateringWizard } from "@/components/catering/catering-wizard";
 import { PartnersSection } from "@/components/catering/partners-section";
+import { getAllContent } from "@/lib/db/site-content";
+import { unstable_cache } from "next/cache";
 import {
   Accordion,
   AccordionContent,
@@ -54,7 +56,16 @@ const FAQ = [
   },
 ];
 
-export default function CateringPage() {
+const getCachedContent = unstable_cache(getAllContent, ["site-content"], {
+  tags: ["site-content"],
+  revalidate: 300,
+});
+
+export default async function CateringPage() {
+  const content = await getCachedContent().catch(() => ({} as Record<string, string>));
+  const heroImage = content.catering_hero_image || "";
+  const buffetImage = content.catering_buffet_image || "";
+  const premadeImage = content.catering_premade_image || "";
   return (
     <>
       <ServiceSchema />
@@ -82,6 +93,11 @@ export default function CateringPage() {
             party platters, and individually prepared bowls — all at $20 per
             person.
           </p>
+          {heroImage && (
+            <div className="mt-10 relative aspect-[21/9] rounded-lg overflow-hidden bg-gray-800 max-w-4xl">
+              <img src={heroImage} alt="Vietnoms catering" className="h-full w-full object-cover" />
+            </div>
+          )}
         </div>
       </section>
 
@@ -98,59 +114,81 @@ export default function CateringPage() {
           </p>
 
           <div className="mt-12 grid md:grid-cols-2 gap-8">
-            <div className="bg-surface-alt/50 rounded-xl p-6">
-              <h3 className="font-display text-xl font-bold text-white">
-                Buffet Style
-              </h3>
-              <p className="text-sm text-brand-yellow mt-1">
-                Best for 40+ guests
-              </p>
-              <p className="mt-3 text-gray-400 text-sm">
-                Party trays of your chosen bases (rice, vermicelli noodles, or
-                salad), proteins, sides, sauces, and all the toppings. Guests
-                serve themselves.
-              </p>
-              <ul className="mt-3 space-y-1 text-sm text-gray-400">
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Self-serve trays
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Choose your bases, sides &amp; sauces
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Min 10 orders per protein
-                </li>
-              </ul>
+            <div className="bg-surface-alt/50 rounded-xl overflow-hidden">
+              {buffetImage ? (
+                <div className="relative aspect-[16/9] bg-gray-800">
+                  <img src={buffetImage} alt="Buffet style catering" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="relative aspect-[16/9] bg-gray-800 flex items-center justify-center text-gray-500 text-sm">
+                  Buffet Style Photo
+                </div>
+              )}
+              <div className="p-6">
+                <h3 className="font-display text-xl font-bold text-white">
+                  Buffet Style
+                </h3>
+                <p className="text-sm text-brand-yellow mt-1">
+                  Best for 40+ guests
+                </p>
+                <p className="mt-3 text-gray-400 text-sm">
+                  Party trays of your chosen bases (rice, vermicelli noodles, or
+                  salad), proteins, sides, sauces, and all the toppings. Guests
+                  serve themselves.
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-gray-400">
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Self-serve trays
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Choose your bases, sides &amp; sauces
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Min 10 orders per protein
+                  </li>
+                </ul>
+              </div>
             </div>
-            <div className="bg-surface-alt/50 rounded-xl p-6">
-              <h3 className="font-display text-xl font-bold text-white">
-                Pre-made Bowls
-              </h3>
-              <p className="text-sm text-brand-yellow mt-1">
-                Best for under 40 guests
-              </p>
-              <p className="mt-3 text-gray-400 text-sm">
-                Individually assembled bowls with your chosen base and protein.
-                Side and sauce are matched to each bowl type. Each bowl is
-                labeled.
-              </p>
-              <ul className="mt-3 space-y-1 text-sm text-gray-400">
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Individual portions
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Choose base + protein per bowl
-                </li>
-                <li className="flex gap-2">
-                  <span className="text-brand-red">&#10003;</span>
-                  Easy distribution
-                </li>
-              </ul>
+            <div className="bg-surface-alt/50 rounded-xl overflow-hidden">
+              {premadeImage ? (
+                <div className="relative aspect-[16/9] bg-gray-800">
+                  <img src={premadeImage} alt="Pre-made bowls catering" className="h-full w-full object-cover" />
+                </div>
+              ) : (
+                <div className="relative aspect-[16/9] bg-gray-800 flex items-center justify-center text-gray-500 text-sm">
+                  Pre-made Bowls Photo
+                </div>
+              )}
+              <div className="p-6">
+                <h3 className="font-display text-xl font-bold text-white">
+                  Pre-made Bowls
+                </h3>
+                <p className="text-sm text-brand-yellow mt-1">
+                  Best for under 40 guests
+                </p>
+                <p className="mt-3 text-gray-400 text-sm">
+                  Individually assembled bowls with your chosen base and protein.
+                  Side and sauce are matched to each bowl type. Each bowl is
+                  labeled.
+                </p>
+                <ul className="mt-3 space-y-1 text-sm text-gray-400">
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Individual portions
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Choose base + protein per bowl
+                  </li>
+                  <li className="flex gap-2">
+                    <span className="text-brand-red">&#10003;</span>
+                    Easy distribution
+                  </li>
+                </ul>
+              </div>
             </div>
           </div>
         </div>
