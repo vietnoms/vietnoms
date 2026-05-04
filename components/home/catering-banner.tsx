@@ -72,7 +72,7 @@ export function CateringBanner({ heading, text, imageUrl }: CateringBannerProps)
               initial={{ opacity: 0, scale: 0.8 }}
               animate={isInView ? { opacity: 1, scale: 1 } : {}}
               transition={{ duration: 0.6, delay: 0.6 }}
-              className="absolute -bottom-4 -left-4 md:-bottom-6 md:-left-6 bg-brand-red text-white px-5 py-3 rounded-lg shadow-lg shadow-brand-red/30"
+              className="absolute bottom-6 right-6 bg-brand-red text-white px-6 py-3 rounded-lg shadow-lg shadow-brand-red/30 z-10"
             >
               <span className="font-display text-lg md:text-xl font-bold">Book Today</span>
             </motion.div>
