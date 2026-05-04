@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { motion, useInView, AnimatePresence } from "framer-motion";
+import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { ChevronLeft, ChevronRight, Star, Quote } from "lucide-react";
+import { AnimatedDivider } from "@/components/animations/scroll-animations";
 import type { GoogleReview } from "@/lib/google-reviews";
 
 interface ReviewsSectionProps {
@@ -11,80 +14,211 @@ interface ReviewsSectionProps {
 
 export function ReviewsSection({ reviews }: ReviewsSectionProps) {
   const [current, setCurrent] = useState(0);
+  const [direction, setDirection] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" });
+
+  const prev = () => {
+    setDirection(-1);
+    setCurrent((c) => (c === 0 ? reviews.length - 1 : c - 1));
+  };
+
+  const next = () => {
+    setDirection(1);
+    setCurrent((c) => (c === reviews.length - 1 ? 0 : c + 1));
+  };
+
+  // Auto-advance reviews
+  useEffect(() => {
+    if (reviews.length <= 1) return;
+    const timer = setInterval(() => {
+      setDirection(1);
+      setCurrent((c) => (c === reviews.length - 1 ? 0 : c + 1));
+    }, 6000);
+    return () => clearInterval(timer);
+  }, [reviews.length]);
 
   if (reviews.length === 0) return null;
 
-  const prev = () => setCurrent((c) => (c === 0 ? reviews.length - 1 : c - 1));
-  const next = () => setCurrent((c) => (c === reviews.length - 1 ? 0 : c + 1));
+  const slideVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 100 : -100,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 100 : -100,
+      opacity: 0,
+    }),
+  };
 
   return (
-    <section className="py-16 md:py-24 bg-surface-alt/50">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-brand-yellow text-glow-yellow">
-            What Our Guests Say
-          </h2>
-          <div className="mt-2 mx-auto h-1 w-16 bg-brand-red rounded-full shadow-sm shadow-red-500/50" />
-        </div>
+    <section
+      ref={sectionRef}
+      className="relative py-24 md:py-32 overflow-hidden"
+    >
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0f0f0f] via-[#111111] to-[#0f0f0f]" />
 
-        <div className="mt-12 relative max-w-2xl mx-auto">
-          <Card className="border-0 shadow-none bg-transparent">
-            <CardContent className="p-0 text-center">
-              <div className="flex justify-center gap-1 mb-4">
-                {Array.from({ length: reviews[current].rating }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className="h-5 w-5 fill-brand-yellow text-brand-yellow"
-                  />
-                ))}
-              </div>
-              <blockquote className="text-lg md:text-xl text-gray-300 italic leading-relaxed">
-                &ldquo;{reviews[current].text}&rdquo;
-              </blockquote>
-              <p className="mt-4 font-semibold text-white">
-                {reviews[current].authorName}
-              </p>
-              {reviews[current].relativeTimeDescription && (
-                <p className="mt-1 text-sm text-gray-500">
-                  {reviews[current].relativeTimeDescription}
-                </p>
-              )}
+      {/* Decorative elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-brand-yellow/3 rounded-full blur-3xl" />
+
+      {/* Quote decorations */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={isInView ? { opacity: 0.1, scale: 1 } : {}}
+        transition={{ duration: 0.8, delay: 0.3 }}
+        className="absolute top-20 left-10 lg:left-32 text-brand-yellow"
+      >
+        <Quote className="w-24 h-24 lg:w-32 lg:h-32" />
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={isInView ? { opacity: 0.1, scale: 1 } : {}}
+        transition={{ duration: 0.8, delay: 0.4 }}
+        className="absolute bottom-20 right-10 lg:right-32 text-brand-yellow rotate-180"
+      >
+        <Quote className="w-24 h-24 lg:w-32 lg:h-32" />
+      </motion.div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {/* Section header */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7 }}
+          className="text-center"
+        >
+          <motion.span
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="text-brand-yellow/80 text-sm font-medium tracking-widest uppercase"
+          >
+            Testimonials
+          </motion.span>
+
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="mt-4 font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white"
+          >
+            What Our
+            <span className="text-brand-yellow text-glow-yellow ml-3">Guests Say</span>
+          </motion.h2>
+
+          <div className="flex justify-center mt-6">
+            <AnimatedDivider color="bg-gradient-to-r from-transparent via-brand-red to-transparent" />
+          </div>
+        </motion.div>
+
+        {/* Reviews carousel */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.7, delay: 0.4 }}
+          className="mt-16 relative max-w-3xl mx-auto"
+        >
+          <Card className="border-0 shadow-none bg-transparent overflow-hidden">
+            <CardContent className="p-0 text-center min-h-[280px] flex flex-col justify-center">
+              <AnimatePresence mode="wait" custom={direction}>
+                <motion.div
+                  key={current}
+                  custom={direction}
+                  variants={slideVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                >
+                  {/* Stars */}
+                  <div className="flex justify-center gap-1 mb-6">
+                    {Array.from({ length: reviews[current].rating }).map((_, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.3, delay: i * 0.1 }}
+                      >
+                        <Star className="h-6 w-6 fill-brand-yellow text-brand-yellow" />
+                      </motion.div>
+                    ))}
+                  </div>
+
+                  {/* Quote */}
+                  <blockquote className="text-xl md:text-2xl text-gray-200 italic leading-relaxed font-light px-4">
+                    &ldquo;{reviews[current].text}&rdquo;
+                  </blockquote>
+
+                  {/* Author */}
+                  <div className="mt-8">
+                    <p className="font-semibold text-white text-lg">
+                      {reviews[current].authorName}
+                    </p>
+                    {reviews[current].relativeTimeDescription && (
+                      <p className="mt-1 text-sm text-gray-500">
+                        {reviews[current].relativeTimeDescription}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
             </CardContent>
           </Card>
 
-          <div className="flex justify-center gap-4 mt-8">
-            <button
+          {/* Navigation */}
+          <div className="flex justify-center items-center gap-6 mt-10">
+            <motion.button
               onClick={prev}
-              className="p-2 rounded-full border border-gray-600 hover:bg-white/10 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-3 rounded-full border border-gray-700 hover:border-brand-yellow/50 hover:bg-brand-yellow/10 transition-all duration-300"
               aria-label="Previous review"
             >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
+              <ChevronLeft className="h-5 w-5 text-white" />
+            </motion.button>
+
             <div className="flex items-center gap-2">
               {reviews.map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrent(i)}
-                  className={`h-2 rounded-full transition-all ${
+                  onClick={() => {
+                    setDirection(i > current ? 1 : -1);
+                    setCurrent(i);
+                  }}
+                  className={`h-2 rounded-full transition-all duration-300 ${
                     i === current
-                      ? "w-6 bg-brand-red"
+                      ? "w-8 bg-brand-yellow"
                       : "w-2 bg-gray-600 hover:bg-gray-500"
                   }`}
                   aria-label={`Go to review ${i + 1}`}
                 />
               ))}
             </div>
-            <button
+
+            <motion.button
               onClick={next}
-              className="p-2 rounded-full border border-gray-600 hover:bg-white/10 transition-colors"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="p-3 rounded-full border border-gray-700 hover:border-brand-yellow/50 hover:bg-brand-yellow/10 transition-all duration-300"
               aria-label="Next review"
             >
-              <ChevronRight className="h-5 w-5" />
-            </button>
+              <ChevronRight className="h-5 w-5 text-white" />
+            </motion.button>
           </div>
 
           {/* Google attribution */}
-          <div className="mt-8 flex items-center justify-center gap-2 text-gray-500 text-sm">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={isInView ? { opacity: 1 } : {}}
+            transition={{ duration: 0.6, delay: 0.8 }}
+            className="mt-10 flex items-center justify-center gap-2 text-gray-500 text-sm"
+          >
             <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
               <path
                 fill="#4285F4"
@@ -104,8 +238,8 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
               />
             </svg>
             <span>Reviews from Google</span>
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );

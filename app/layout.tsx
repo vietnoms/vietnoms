@@ -77,7 +77,7 @@ export default function RootLayout({
           </>
         )}
       </head>
-      <body className="font-body antialiased min-h-screen flex flex-col">
+      <body className="font-body antialiased min-h-screen flex flex-col bg-[#0f0f0f]">
         <AuthProvider>
           <CartProvider>
             <Nav />
