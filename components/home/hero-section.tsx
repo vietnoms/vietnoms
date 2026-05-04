@@ -28,7 +28,7 @@ export function HeroSection({ title, subtitle }: HeroSectionProps) {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-screen bg-[#0f0f0f] text-white overflow-hidden flex items-center"
+      className="relative min-h-screen bg-[#0f0f0f] text-white overflow-hidden flex items-center -mt-20"
     >
       {/* Dynamic slideshow background with parallax */}
       <motion.div style={{ y: backgroundY }} className="absolute inset-0 z-[1]">
