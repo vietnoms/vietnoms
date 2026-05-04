@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ServiceSchema, BreadcrumbSchema, FAQSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 import { CateringWizard } from "@/components/catering/catering-wizard";
+import { CateringHeroSection } from "@/components/catering/catering-hero-section";
 import { PartnersSection } from "@/components/catering/partners-section";
 import { getAllContent } from "@/lib/db/site-content";
 import { unstable_cache } from "next/cache";
@@ -63,7 +64,6 @@ const getCachedContent = unstable_cache(getAllContent, ["site-content"], {
 
 export default async function CateringPage() {
   const content = await getCachedContent().catch(() => ({} as Record<string, string>));
-  const heroImage = content.catering_hero_image || "";
   const buffetImage = content.catering_buffet_image || "";
   const premadeImage = content.catering_premade_image || "";
   return (
@@ -83,23 +83,7 @@ export default async function CateringPage() {
       />
 
       {/* Hero */}
-      <section className="bg-brand-black text-white py-20 md:py-28">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold">
-            Catering
-          </h1>
-          <p className="mt-4 text-lg text-gray-300 max-w-2xl">
-            Bring the bold flavors of Vietnam to your next event. Bun bowl bars,
-            party platters, and individually prepared bowls — all at $20 per
-            person.
-          </p>
-          {heroImage && (
-            <div className="mt-10 relative aspect-[21/9] rounded-lg overflow-hidden bg-gray-800 max-w-4xl">
-              <img src={heroImage} alt="Vietnoms catering" className="h-full w-full object-cover" />
-            </div>
-          )}
-        </div>
-      </section>
+      <CateringHeroSection />
 
       {/* Two Styles Explainer */}
       <section className="py-16 md:py-24">

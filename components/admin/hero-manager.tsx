@@ -83,7 +83,11 @@ async function readErrorBody(res: Response): Promise<string> {
   }
 }
 
-export function HeroManager() {
+interface HeroManagerProps {
+  category?: string;
+}
+
+export function HeroManager({ category = "hero" }: HeroManagerProps) {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [allMedia, setAllMedia] = useState<HeroSlide[]>([]);
   const [loading, setLoading] = useState(true);
@@ -102,7 +106,7 @@ export function HeroManager() {
   const fetchSlides = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/media?category=hero");
+      const res = await fetch(`/api/admin/media?category=${encodeURIComponent(category)}`);
       if (res.ok) {
         const data = await res.json();
         const sorted = (data.media || []).sort(
@@ -111,7 +115,7 @@ export function HeroManager() {
         setSlides(sorted);
       }
     } catch {} finally { setLoading(false); }
-  }, []);
+  }, [category]);
 
   const fetchAllMedia = useCallback(async () => {
     try {
@@ -238,7 +242,7 @@ export function HeroManager() {
               blobUrl: blob.url,
               filename: file.name,
               altText: "",
-              category: "hero",
+              category,
               tags: "",
               sizeBytes: file.size,
             }),
@@ -249,7 +253,7 @@ export function HeroManager() {
         } else {
           const formData = new FormData();
           formData.append("file", file, file.name);
-          formData.append("category", "hero");
+          formData.append("category", category);
           formData.append("altText", "");
           const res = await fetch("/api/admin/media", { method: "POST", body: formData });
           if (!res.ok) {
@@ -273,7 +277,7 @@ export function HeroManager() {
   const addFromLibrary = async (media: HeroSlide) => {
     const maxOrder = slides.reduce((m, s) => Math.max(m, s.galleryOrder), 0);
     await updateSlide(media.id, {
-      category: "hero",
+      category,
       galleryVisible: 1,
       galleryOrder: maxOrder + 1,
     });

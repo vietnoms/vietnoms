@@ -21,7 +21,12 @@ interface Slide {
 const IMAGE_INTERVAL = 6000;
 const FADE_DURATION = 1000;
 
-export function HeroSlideshow() {
+interface HeroSlideshowProps {
+  apiUrl?: string;
+  fallbackImage?: string;
+}
+
+export function HeroSlideshow({ apiUrl = "/api/hero", fallbackImage = "/images/hero.jpg" }: HeroSlideshowProps) {
   const [slides, setSlides] = useState<Slide[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -30,13 +35,13 @@ export function HeroSlideshow() {
 
   // Fetch slides
   useEffect(() => {
-    fetch("/api/hero")
+    fetch(apiUrl)
       .then((r) => r.json())
       .then((data) => {
         if (data.slides?.length > 0) setSlides(data.slides);
       })
       .catch(() => {});
-  }, []);
+  }, [apiUrl]);
 
   const goTo = useCallback((index: number) => {
     setActiveIndex(index);
@@ -96,9 +101,10 @@ export function HeroSlideshow() {
   }, [activeIndex, slides, paused]);
 
   if (slides.length === 0) {
+    if (!fallbackImage) return null;
     return (
       <div className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/images/hero.jpg')" }} />
+        style={{ backgroundImage: `url('${fallbackImage}')` }} />
     );
   }
 
