@@ -13,14 +13,16 @@ const config: Config = {
         brand: {
           red: "#ff3333",
           yellow: "#fdd05c",
-          black: "#333333",
+          black: "#1a1a1a",
           white: "#ffffff",
         },
         surface: {
-          DEFAULT: "#1a1a1a",
-          alt: "#222222",
-          high: "#2a2a2a",
+          DEFAULT: "#0f0f0f",
+          alt: "#1a1a1a",
+          high: "#252525",
         },
+        cream: "#fff8e7",
+        warm: "#f5f0e8",
       },
       fontFamily: {
         display: ["Bebas Neue", "sans-serif"],
@@ -39,11 +41,21 @@ const config: Config = {
           "0%, 100%": { backgroundPosition: "0% 50%" },
           "50%": { backgroundPosition: "100% 50%" },
         },
+        "float": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-10px)" },
+        },
+        "glow": {
+          "0%, 100%": { opacity: "0.5" },
+          "50%": { opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "gradient-shift": "gradient-shift 8s ease infinite",
+        "float": "float 3s ease-in-out infinite",
+        "glow": "glow 2s ease-in-out infinite",
       },
     },
   },
