@@ -67,15 +67,7 @@ export function CateringBanner({ heading, text, imageUrl }: CateringBannerProps)
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent pointer-events-none" />
             </div>
 
-            {/* Floating accent badge */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.6, delay: 0.6 }}
-              className="absolute bottom-6 right-6 bg-brand-red text-white px-6 py-3 rounded-lg shadow-lg shadow-brand-red/30 z-10"
-            >
-              <span className="font-display text-lg md:text-xl font-bold">Book Today</span>
-            </motion.div>
+
           </motion.div>
 
           {/* Content */}
@@ -164,7 +156,7 @@ export function CateringBanner({ heading, text, imageUrl }: CateringBannerProps)
                 size="lg"
                 className="bg-brand-yellow text-brand-black hover:bg-yellow-400 font-bold"
               >
-                <Link href="/catering">Explore Catering</Link>
+                <Link href="/catering">Book Today</Link>
               </Button>
             </motion.div>
           </motion.div>
