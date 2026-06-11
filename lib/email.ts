@@ -348,6 +348,129 @@ export async function sendContributionInviteEmail(data: ContributionInviteEmailD
   });
 }
 
+// ---------- Marketing & Feedback Emails ----------
+
+export async function sendWelcomeEmail(data: {
+  email: string;
+  name?: string | null;
+  unsubscribeUrl: string; // human-facing page link for the email body
+  oneClickUnsubscribeUrl: string; // POST endpoint for RFC 8058 one-click
+  offerCopy?: string;
+}) {
+  const resend = getResend();
+  const greeting = data.name ? `Hi ${data.name},` : "Hi there,";
+  const offerLines =
+    data.offerCopy && !data.offerCopy.startsWith("[FILL IN")
+      ? ["", data.offerCopy]
+      : [];
+
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: data.email,
+    subject: "Welcome to the Noms List",
+    headers: {
+      "List-Unsubscribe": `<${data.oneClickUnsubscribeUrl}>`,
+      "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+    },
+    text: [
+      greeting,
+      "",
+      "Welcome to the Noms List! You'll be first to hear about new dishes, specials, and events at Vietnoms.",
+      ...offerLines,
+      "",
+      "Order anytime at https://vietnoms.com/order",
+      "",
+      "Thanks,",
+      "Vietnoms",
+      "387 S 1st St, Ste 121, San Jose, CA 95113",
+      "",
+      `Unsubscribe: ${data.unsubscribeUrl}`,
+    ].join("\n"),
+  });
+}
+
+export async function sendReviewRequestEmail(data: {
+  email: string;
+  name?: string | null;
+  feedbackUrl: string;
+}) {
+  const resend = getResend();
+  const greeting = data.name ? `Hi ${data.name},` : "Hi there,";
+
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: data.email,
+    subject: "How was your Vietnoms order?",
+    text: [
+      greeting,
+      "",
+      "Thanks for ordering from Vietnoms! How did we do?",
+      "",
+      `Tell us in 30 seconds: ${data.feedbackUrl}`,
+      "",
+      "Your feedback goes straight to the owners and helps us get better.",
+      "",
+      "Thanks,",
+      "Vietnoms",
+    ].join("\n"),
+  });
+}
+
+export async function sendPrivateFeedbackAlert(data: {
+  rating: number;
+  feedbackText?: string | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  customerPhone?: string | null;
+}) {
+  const resend = getResend();
+
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: ADMIN_EMAIL,
+    subject: `Private feedback received (${data.rating}/5)`,
+    text: [
+      `A customer left private feedback after their order.`,
+      "",
+      `Rating: ${data.rating}/5`,
+      ...(data.feedbackText ? ["", `Feedback: ${data.feedbackText}`] : []),
+      "",
+      `Name: ${data.customerName || "Not provided"}`,
+      `Email: ${data.customerEmail || "Not provided"}`,
+      `Phone: ${data.customerPhone || "Not provided"}`,
+      "",
+      "This feedback is private and was not posted publicly. Consider reaching out directly.",
+      "",
+      "Review all feedback: https://vietnoms.com/admin/reviews",
+    ].join("\n"),
+  });
+}
+
+export async function sendCareersApplicationEmail(data: {
+  name: string;
+  email: string;
+  phone?: string | null;
+  role: string;
+  message?: string | null;
+}) {
+  const resend = getResend();
+
+  await resend.emails.send({
+    from: FROM_ORDERS,
+    to: ADMIN_EMAIL,
+    subject: `Job Application - ${data.role} - ${data.name}`,
+    text: [
+      `New job application from the website:`,
+      "",
+      `Role: ${data.role}`,
+      `Name: ${data.name}`,
+      `Email: ${data.email}`,
+      `Phone: ${data.phone || "Not provided"}`,
+      ...(data.message ? ["", `Message: ${data.message}`] : []),
+    ].join("\n"),
+  });
+}
+
 interface ContributionConfirmationEmailData {
   contributorName: string;
   contributorEmail: string;

@@ -362,6 +362,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Add to the email marketing list when the customer opted in
+    if (optInEmail && customerInfo.email) {
+      postPaymentTasks.push(
+        (async () => {
+          const { subscribe } = await import("@/lib/db/subscribers");
+          await subscribe({
+            email: customerInfo.email!,
+            name: customerInfo.name?.split(" ")[0] || undefined,
+            phone: customerInfo.phone || undefined,
+            source: "checkout",
+          });
+        })().catch((err) => console.error("Subscriber add failed:", err))
+      );
+    }
+
     // Send receipt based on preference
     const receiptUrl = payment.receiptUrl;
     const totalStr = order.totalMoney?.amount

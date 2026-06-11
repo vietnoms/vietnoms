@@ -72,6 +72,7 @@ interface WizardState {
   contactEmail: string;
   contactPhone: string;
   notes: string;
+  optInEmail: boolean;
 }
 
 function formatMoney(cents: number): string {
@@ -113,6 +114,7 @@ export function CateringWizard() {
     noPeanuts: false, eggRollCut: "Uncut", dietaryNotes: "",
     utensils: { napkins: false, forks: false, chopsticks: false },
     contactName: "", contactEmail: "", contactPhone: "", notes: "",
+    optInEmail: false,
   });
 
   const update = useCallback(
@@ -279,6 +281,7 @@ export function CateringWizard() {
         utensils: state.utensils,
       },
       contactName: state.contactName, contactEmail: state.contactEmail, contactPhone: state.contactPhone,
+      optInEmail: state.optInEmail,
       deliveryType: state.deliveryType,
       deliveryAddress: state.deliveryAddress || undefined,
       deliveryDistance: state.deliveryDistance || undefined,
@@ -669,6 +672,12 @@ export function CateringWizard() {
                 <Textarea id="notes" value={state.notes} onChange={(e) => update("notes", e.target.value)}
                   placeholder="Venue details, setup time, parking info..." rows={3} />
               </div>
+              <label className="flex items-start gap-2 text-sm text-gray-400 cursor-pointer">
+                <input type="checkbox" checked={state.optInEmail}
+                  onChange={(e) => update("optInEmail", e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-gray-600 bg-transparent accent-[#ff3333]" />
+                <span>Email me about specials, new dishes, and events</span>
+              </label>
             </div>
 
             {submitting && (
