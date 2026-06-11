@@ -4,13 +4,29 @@ module.exports = {
   generateRobotsTxt: true,
   changefreq: "weekly",
   priority: 0.7,
-  exclude: ["/order/confirmation", "/order/checkout", "/terms", "/privacy"],
+  exclude: [
+    "/order/confirmation",
+    "/order/checkout",
+    "/terms",
+    "/privacy",
+    "/feedback/*",
+    "/unsubscribe/*",
+    "/admin",
+    "/admin/*",
+    "/api/*",
+  ],
   robotsTxtOptions: {
     policies: [
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/order/confirmation", "/order/checkout"],
+        disallow: [
+          "/order/confirmation",
+          "/order/checkout",
+          "/feedback/",
+          "/unsubscribe/",
+          "/admin/",
+        ],
       },
     ],
   },
@@ -32,6 +48,15 @@ module.exports = {
       priority = 0.8;
     } else if (path === "/catering") {
       priority = 0.8;
+    } else if (path === "/specials") {
+      priority = 0.8;
+      changefreq = "daily";
+    } else if (path === "/rewards") {
+      priority = 0.8;
+    } else if (path === "/faq") {
+      priority = 0.6;
+    } else if (path === "/careers") {
+      priority = 0.4;
     } else if (path === "/blog") {
       priority = 0.8;
       changefreq = "daily";

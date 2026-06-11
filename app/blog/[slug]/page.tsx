@@ -6,6 +6,7 @@ import { ArticleSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import Image from "next/image";
 
 export async function generateStaticParams() {
   const posts = getAllPosts();
@@ -76,7 +77,7 @@ export default function BlogPostPage({
             <Link href="/blog" className="hover:text-brand-red">
               Blog
             </Link>{" "}
-            / <span className="text-gray-900">{post.title}</span>
+            / <span className="text-gray-200">{post.title}</span>
           </nav>
 
           {/* Header */}
@@ -98,6 +99,18 @@ export default function BlogPostPage({
               })}
             </time>
           </header>
+
+          {/* Header image */}
+          <div className="mt-8 aspect-[16/9] relative overflow-hidden rounded-2xl border border-white/10">
+            <Image
+              src={post.image}
+              alt={post.title}
+              fill
+              sizes="(max-width: 768px) 100vw, 768px"
+              priority
+              className="object-cover"
+            />
+          </div>
 
           {/* Content */}
           <div className="mt-10 prose prose-gray prose-lg max-w-none prose-headings:font-display prose-a:text-brand-red">

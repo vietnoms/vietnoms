@@ -3,6 +3,9 @@ User-agent: *
 Allow: /
 Disallow: /order/confirmation
 Disallow: /order/checkout
+Disallow: /feedback/
+Disallow: /unsubscribe/
+Disallow: /admin/
 
 # Host
 Host: https://vietnoms.com

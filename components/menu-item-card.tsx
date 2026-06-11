@@ -7,9 +7,11 @@ import type { MenuItem } from "@/lib/types";
 interface MenuItemCardProps {
   item: MenuItem;
   showLink?: boolean;
+  /** Merchandising chips like "Popular" or "Staff Pick", overlaid on the photo */
+  badges?: string[];
 }
 
-export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
+export function MenuItemCard({ item, showLink = true, badges }: MenuItemCardProps) {
   const content = (
     <Card
       className={`group overflow-hidden hover:shadow-md hover:-translate-y-0.5 h-full ${
@@ -36,6 +38,18 @@ export function MenuItemCard({ item, showLink = true }: MenuItemCardProps) {
             <span className="bg-white text-brand-black font-semibold text-sm px-3 py-1 rounded-full">
               Sold Out
             </span>
+          </div>
+        )}
+        {badges && badges.length > 0 && !item.soldOut && (
+          <div className="absolute top-2 left-2 flex gap-1.5">
+            {badges.map((badge) => (
+              <span
+                key={badge}
+                className="rounded-full bg-brand-red px-2.5 py-0.5 text-[11px] font-bold text-white shadow-lg"
+              >
+                {badge}
+              </span>
+            ))}
           </div>
         )}
       </div>

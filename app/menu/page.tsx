@@ -3,9 +3,11 @@ import Link from "next/link";
 import { getFullMenu } from "@/lib/menu-data";
 
 export const revalidate = 3600;
-import { MenuItemCard } from "@/components/menu-item-card";
+import { MenuBrowser } from "@/components/menu-browser";
 import { MenuPageSchema, BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
+import { getMarketingSettings } from "@/lib/marketing/settings";
+import { getBulkItemStats } from "@/lib/db/reviews";
 
 export const metadata: Metadata = {
   title: "Menu | Bun Bowls, Wings, Banh Mi & Vietnamese Coffee",
@@ -19,7 +21,26 @@ export const metadata: Metadata = {
 };
 
 export default async function MenuPage() {
-  const categories = await getFullMenu();
+  const [categories, settings] = await Promise.all([
+    getFullMenu(),
+    getMarketingSettings(),
+  ]);
+
+  // "Popular" badges: top 3 most-liked items
+  let popularIds: string[] = [];
+  try {
+    const allIds = categories.flatMap((category) =>
+      category.items.map((item) => item.id)
+    );
+    const stats = await getBulkItemStats(allIds);
+    popularIds = Array.from(stats.entries())
+      .filter(([, value]) => value.likeCount > 0)
+      .sort((a, b) => b[1].likeCount - a[1].likeCount)
+      .slice(0, 3)
+      .map(([id]) => id);
+  } catch {
+    // stats are a nice-to-have — render the menu regardless
+  }
 
   return (
     <>
@@ -48,52 +69,25 @@ export default async function MenuPage() {
         </div>
       </section>
 
-      {/* Category Anchor Nav */}
-      {categories.length > 0 && (
-        <nav className="sticky top-16 z-40 bg-surface-alt/90 backdrop-blur-lg border-b border-gray-800/50 overflow-x-auto">
+      {categories.length === 0 ? (
+        <section className="py-12 md:py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="flex gap-6 py-3">
-              {categories.map((cat) => (
-                <a
-                  key={cat.id}
-                  href={`#${cat.slug}`}
-                  className="text-sm font-medium text-gray-400 hover:text-brand-red whitespace-nowrap transition-colors"
-                >
-                  {cat.name}
-                </a>
-              ))}
-            </div>
-          </div>
-        </nav>
-      )}
-
-      {/* Menu Categories */}
-      <section className="py-12 md:py-16">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-16">
-          {categories.length === 0 ? (
             <div className="text-center py-20">
               <p className="text-gray-400 text-lg">
                 Menu is being updated. Please check back soon or call us at{" "}
                 {RESTAURANT.phone}.
               </p>
             </div>
-          ) : (
-            categories.map((category) => (
-              <div key={category.id} id={category.slug}>
-                <h2 className="font-display text-2xl md:text-3xl font-bold text-white">
-                  {category.name}
-                </h2>
-                <div className="mt-1 h-1 w-12 bg-brand-red rounded-full" />
-                <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {category.items.map((item) => (
-                    <MenuItemCard key={item.id} item={item} />
-                  ))}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </section>
+          </div>
+        </section>
+      ) : (
+        <MenuBrowser
+          categories={categories}
+          popularIds={popularIds}
+          staffPicks={settings.staffPicks}
+          allergenNote={settings.allergenNote}
+        />
+      )}
     </>
   );
 }
