@@ -131,6 +131,57 @@ export async function createReview(data: {
   return { id: Number(result.lastInsertRowid) };
 }
 
+export async function getReviewsByStatus(
+  status: string,
+  limit = 50,
+  offset = 0
+): Promise<ReviewRow[]> {
+  const db = getTurso();
+  const result = await db.execute({
+    sql: `SELECT r.id, r.square_item_id, r.square_customer_id, r.rating,
+                 r.review_text, r.status, r.created_at,
+                 c.given_name, c.family_name
+          FROM item_reviews r
+          LEFT JOIN customers c ON r.square_customer_id = c.id
+          WHERE r.status = ?
+          ORDER BY r.created_at DESC
+          LIMIT ? OFFSET ?`,
+    args: [status, limit, offset],
+  });
+
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    squareItemId: row.square_item_id as string,
+    squareCustomerId: row.square_customer_id as string,
+    rating: Number(row.rating),
+    reviewText: row.review_text as string | null,
+    status: row.status as string,
+    createdAt: row.created_at as string,
+    givenName: row.given_name as string | null,
+    familyName: row.family_name as string | null,
+  }));
+}
+
+export async function updateReviewStatus(
+  id: number,
+  status: "approved" | "rejected" | "pending"
+): Promise<boolean> {
+  const db = getTurso();
+  const result = await db.execute({
+    sql: "UPDATE item_reviews SET status = ? WHERE id = ?",
+    args: [status, id],
+  });
+  return result.rowsAffected > 0;
+}
+
+export async function getPendingCount(): Promise<number> {
+  const db = getTurso();
+  const result = await db.execute(
+    "SELECT COUNT(*) as count FROM item_reviews WHERE status = 'pending'"
+  );
+  return Number(result.rows[0].count) || 0;
+}
+
 export async function hasReviewed(squareItemId: string, squareCustomerId: string): Promise<boolean> {
   const db = getTurso();
   const result = await db.execute({

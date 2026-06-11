@@ -377,6 +377,65 @@ export async function POST(request: Request) {
       );
     }
 
+    // Queue a post-purchase review request (sent later by the cron tick).
+    // SMS only with explicit text opt-in; suppressed if asked recently.
+    if (customerInfo.email || (optInText && customerInfo.phone)) {
+      postPaymentTasks.push(
+        (async () => {
+          const { getMarketingSettings } = await import("@/lib/marketing/settings");
+          const settings = await getMarketingSettings();
+          if (!settings.reviewRequestsEnabled) return;
+
+          const channel: "email" | "sms" =
+            settings.reviewRequestChannel === "sms" && optInText && customerInfo.phone
+              ? "sms"
+              : customerInfo.email
+                ? "email"
+                : optInText && customerInfo.phone
+                  ? "sms"
+                  : "email";
+          if (channel === "email" && !customerInfo.email) return;
+
+          const { lastRequestFor, queueReviewRequest } = await import(
+            "@/lib/db/review-requests"
+          );
+          const { isSuppressed, computeScheduledAt } = await import(
+            "@/lib/marketing/scheduling"
+          );
+
+          const lastRequest = await lastRequestFor(
+            customerInfo.email || undefined,
+            customerInfo.phone || undefined
+          );
+          if (isSuppressed(lastRequest, settings.reviewSuppressionDays, new Date())) {
+            return;
+          }
+
+          await queueReviewRequest({
+            purchaseId,
+            squareOrderId: order.id,
+            customerName: customerInfo.name,
+            customerEmail: customerInfo.email || undefined,
+            customerPhone: customerInfo.phone || undefined,
+            channel,
+            scheduledAt: computeScheduledAt(
+              new Date(),
+              settings.reviewRequestDelayHours
+            ),
+          });
+        })().catch((err) => console.error("Review request enqueue failed:", err))
+      );
+    }
+
+    // Opportunistically drain scheduled work (review requests, social posts)
+    // since Vercel crons may run only once a day.
+    postPaymentTasks.push(
+      (async () => {
+        const { runTick } = await import("@/lib/cron/tick-tasks");
+        await runTick();
+      })().catch((err) => console.error("Inline tick failed:", err))
+    );
+
     // Send receipt based on preference
     const receiptUrl = payment.receiptUrl;
     const totalStr = order.totalMoney?.amount
