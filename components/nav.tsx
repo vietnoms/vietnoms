@@ -11,10 +11,11 @@ import { LoyaltyBadge } from "@/components/loyalty/loyalty-badge";
 const NAV_LINKS = [
   { href: "/menu", label: "Menu" },
   { href: "/order", label: "Order Online" },
+  { href: "/specials", label: "Specials" },
   { href: "/catering", label: "Catering" },
+  { href: "/rewards", label: "Rewards" },
   { href: "/gift-cards", label: "Gift Cards" },
   { href: "/about", label: "About" },
-  { href: "/blog", label: "Blog" },
   { href: "/contact", label: "Contact" },
 ];
 

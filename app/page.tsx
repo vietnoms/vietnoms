@@ -5,9 +5,12 @@ import { OrderingCallout } from "@/components/home/ordering-callout";
 import { CateringBanner } from "@/components/home/catering-banner";
 import { ReviewsSection } from "@/components/home/reviews-section";
 import { LocationSection } from "@/components/home/location-section";
+import { AnnouncementBar } from "@/components/home/announcement-bar";
+import { SpecialsSection } from "@/components/home/specials-section";
 import { getAllContent } from "@/lib/db/site-content";
 import { getMenuItems } from "@/lib/menu-data";
 import { getGoogleReviews } from "@/lib/google-reviews";
+import { getActiveAnnouncements } from "@/lib/db/announcements";
 import { unstable_cache } from "next/cache";
 
 const getCachedContent = unstable_cache(getAllContent, ["site-content"], {
@@ -16,11 +19,16 @@ const getCachedContent = unstable_cache(getAllContent, ["site-content"], {
 });
 
 export default async function HomePage() {
-  const [content, allItems, reviews] = await Promise.all([
-    getCachedContent().catch(() => ({} as Record<string, string>)),
-    getMenuItems(),
-    getGoogleReviews(),
-  ]);
+  const [content, allItems, reviews, announcements, specials] =
+    await Promise.all([
+      getCachedContent().catch(() => ({} as Record<string, string>)),
+      getMenuItems(),
+      getGoogleReviews(),
+      getActiveAnnouncements("announcement").catch(() => []),
+      getActiveAnnouncements("special").catch(() => []),
+    ]);
+
+  const topAnnouncement = announcements[0];
 
   // Match featured items by name
   const featuredNames = content.featured_names
@@ -33,6 +41,15 @@ export default async function HomePage() {
 
   return (
     <>
+      {topAnnouncement && (
+        <AnnouncementBar
+          id={topAnnouncement.id}
+          title={topAnnouncement.title}
+          body={topAnnouncement.body}
+          ctaLabel={topAnnouncement.ctaLabel}
+          ctaHref={topAnnouncement.ctaHref}
+        />
+      )}
       <HeroSection
         title={content.hero_title}
         subtitle={content.hero_subtitle}
@@ -47,6 +64,17 @@ export default async function HomePage() {
         items={featuredItems}
         heading={content.featured_heading}
         subtext={content.featured_subtext}
+      />
+      <SpecialsSection
+        specials={specials.map((special) => ({
+          id: special.id,
+          title: special.title,
+          body: special.body,
+          imageUrl: special.imageUrl,
+          ctaLabel: special.ctaLabel,
+          ctaHref: special.ctaHref,
+          endsAt: special.endsAt,
+        }))}
       />
       <OrderingCallout
         heading={content.ordering_heading}

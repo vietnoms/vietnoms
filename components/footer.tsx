@@ -15,11 +15,15 @@ export function Footer() {
   const quickLinks = [
     { href: "/menu", label: "Menu" },
     { href: "/order", label: "Order Online" },
+    { href: "/specials", label: "Specials" },
+    { href: "/rewards", label: "Rewards" },
     { href: "/catering", label: "Catering" },
     { href: "/gift-cards", label: "Gift Cards" },
     { href: "/about", label: "About Us" },
     { href: "/gallery", label: "Gallery" },
     { href: "/blog", label: "Blog" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/careers", label: "Careers" },
   ];
 
   return (
