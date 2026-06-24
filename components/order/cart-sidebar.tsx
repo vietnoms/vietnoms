@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCart } from "@/lib/cart-context";
+import { useIsDesktop } from "@/lib/use-is-desktop";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
@@ -13,11 +14,14 @@ const CheckoutPanel = dynamic(
 
 export function CartSidebar() {
   const { items, total, itemCount, updateQuantity, removeItem, isCheckoutOpen, openCheckout } = useCart();
+  const isDesktop = useIsDesktop();
 
   if (isCheckoutOpen && items.length > 0) {
     return (
       <div className="sticky top-24 bg-surface-alt rounded-lg border border-gray-700/50 overflow-hidden flex flex-col h-[calc(100vh-7rem)]">
-        <CheckoutPanel />
+        {/* Only mount the panel on desktop — the mobile drawer owns it otherwise,
+            and two mounted panels duplicate Square's fixed-id payment fields. */}
+        {isDesktop && <CheckoutPanel />}
       </div>
     );
   }
