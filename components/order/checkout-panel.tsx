@@ -38,6 +38,8 @@ import {
   getNextOpeningTime,
   MAX_ADVANCE_DAYS,
 } from "@/lib/restaurant-hours";
+import { RESTAURANT } from "@/lib/constants";
+import { PaymentErrorBoundary } from "./payment-error-boundary";
 
 type ReceiptPreference = "email" | "text" | "both";
 
@@ -417,8 +419,8 @@ export function CheckoutPanel() {
   }
 
   return (
-    <div ref={panelRef} className="flex flex-col h-full overflow-y-auto">
-      {/* Header */}
+    <div ref={panelRef} className="flex flex-col h-full min-h-0">
+      {/* Header (pinned) */}
       <div className="flex items-center gap-2 p-4 border-b border-gray-700/50 bg-surface-alt shrink-0">
         <button
           onClick={closeCheckout}
@@ -430,7 +432,7 @@ export function CheckoutPanel() {
         <h2 className="font-display text-lg font-bold text-white">Checkout</h2>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
         {/* Collapsible order summary */}
         <div className="bg-surface-alt rounded-lg overflow-hidden">
           <button
@@ -774,32 +776,60 @@ export function CheckoutPanel() {
             </div>
           )}
           {!submitting && appId && locationId ? (
-            <div className={!canPay ? "opacity-50 pointer-events-none" : ""}>
-              {!canPay && (
-                <p className="text-xs text-amber-400 mb-2">
-                  Fill in your name, phone, and accept SMS terms to continue.
-                </p>
-              )}
-              <PaymentForm applicationId={appId} locationId={locationId}
-                cardTokenizeResponseReceived={handlePaymentToken}
-                createPaymentRequest={() => ({
-                  countryCode: "US", currencyCode: "USD",
-                  total: { amount: (finalTotal / 100).toFixed(2), label: "Vietnoms Order" },
-                })}>
-                <CreditCard />
-                <div className="my-3 text-center text-sm text-gray-400">or pay with</div>
-                <div className="space-y-2">
-                  <GiftCard />
-                  <ApplePay />
-                  <GooglePay />
-                  <CashAppPay />
-                </div>
-              </PaymentForm>
-            </div>
+            <>
+              <div className={!canPay ? "opacity-50 pointer-events-none" : ""}>
+                {!canPay && (
+                  <p className="text-xs text-amber-400 mb-2">
+                    Fill in your name, phone, and accept SMS terms to continue.
+                  </p>
+                )}
+                <PaymentErrorBoundary
+                  fallback={
+                    <p className="text-sm text-amber-400">
+                      Payment couldn&apos;t load. Allow third-party cookies for this
+                      site, or call{" "}
+                      <a href={`tel:${RESTAURANT.phone}`} className="underline">
+                        {RESTAURANT.phone}
+                      </a>{" "}
+                      to order by phone.
+                    </p>
+                  }
+                >
+                  <PaymentForm applicationId={appId} locationId={locationId}
+                    cardTokenizeResponseReceived={handlePaymentToken}
+                    createPaymentRequest={() => ({
+                      countryCode: "US", currencyCode: "USD",
+                      total: { amount: (finalTotal / 100).toFixed(2), label: "Vietnoms Order" },
+                    })}>
+                    <CreditCard />
+                    <div className="my-3 text-center text-sm text-gray-400">or pay with</div>
+                    <div className="space-y-2">
+                      <GiftCard />
+                      <ApplePay />
+                      <GooglePay />
+                      <CashAppPay />
+                    </div>
+                  </PaymentForm>
+                </PaymentErrorBoundary>
+              </div>
+              <p className="mt-3 text-xs text-gray-500">
+                Card fields not appearing? Allow third-party cookies for this site,
+                or call{" "}
+                <a
+                  href={`tel:${RESTAURANT.phone}`}
+                  className="underline hover:text-gray-300"
+                >
+                  {RESTAURANT.phone}
+                </a>{" "}
+                to order by phone.
+              </p>
+            </>
           ) : !submitting ? (
             <p className="text-sm text-gray-400">Payment is not configured. Please contact us.</p>
           ) : null}
         </section>
+        {/* Safe-area clearance so the last content clears the iOS home bar */}
+        <div aria-hidden className="h-[env(safe-area-inset-bottom)]" />
       </div>
     </div>
   );

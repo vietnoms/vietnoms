@@ -16,7 +16,7 @@ export function CartSidebar() {
 
   if (isCheckoutOpen && items.length > 0) {
     return (
-      <div className="sticky top-24 bg-surface-alt rounded-lg border border-gray-700/50 overflow-hidden max-h-[calc(100vh-7rem)]">
+      <div className="sticky top-24 bg-surface-alt rounded-lg border border-gray-700/50 overflow-hidden flex flex-col h-[calc(100vh-7rem)]">
         <CheckoutPanel />
       </div>
     );
