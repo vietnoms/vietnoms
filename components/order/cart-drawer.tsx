@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
 import { useCart } from "@/lib/cart-context";
+import { useIsDesktop } from "@/lib/use-is-desktop";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import { Minus, Plus, Trash2, ShoppingBag, X } from "lucide-react";
@@ -24,6 +25,7 @@ export function CartDrawer() {
     isCheckoutOpen,
     openCheckout,
   } = useCart();
+  const isDesktop = useIsDesktop();
 
   // Close on Escape key
   useEffect(() => {
@@ -67,8 +69,10 @@ export function CartDrawer() {
         aria-modal="true"
         aria-label="Shopping cart"
       >
-        {/* Show checkout panel when in checkout mode */}
-        {isCheckoutOpen && items.length > 0 ? (
+        {/* Show checkout panel when in checkout mode. Only mount it on mobile —
+            the desktop sidebar owns it otherwise, and two mounted panels
+            duplicate Square's fixed-id payment fields. */}
+        {isCheckoutOpen && items.length > 0 && !isDesktop ? (
           <CheckoutPanel />
         ) : (
           <>
