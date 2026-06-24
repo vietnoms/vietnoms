@@ -26,8 +26,8 @@ export const RESTAURANT = {
     { days: "Sunday", open: "11:30 AM", close: "7:00 PM" },
   ],
   social: {
-    instagram: "https://instagram.com/vietnoms",
-    facebook: "https://facebook.com/vietnoms",
+    instagram: "https://www.instagram.com/vietnoms_sj",
+    facebook: "https://www.facebook.com/profile.php?id=61577007672732",
     yelp: "https://yelp.com/biz/vietnoms-san-jose",
     tiktok: "https://tiktok.com/@vietnoms",
   },

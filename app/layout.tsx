@@ -5,6 +5,7 @@ import { RestaurantSchema } from "@/components/schema-markup";
 import { CartProvider } from "@/lib/cart-context";
 import { AuthProvider } from "@/lib/auth-context";
 import { CartDrawer } from "@/components/order/cart-drawer";
+import { PopupGate } from "@/components/marketing/popup-gate";
 import { SEO_DEFAULTS, RESTAURANT } from "@/lib/constants";
 import { getContent } from "@/lib/db/site-content";
 import { unstable_cache } from "next/cache";
@@ -84,6 +85,7 @@ export default function RootLayout({
             <main className="flex-1 pt-20">{children}</main>
             <Footer />
             <CartDrawer />
+            <PopupGate />
           </CartProvider>
         </AuthProvider>
       </body>

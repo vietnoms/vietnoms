@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getItemReviews, getItemStats, createReview, hasReviewed } from "@/lib/db/reviews";
 import { getSession } from "@/lib/auth";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   const itemId = request.nextUrl.searchParams.get("itemId");
@@ -26,6 +27,17 @@ export async function POST(request: NextRequest) {
   const session = await getSession();
   if (!session) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  const { allowed } = await checkRateLimit(`review:${session.customerId}`, {
+    limit: 10,
+    windowSec: 3600,
+  });
+  if (!allowed) {
+    return NextResponse.json(
+      { error: "Too many reviews. Please try again later." },
+      { status: 429 }
+    );
   }
 
   try {

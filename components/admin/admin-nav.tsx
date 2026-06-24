@@ -15,6 +15,9 @@ import {
   Film,
   PenSquare,
   TrendingUp,
+  Mail,
+  Star,
+  Megaphone,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -22,6 +25,9 @@ const NAV_ITEMS = [
   { href: "/admin/hero", label: "Hero", icon: Film },
   { href: "/admin/catering", label: "Catering", icon: UtensilsCrossed },
   { href: "/admin/purchases", label: "Purchases", icon: Receipt },
+  { href: "/admin/subscribers", label: "Subscribers", icon: Mail },
+  { href: "/admin/reviews", label: "Reviews", icon: Star },
+  { href: "/admin/specials", label: "Specials", icon: Megaphone },
   { href: "/admin/content", label: "Content", icon: PenTool },
   { href: "/admin/media", label: "Media", icon: ImageIcon },
   { href: "/admin/seo", label: "SEO Audit", icon: CheckSquare },

@@ -5,6 +5,7 @@ import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
 import { RESTAURANT } from "@/lib/constants";
 import { formatPhoneForTel } from "@/lib/utils";
+import { EmailSignupForm } from "@/components/marketing/email-signup-form";
 import { MapPin, Phone, Mail, ArrowUpRight } from "lucide-react";
 
 export function Footer() {
@@ -14,11 +15,15 @@ export function Footer() {
   const quickLinks = [
     { href: "/menu", label: "Menu" },
     { href: "/order", label: "Order Online" },
+    { href: "/specials", label: "Specials" },
+    { href: "/rewards", label: "Rewards" },
     { href: "/catering", label: "Catering" },
     { href: "/gift-cards", label: "Gift Cards" },
     { href: "/about", label: "About Us" },
     { href: "/gallery", label: "Gallery" },
     { href: "/blog", label: "Blog" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/careers", label: "Careers" },
   ];
 
   return (
@@ -146,12 +151,34 @@ export function Footer() {
           </motion.div>
         </div>
 
+        {/* Newsletter signup */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={isInView ? { opacity: 1, y: 0 } : {}}
+          transition={{ duration: 0.6, delay: 0.35 }}
+          className="mt-16 pt-10 border-t border-white/10"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div>
+              <h4 className="font-display text-2xl text-white tracking-wider">
+                Join the <span className="text-brand-yellow">Noms List</span>
+              </h4>
+              <p className="mt-2 text-sm text-gray-400">
+                New dishes, specials, and events — straight to your inbox.
+              </p>
+            </div>
+            <div className="max-w-md md:justify-self-end w-full">
+              <EmailSignupForm source="footer" />
+            </div>
+          </div>
+        </motion.div>
+
         {/* Bottom bar */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={isInView ? { opacity: 1 } : {}}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="mt-16 pt-8 border-t border-white/10"
+          className="mt-12 pt-8 border-t border-white/10"
         >
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-xs text-gray-500">

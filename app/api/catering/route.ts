@@ -44,6 +44,7 @@ export async function POST(request: Request) {
       totalAmount,
       notes,
       items,
+      optInEmail,
     } = body;
 
     if (!eventDate || !guestCount || !packageType || !contactName || !contactEmail || !contactPhone) {
@@ -75,6 +76,20 @@ export async function POST(request: Request) {
           ...item,
         }))
       );
+    }
+
+    // Add to the email marketing list when opted in (non-blocking)
+    if (optInEmail && contactEmail) {
+      import("@/lib/db/subscribers")
+        .then(({ subscribe }) =>
+          subscribe({
+            email: contactEmail,
+            name: contactName?.split(" ")[0] || undefined,
+            phone: contactPhone || undefined,
+            source: "catering",
+          })
+        )
+        .catch((err) => console.error("Subscriber add failed:", err));
     }
 
     // Send emails (non-blocking)

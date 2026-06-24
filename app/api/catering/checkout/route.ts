@@ -32,6 +32,7 @@ interface CateringCheckoutRequest {
   notes?: string;
   items: { itemName: string; quantity: number; unitPrice?: number; notes?: string }[];
   paymentToken: string;
+  optInEmail?: boolean;
 }
 
 export async function POST(request: Request) {
@@ -189,6 +190,20 @@ export async function POST(request: Request) {
     // 4. Update DB with payment info
     await updateCateringRequestPayment(id, order.id, payment.id, body.totalAmount);
     await updatePurchasePayment(purchaseId, payment.id, order.id);
+
+    // Add to the email marketing list when opted in (non-blocking)
+    if (body.optInEmail && body.contactEmail) {
+      import("@/lib/db/subscribers")
+        .then(({ subscribe }) =>
+          subscribe({
+            email: body.contactEmail,
+            name: body.contactName?.split(" ")[0] || undefined,
+            phone: body.contactPhone || undefined,
+            source: "catering",
+          })
+        )
+        .catch((err) => console.error("Subscriber add failed:", err));
+    }
 
     // 5. Send emails (non-blocking)
     sendCateringOrderEmails({

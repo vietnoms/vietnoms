@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { getAllPosts, getPostClusters } from "@/lib/blog-data";
 import { BreadcrumbSchema } from "@/components/schema-markup";
 import { RESTAURANT } from "@/lib/constants";
@@ -75,9 +76,13 @@ export default function BlogPage() {
                 <Link key={post.slug} href={`/blog/${post.slug}`}>
                   <Card className="group overflow-hidden hover:shadow-md transition-shadow h-full">
                     <div className="aspect-[16/9] bg-gray-800 relative overflow-hidden">
-                      <div className="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-                        {post.title}
-                      </div>
+                      <Image
+                        src={post.image}
+                        alt={post.title}
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
                     </div>
                     <CardContent className="p-5">
                       <div className="flex items-center gap-2 mb-2">

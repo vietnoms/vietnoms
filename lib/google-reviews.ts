@@ -73,6 +73,84 @@ export const getGoogleReviews = unstable_cache(
   { tags: ["google-reviews"], revalidate: 86400 }
 );
 
+export interface GoogleReviewsAdminData {
+  configured: boolean;
+  placeId: string | null;
+  rating: number | null;
+  userRatingCount: number | null;
+  reviews: GoogleReview[];
+}
+
+/**
+ * Admin variant: all returned reviews (no 4-star filter) plus place metadata
+ * so the dashboard can deep-link to Google. The public-facing
+ * getGoogleReviews above stays filtered to 4+ stars.
+ */
+export const getGoogleReviewsUnfiltered = unstable_cache(
+  async (): Promise<GoogleReviewsAdminData> => {
+    const apiKey = process.env.GOOGLE_PLACES_API_KEY;
+    const empty: GoogleReviewsAdminData = {
+      configured: false,
+      placeId: process.env.GOOGLE_PLACE_ID || null,
+      rating: null,
+      userRatingCount: null,
+      reviews: [],
+    };
+    if (!apiKey) return empty;
+
+    try {
+      const res = await fetch(
+        "https://places.googleapis.com/v1/places:searchText",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": apiKey,
+            "X-Goog-FieldMask":
+              "places.id,places.reviews,places.rating,places.userRatingCount",
+          },
+          body: JSON.stringify({
+            textQuery: "Vietnoms 387 S 1st St San Jose CA",
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        console.error("Google Places API error:", res.status, await res.text());
+        return empty;
+      }
+
+      const data = await res.json();
+      const place = data.places?.[0];
+      if (!place) return empty;
+
+      return {
+        configured: true,
+        placeId: process.env.GOOGLE_PLACE_ID || place.id || null,
+        rating: typeof place.rating === "number" ? place.rating : null,
+        userRatingCount:
+          typeof place.userRatingCount === "number"
+            ? place.userRatingCount
+            : null,
+        reviews: (place.reviews || [])
+          .filter((r: any) => r.text?.text)
+          .map((r: any) => ({
+            authorName: r.authorAttribution?.displayName || "Google User",
+            rating: r.rating,
+            text: r.text.text,
+            relativeTimeDescription: r.relativePublishTimeDescription || "",
+            profilePhotoUrl: r.authorAttribution?.photoUri || null,
+          })),
+      };
+    } catch (error) {
+      console.error("Failed to fetch Google reviews (admin):", error);
+      return empty;
+    }
+  },
+  ["google-reviews-admin"],
+  { tags: ["google-reviews"], revalidate: 3600 }
+);
+
 /** Curated real reviews sourced from public review sites, used when Google API key is not configured. */
 const FALLBACK_REVIEWS: GoogleReview[] = [
   {
