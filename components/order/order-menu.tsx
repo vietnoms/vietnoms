@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge, labelVariant } from "@/components/ui/badge";
 import { ItemDetailModal } from "./item-detail-modal";
 import type { MenuCategory, MenuItem } from "@/lib/types";
-import { Plus, Star, Heart, ShoppingBag } from "lucide-react";
+import { RESTAURANT } from "@/lib/constants";
+import { Plus, Star, Heart, ShoppingBag, Truck } from "lucide-react";
 import { CartSidebar } from "./cart-sidebar";
 
 interface ItemStats {
@@ -165,7 +166,25 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
   }
 
   return (
-    <div className="flex gap-6">
+    <>
+      {/* Pickup vs. delivery banner */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-800 bg-surface-alt px-4 py-3">
+        <span className="flex items-center gap-2 text-sm text-gray-300">
+          <ShoppingBag className="h-4 w-4 text-brand-red" />
+          You&apos;re ordering for <span className="font-semibold text-white">pickup</span>. Need delivery?
+        </span>
+        <a
+          href={RESTAURANT.orderDeliveryUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-red hover:text-brand-yellow transition-colors"
+        >
+          <Truck className="h-4 w-4" />
+          Order Delivery →
+        </a>
+      </div>
+
+      <div className="flex gap-6">
       {/* Desktop sidebar nav */}
       <nav className="hidden lg:block w-44 shrink-0">
         <div className="sticky top-24 space-y-1">
@@ -382,6 +401,7 @@ export function OrderMenu({ categories, itemStats = {} }: OrderMenuProps) {
         liked={selectedItem ? likedItems.has(selectedItem.id) : false}
         onToggleLike={handleToggleLike}
       />
-    </div>
+      </div>
+    </>
   );
 }

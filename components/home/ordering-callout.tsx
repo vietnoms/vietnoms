@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
+import { RESTAURANT } from "@/lib/constants";
 import { Clock, MapPin, Utensils } from "lucide-react";
 
 interface OrderingCalloutProps {
@@ -85,7 +86,7 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
             transition={{ duration: 0.8, delay: 0.2 }}
             className="font-display text-4xl md:text-5xl lg:text-6xl font-bold text-white text-glow-white"
           >
-            {heading || "Order Online for Pickup"}
+            {heading || "Order Online — Pickup or Delivery"}
           </motion.h2>
 
           {/* Animated divider */}
@@ -112,14 +113,24 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
             initial={{ opacity: 0, y: 30 }}
             animate={isInView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.7, delay: 0.6 }}
-            className="mt-10"
+            className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <Button
               asChild
               size="xl"
               className="bg-white text-brand-red hover:bg-gray-100 hover:shadow-xl hover:shadow-white/20 font-bold text-lg px-10 transition-all duration-300"
             >
-              <Link href="/order">{buttonText || "Start Your Order"}</Link>
+              <Link href="/order">{buttonText || "Order for Pickup"}</Link>
+            </Button>
+            <Button
+              asChild
+              size="xl"
+              variant="outline"
+              className="border-2 border-white bg-transparent text-white hover:bg-white hover:text-brand-red font-bold text-lg px-10 transition-all duration-300"
+            >
+              <a href={RESTAURANT.orderDeliveryUrl} target="_blank" rel="noopener noreferrer">
+                Order Delivery
+              </a>
             </Button>
           </motion.div>
 
