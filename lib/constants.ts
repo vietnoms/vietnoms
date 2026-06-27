@@ -20,6 +20,9 @@ export const RESTAURANT = {
   priceRange: "$$",
   cuisine: "Vietnamese",
   url: "https://vietnoms.com",
+  // Square online ordering link (Cash App), matching the in-store kiosk ordering flow.
+  // On-Demand Delivery is enabled for this ordering page in the Square dashboard.
+  orderDeliveryUrl: "https://cash.app/$vietnoms/delivery",
   hours: [
     { days: "Monday - Thursday", open: "11:30 AM", close: "7:00 PM" },
     { days: "Friday - Saturday", open: "11:30 AM", close: "8:00 PM" },

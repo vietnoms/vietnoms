@@ -7,10 +7,12 @@ import { Menu, X, User, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { LoginDialog } from "@/components/auth/login-dialog";
 import { LoyaltyBadge } from "@/components/loyalty/loyalty-badge";
+import { RESTAURANT } from "@/lib/constants";
 
-const NAV_LINKS = [
+const NAV_LINKS: { href: string; label: string; external?: boolean }[] = [
   { href: "/menu", label: "Menu" },
   { href: "/order", label: "Order Online" },
+  { href: RESTAURANT.orderDeliveryUrl, label: "Delivery", external: true },
   { href: "/specials", label: "Specials" },
   { href: "/catering", label: "Catering" },
   { href: "/rewards", label: "Rewards" },
@@ -60,16 +62,29 @@ export function Nav() {
 
             {/* Desktop nav */}
             <div className="hidden lg:flex lg:items-center lg:gap-1">
-              {NAV_LINKS.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="relative px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
-                >
-                  {link.label}
-                  <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-brand-yellow group-hover:w-3/4 transition-all duration-300" />
-                </Link>
-              ))}
+              {NAV_LINKS.map((link) =>
+                link.external ? (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
+                  >
+                    {link.label}
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-brand-yellow group-hover:w-3/4 transition-all duration-300" />
+                  </a>
+                ) : (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="relative px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
+                  >
+                    {link.label}
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-brand-yellow group-hover:w-3/4 transition-all duration-300" />
+                  </Link>
+                )
+              )}
 
               {/* Divider */}
               <span className="mx-2 h-6 w-px bg-gray-700" />
@@ -146,13 +161,25 @@ export function Nav() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
                     >
-                      <Link
-                        href={link.href}
-                        className="block text-lg font-medium text-gray-300 hover:text-brand-yellow transition-colors py-3 border-b border-gray-800/50"
-                        onClick={() => setMobileOpen(false)}
-                      >
-                        {link.label}
-                      </Link>
+                      {link.external ? (
+                        <a
+                          href={link.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block text-lg font-medium text-gray-300 hover:text-brand-yellow transition-colors py-3 border-b border-gray-800/50"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {link.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={link.href}
+                          className="block text-lg font-medium text-gray-300 hover:text-brand-yellow transition-colors py-3 border-b border-gray-800/50"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          {link.label}
+                        </Link>
+                      )}
                     </motion.div>
                   ))}
 

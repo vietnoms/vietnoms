@@ -12,9 +12,10 @@ export function Footer() {
   const footerRef = useRef<HTMLElement>(null);
   const isInView = useInView(footerRef, { once: true, margin: "-50px" });
 
-  const quickLinks = [
+  const quickLinks: { href: string; label: string; external?: boolean }[] = [
     { href: "/menu", label: "Menu" },
     { href: "/order", label: "Order Online" },
+    { href: RESTAURANT.orderDeliveryUrl, label: "Order Delivery", external: true },
     { href: "/specials", label: "Specials" },
     { href: "/rewards", label: "Rewards" },
     { href: "/catering", label: "Catering" },
@@ -81,13 +82,25 @@ export function Footer() {
             <ul className="space-y-3">
               {quickLinks.map((link) => (
                 <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="group inline-flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
-                  >
-                    {link.label}
-                    <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all" />
-                  </Link>
+                  {link.external ? (
+                    <a
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
+                    >
+                      {link.label}
+                      <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all" />
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="group inline-flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
+                    >
+                      {link.label}
+                      <ArrowUpRight className="h-3 w-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all" />
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
