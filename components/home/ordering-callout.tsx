@@ -141,7 +141,7 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-8 text-white/60 text-sm"
           >
-            No account required • Pay when you pick up
+            No account required
           </motion.p>
         </div>
       </div>
