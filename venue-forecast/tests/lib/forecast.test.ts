@@ -6,6 +6,7 @@ import {
   groupByWeek,
   parseEventsCsv,
   parseSalesCsv,
+  normalizeDate,
 } from "@/lib/forecast";
 import type { ConventionEventRow } from "@/lib/db/convention-events";
 
@@ -184,13 +185,28 @@ describe("parseSalesCsv", () => {
   });
 
   it("throws on missing required columns", () => {
-    const csv = `Date,Amount\n04/10/2026,100`;
-    // "Amount" does not match "revenue" or "sales" or "total"
-    // Actually it does not — let me check. No it doesn't.
-    // Wait, the header check includes "amount" — let me re-check the code.
-    // Actually parseSalesCsv does check for "amount" in the revenue index.
-    // So this should work. Let me test with truly missing columns.
-    const csv2 = `When,How Much\n04/10/2026,100`;
-    expect(() => parseSalesCsv(csv2)).toThrow("Date");
+    const csv = `When,How Much\n04/10/2026,100`;
+    expect(() => parseSalesCsv(csv)).toThrow("Date");
+  });
+});
+
+describe("normalizeDate", () => {
+  it("passes through ISO dates unchanged", () => {
+    expect(normalizeDate("2026-07-04")).toBe("2026-07-04");
+  });
+
+  it("converts M/D/YYYY and MM/DD/YYYY to ISO", () => {
+    expect(normalizeDate("7/4/2026")).toBe("2026-07-04");
+    expect(normalizeDate("07/04/2026")).toBe("2026-07-04");
+    expect(normalizeDate("12/31/2026")).toBe("2026-12-31");
+  });
+
+  it("falls back to Date parsing for other formats", () => {
+    expect(normalizeDate("July 4, 2026")).toBe("2026-07-04");
+  });
+
+  it("returns empty string for unparseable input", () => {
+    expect(normalizeDate("")).toBe("");
+    expect(normalizeDate("not a date")).toBe("");
   });
 });

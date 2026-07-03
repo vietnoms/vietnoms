@@ -5,6 +5,7 @@ import {
   subscribeTenantToVenue,
   upsertConventionEvent,
 } from "@/lib/db/convention-events";
+import { normalizeDate } from "@/lib/forecast";
 
 export async function POST(req: NextRequest) {
   const authHeader = req.headers.get("authorization");
@@ -39,10 +40,18 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
+      const startDate = normalizeDate(String(event.startDate ?? "").trim());
+      if (!startDate) {
+        errors.push(`${event.eventName}: invalid startDate`);
+        continue;
+      }
+      const endDate =
+        normalizeDate(String(event.endDate ?? "").trim()) || startDate;
+
       const venue = await findOrCreateVenue({
         name: event.venue,
         address: event.venueAddress,
-        city: event.venueCity,
+        city: event.venueCity || "San Jose",
       });
       await subscribeTenantToVenue({
         tenantId: tenant.id,
@@ -53,8 +62,8 @@ export async function POST(req: NextRequest) {
         tenantId: tenant.id,
         venueId: venue.id,
         eventName: event.eventName,
-        startDate: event.startDate,
-        endDate: event.endDate || event.startDate,
+        startDate,
+        endDate,
         expectedAttendance: event.expectedAttendance,
         eventType: event.eventType,
         notes: event.notes,

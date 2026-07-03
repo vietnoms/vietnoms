@@ -427,7 +427,7 @@ function parseCsvLine(line: string): string[] {
 }
 
 /** Normalize dates to YYYY-MM-DD format */
-function normalizeDate(dateStr: string): string {
+export function normalizeDate(dateStr: string): string {
   if (!dateStr) return "";
 
   // Already YYYY-MM-DD
