@@ -33,7 +33,6 @@ export const RESTAURANT = {
     instagram: "https://www.instagram.com/vietnoms_sj",
     facebook: "https://www.facebook.com/profile.php?id=61577007672732",
     yelp: "https://yelp.com/biz/vietnoms-san-jose",
-    tiktok: "https://tiktok.com/@vietnoms",
   },
 } as const;
 
