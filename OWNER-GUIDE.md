@@ -9,7 +9,7 @@ Everything on the site that needs **your** real words, data, or accounts — plu
 All in `lib/constants.ts` unless noted:
 
 - [ ] **Social links** — currently best guesses and may 404:
-  - `instagram.com/vietnoms`, `facebook.com/vietnoms`, `yelp.com/biz/vietnoms-san-jose`, `tiktok.com/@vietnoms`, Twitter handle `@vietnoms` (in `SEO_DEFAULTS`). Replace each with your actual profile URL (the Yelp one also powers the "Review on Yelp" button in review requests).
+  - `instagram.com/vietnoms`, `facebook.com/vietnoms`, `yelp.com/biz/vietnoms-san-jose`, Twitter handle `@vietnoms` (in `SEO_DEFAULTS`). Replace each with your actual profile URL (the Yelp one also powers the "Review on Yelp" button in review requests).
 - [ ] **Hours** — site says Mon–Thu 11:30–7, Fri–Sat 11:30–8, Sun 11:30–7. Correct?
 - [ ] **Phone** `(408) 827-5812` and email `catering@vietnoms.com`.
 
