@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getSquare, LOCATION_ID } from "@/lib/square";
+import crypto from "crypto";
+import type { Square } from "square";
+import { getSquare, LOCATION_ID, getSquareErrorMessage, toNumber } from "@/lib/square";
 import {
   createCateringRequest,
   createCateringItems,
@@ -7,20 +9,35 @@ import {
   ensureCateringTables,
 } from "@/lib/db/catering";
 import { createPurchase, updatePurchasePayment, updatePurchaseStatus } from "@/lib/db/purchases";
+import { getTurso } from "@/lib/turso";
 import { sendCateringOrderEmails } from "@/lib/email";
-import crypto from "crypto";
+import { findOrCreateCustomerByEmail } from "@/lib/square-customers";
+import {
+  buildCateringOrder,
+  type CateringCustomizations,
+  type CateringOrderData,
+} from "@/lib/catering-order";
+import {
+  getHoursForDateString,
+  isValidCateringTime,
+  restaurantLocalToIso,
+  formatEventDateTime,
+} from "@/lib/restaurant-hours";
 import {
   calculateEstimate,
   MAX_DELIVERY_MILES,
-  type ProteinSelection,
+  MIN_GUESTS,
+  MAX_ONLINE_PAY_GUESTS,
+  ONLINE_PAY_MIN_LEAD_HOURS,
   type SideSelection,
 } from "@/lib/catering-pricing";
 
 interface CateringCheckoutRequest {
   eventDate: string;
+  eventTime: string; // HH:MM, restaurant local time
   guestCount: number;
   packageType: string;
-  customizations?: Record<string, unknown>;
+  customizations?: CateringCustomizations;
   contactName: string;
   contactEmail: string;
   contactPhone: string;
@@ -28,233 +45,328 @@ interface CateringCheckoutRequest {
   deliveryAddress?: string;
   deliveryDistance?: number;
   deliveryFee: number;
-  totalAmount: number; // cents
+  totalAmount: number;   // cents: pre-tax estimate computed client-side (verified below)
+  expectedTotal: number; // cents: the total shown to the customer (from /api/catering/calculate)
   notes?: string;
   items: { itemName: string; quantity: number; unitPrice?: number; notes?: string }[];
   paymentToken: string;
   optInEmail?: boolean;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function bad(message: string, status = 400) {
+  return NextResponse.json({ error: message }, { status });
+}
+
+function errText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export async function POST(request: Request) {
   try {
-    await ensureCateringTables();
     const body: CateringCheckoutRequest = await request.json();
 
-    if (!body.paymentToken) {
-      return NextResponse.json({ error: "Payment token required" }, { status: 400 });
-    }
-    if (!body.contactName || !body.contactEmail || !body.contactPhone) {
-      return NextResponse.json({ error: "Contact info required" }, { status: 400 });
-    }
-    if (!body.totalAmount || body.totalAmount <= 0) {
-      return NextResponse.json({ error: "Invalid total" }, { status: 400 });
-    }
+    // ---- Validation ----
+    if (!body.paymentToken) return bad("Payment token required");
+    const contactName = body.contactName?.trim();
+    const contactEmail = body.contactEmail?.trim();
+    const contactPhone = body.contactPhone?.trim();
+    if (!contactName || !contactEmail || !contactPhone) return bad("Contact info required");
+    if (!EMAIL_RE.test(contactEmail)) return bad("Please enter a valid email address");
 
-    // Server-side price verification
-    if (body.deliveryDistance != null && body.deliveryDistance > MAX_DELIVERY_MILES) {
-      return NextResponse.json(
-        { error: "Delivery distance exceeds maximum. Please use the email inquiry option." },
-        { status: 400 }
+    const guestCount = Number(body.guestCount);
+    if (!Number.isInteger(guestCount) || guestCount < MIN_GUESTS) {
+      return bad(`Minimum ${MIN_GUESTS} guests required`);
+    }
+    if (guestCount >= MAX_ONLINE_PAY_GUESTS) {
+      return bad(`Orders for ${MAX_ONLINE_PAY_GUESTS}+ guests must be submitted as an inquiry`);
+    }
+    if (body.packageType !== "buffet" && body.packageType !== "premade") {
+      return bad("Please select a catering style");
+    }
+    const packageType = body.packageType as "buffet" | "premade";
+
+    // Pickup/delivery must fall within the restaurant's hours on that date
+    const hours = getHoursForDateString(body.eventDate);
+    if (!hours) return bad("Please choose a date when we're open");
+    if (!isValidCateringTime(body.eventDate, body.eventTime)) {
+      return bad(`Please choose a pickup or delivery time between ${hours.open} and ${hours.close}`);
+    }
+    const scheduledAt = restaurantLocalToIso(body.eventDate, body.eventTime);
+    const hoursUntil = (Date.parse(scheduledAt) - Date.now()) / 3_600_000;
+    if (hoursUntil < ONLINE_PAY_MIN_LEAD_HOURS) {
+      return bad(
+        `Online payment requires at least ${ONLINE_PAY_MIN_LEAD_HOURS / 24} days' notice. Please submit an inquiry instead.`
       );
     }
 
-    const proteins: ProteinSelection[] = Array.isArray(body.customizations?.proteins)
-      ? (body.customizations!.proteins as ProteinSelection[])
-      : [];
-    const sides: SideSelection[] = Array.isArray(body.customizations?.sides)
-      ? (body.customizations!.sides as SideSelection[])
-      : [];
+    const isDelivery = body.deliveryType === "delivery";
+    if (isDelivery && !body.deliveryAddress) return bad("Delivery address required");
+    if (isDelivery && body.deliveryDistance != null && body.deliveryDistance > MAX_DELIVERY_MILES) {
+      return bad("Delivery distance exceeds maximum. Please use the email inquiry option.");
+    }
+    if (!Number.isInteger(body.expectedTotal) || body.expectedTotal <= 0) return bad("Invalid total");
 
+    // Server-side verification of the pre-tax estimate the client computed
+    const customizations: CateringCustomizations = body.customizations ?? {};
+    const proteins = Array.isArray(customizations.proteins) ? customizations.proteins : [];
+    const sides: SideSelection[] = Array.isArray(customizations.sides) ? customizations.sides : [];
     const serverEstimate = calculateEstimate(
-      body.guestCount,
+      guestCount,
       proteins,
-      body.deliveryDistance ?? 0,
-      !!body.customizations?.bigUpActive,
+      isDelivery ? body.deliveryDistance ?? 0 : 0,
+      !!customizations.bigUpActive,
       sides,
-      body.packageType as "buffet" | "premade" | ""
+      packageType
     );
-
     if (body.totalAmount !== serverEstimate.total) {
-      return NextResponse.json(
-        { error: "Price verification failed. Please refresh and try again." },
-        { status: 400 }
-      );
+      return bad("Price verification failed. Please refresh and try again.");
     }
 
-    // 1. Save to DB as draft first
-    const { id } = await createCateringRequest({
-      status: "draft",
+    const orderData: CateringOrderData & { eventTime: string } = {
+      contactName,
+      contactEmail,
+      contactPhone,
       eventDate: body.eventDate,
-      guestCount: body.guestCount,
-      packageType: body.packageType,
-      customizations: body.customizations ? JSON.stringify(body.customizations) : undefined,
-      contactName: body.contactName,
-      contactEmail: body.contactEmail,
-      contactPhone: body.contactPhone,
-      deliveryType: body.deliveryType,
-      deliveryAddress: body.deliveryAddress,
-      deliveryDistance: body.deliveryDistance,
-      deliveryFee: body.deliveryFee,
-      totalAmount: body.totalAmount,
-      notes: body.notes,
+      eventTime: body.eventTime,
+      guestCount,
+      packageType,
+      items: (body.items ?? [])
+        .filter((i) => i.quantity > 0)
+        .map((i) => ({ itemName: i.itemName, quantity: i.quantity, unitPrice: i.unitPrice })),
+      deliveryType: isDelivery ? "delivery" : "pickup",
+      deliveryAddress: isDelivery ? body.deliveryAddress : undefined,
+      deliveryDistance: isDelivery ? body.deliveryDistance : undefined,
+      deliveryFee: isDelivery ? serverEstimate.deliveryFee : 0,
+      notes: body.notes?.trim() || undefined,
+      customizations,
+    };
+
+    await ensureCateringTables();
+
+    // 1. Log the request (stays "draft" until the payment succeeds)
+    const { id: requestId } = await createCateringRequest({
+      status: "draft",
+      eventDate: orderData.eventDate,
+      eventTime: orderData.eventTime,
+      guestCount,
+      packageType,
+      customizations: JSON.stringify(customizations),
+      contactName,
+      contactEmail,
+      contactPhone,
+      deliveryType: orderData.deliveryType,
+      deliveryAddress: orderData.deliveryAddress ?? undefined,
+      deliveryDistance: orderData.deliveryDistance ?? undefined,
+      deliveryFee: orderData.deliveryFee,
+      totalAmount: body.expectedTotal,
+      notes: orderData.notes ?? undefined,
       fulfillmentType: "payment",
     });
-
-    if (body.items?.length) {
+    if (orderData.items.length > 0) {
       await createCateringItems(
-        body.items.map((item) => ({ cateringRequestId: id, ...item }))
+        orderData.items.map((item) => ({
+          cateringRequestId: requestId,
+          itemName: item.itemName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice ?? undefined,
+        }))
       );
     }
 
-    // 1b. Log purchase
     const { id: purchaseId } = await createPurchase({
       type: "catering",
       status: "pending",
-      amount: body.totalAmount,
-      customerName: body.contactName,
-      customerEmail: body.contactEmail,
-      customerPhone: body.contactPhone,
-      metadata: JSON.stringify({ cateringRequestId: id }),
+      amount: body.expectedTotal,
+      customerName: contactName,
+      customerEmail: contactEmail,
+      customerPhone: contactPhone,
+      metadata: JSON.stringify({ cateringRequestId: requestId }),
     });
 
-    // 2. Create Square order with ad-hoc line items
+    const failCheckout = async (reason: string, publicMessage: string, status = 500) => {
+      console.error("Catering checkout failed:", reason);
+      await updatePurchaseStatus(purchaseId, "failed", reason.slice(0, 500));
+      return bad(publicMessage, status);
+    };
+
     const square = getSquare();
-    const lineItems = [
+
+    // 2. Attach a Square customer so the POS shows who the order is for (best effort)
+    let customerId: string | undefined;
+    try {
+      customerId = await findOrCreateCustomerByEmail({
+        name: contactName,
+        email: contactEmail,
+        phone: contactPhone,
+      });
+    } catch (err) {
+      console.error("Catering customer lookup failed:", errText(err));
+    }
+
+    // 3. Build the itemized order and confirm Square's total matches what the customer saw
+    const buildOrder = (forcePickup: boolean) =>
+      buildCateringOrder({
+        data: orderData,
+        locationId: LOCATION_ID,
+        source: "catering_checkout",
+        customerId,
+        referenceId: `catering-${requestId}`,
+        forcePickup,
+      });
+    const order = buildOrder(false);
+
+    let previewTotal: number;
+    try {
+      const preview = await square.orders.calculate({
+        order: { locationId: LOCATION_ID, lineItems: order.lineItems, taxes: order.taxes },
+      });
+      previewTotal = toNumber(preview.order?.totalMoney?.amount);
+    } catch (err) {
+      return failCheckout(
+        `Calculate failed: ${getSquareErrorMessage(err)}`,
+        "Unable to calculate your order total. Please try again."
+      );
+    }
+    if (previewTotal !== body.expectedTotal) {
+      return failCheckout(
+        `Total mismatch: shown ${body.expectedTotal}, Square ${previewTotal}`,
+        "Your order total has changed. Please refresh and try again.",
+        400
+      );
+    }
+
+    // 4. Create the order. Stable idempotency keys prevent duplicates if the request is retried.
+    const seed = `${body.paymentToken.slice(0, 16)}-${contactEmail}-${body.eventDate}-${body.eventTime}`;
+    const orderKey = crypto.createHash("sha256").update(`order-${seed}`).digest("hex").slice(0, 45);
+    const paymentKey = crypto.createHash("sha256").update(`payment-${seed}`).digest("hex").slice(0, 45);
+
+    const createOrder = async (o: Square.Order, key: string) => {
+      const res = await square.orders.create({ order: o, idempotencyKey: key });
+      const created = res.order;
+      if (!created?.id) throw new Error("Square returned no order");
+      return { order: created, id: created.id };
+    };
+
+    let created: { order: Square.Order; id: string };
+    try {
+      created = await createOrder(order, orderKey);
+    } catch (err) {
+      if (order.fulfillments?.[0]?.type !== "DELIVERY") {
+        return failCheckout(`Create order failed: ${getSquareErrorMessage(err)}`, getSquareErrorMessage(err));
+      }
+      // If Square rejects the delivery fulfillment, fall back to a pickup-style ticket
+      // (the address is still in the ticket note) rather than losing the sale.
+      console.error("Catering DELIVERY fulfillment rejected, retrying as PICKUP:", getSquareErrorMessage(err));
+      try {
+        created = await createOrder(buildOrder(true), `${orderKey.slice(0, 42)}-pk`);
+      } catch (err2) {
+        return failCheckout(`Create order failed: ${getSquareErrorMessage(err2)}`, getSquareErrorMessage(err2));
+      }
+    }
+    const squareOrder = created.order;
+    const squareOrderId = created.id;
+
+    const chargeAmount = squareOrder.totalMoney?.amount;
+    if (chargeAmount == null || toNumber(chargeAmount) !== body.expectedTotal) {
+      return failCheckout(
+        `Order total ${String(chargeAmount)} != expected ${body.expectedTotal}`,
+        "Your order total has changed. Please refresh and try again.",
+        400
+      );
+    }
+
+    // 5. Charge the card for exactly the order total (tax included)
+    let payment: Square.Payment | undefined;
+    try {
+      const paymentResponse = await square.payments.create({
+        sourceId: body.paymentToken,
+        idempotencyKey: paymentKey,
+        amountMoney: { amount: chargeAmount, currency: "USD" },
+        orderId: squareOrderId,
+        locationId: LOCATION_ID,
+        ...(customerId ? { customerId } : {}),
+        buyerEmailAddress: contactEmail, // lets Square send its own receipt as well
+        autocomplete: true,
+        note: `Catering ${formatEventDateTime(body.eventDate, body.eventTime, "short")} - ${contactName}`.slice(0, 500),
+      });
+      payment = paymentResponse.payment;
+    } catch (err) {
+      return failCheckout(`Payment failed: ${getSquareErrorMessage(err)}`, getSquareErrorMessage(err));
+    }
+    if (!payment?.id || payment.status !== "COMPLETED") {
+      return failCheckout(
+        `Payment not completed: status=${payment?.status ?? "none"}`,
+        "Payment was not completed. Please try again."
+      );
+    }
+    const paymentId = payment.id;
+
+    const total = toNumber(chargeAmount);
+    const tax = toNumber(squareOrder.totalTaxMoney?.amount);
+    const totals = {
+      subtotal: total - tax - orderData.deliveryFee,
+      deliveryFee: orderData.deliveryFee,
+      tax,
+      total,
+    };
+    const receiptUrl = payment.receiptUrl ?? null;
+
+    // 6. Record the sale
+    await updateCateringRequestPayment(requestId, squareOrderId, paymentId, total);
+    await updatePurchasePayment(purchaseId, paymentId, squareOrderId, total);
+
+    // 7. Confirmation emails + receipt link. Awaited so Vercel doesn't kill them mid-send.
+    const postPaymentTasks: { label: string; task: Promise<unknown> }[] = [
       {
-        name: `Catering - ${body.packageType} (${body.guestCount} guests)`,
-        quantity: "1",
-        basePriceMoney: {
-          amount: BigInt(body.totalAmount),
-          currency: "USD" as const,
-        },
+        label: "confirmation emails",
+        task: sendCateringOrderEmails({
+          ...orderData,
+          deliveryType: orderData.deliveryType ?? "pickup",
+          totals,
+          receiptUrl,
+        }),
+      },
+      {
+        label: "receipt metadata",
+        task: getTurso().execute({
+          sql: `UPDATE purchases SET metadata = ? WHERE id = ?`,
+          args: [JSON.stringify({ cateringRequestId: requestId, receiptUrl, tax }), purchaseId],
+        }),
       },
     ];
-
-    const orderResponse = await square.orders.create({
-      order: {
-        locationId: LOCATION_ID,
-        lineItems,
-        fulfillments: [
-          {
-            type: "PICKUP",
-            pickupDetails: {
-              recipient: {
-                displayName: body.contactName,
-                phoneNumber: body.contactPhone,
-                emailAddress: body.contactEmail,
-              },
-              note: `Catering for ${body.guestCount} guests on ${body.eventDate}.${
-                body.customizations?.bases
-                  ? " Bases: " + (body.customizations.bases as { name: string; quantity: number }[])
-                      .filter((b: { quantity: number }) => b.quantity > 0)
-                      .map((b: { name: string; quantity: number }) => `${b.name} x${b.quantity}`)
-                      .join(", ")
-                  : ""
-              }${body.notes ? " " + body.notes : ""}`,
-              scheduleType: "SCHEDULED",
-              pickupAt: new Date(body.eventDate + "T10:00:00").toISOString(),
-            },
-          },
-        ],
-      },
-      idempotencyKey: crypto.randomUUID(),
-    });
-
-    const order = orderResponse?.order;
-    if (!order?.id) {
-      console.error("Failed to create catering order:", orderResponse);
-      await updatePurchaseStatus(purchaseId, "failed", "Failed to create Square order");
-      return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
-    }
-
-    // 3. Process payment
-    const paymentResponse = await square.payments.create({
-      sourceId: body.paymentToken,
-      idempotencyKey: crypto.randomUUID(),
-      amountMoney: {
-        amount: order.totalMoney?.amount ?? BigInt(body.totalAmount),
-        currency: "USD",
-      },
-      orderId: order.id,
-      locationId: LOCATION_ID,
-      autocomplete: true,
-    });
-
-    const payment = paymentResponse?.payment;
-    if (!payment?.id || payment.status !== "COMPLETED") {
-      console.error("Catering payment failed:", paymentResponse);
-      await updatePurchaseStatus(purchaseId, "failed", "Payment failed");
-      return NextResponse.json({ error: "Payment failed" }, { status: 500 });
-    }
-
-    // 4. Update DB with payment info
-    await updateCateringRequestPayment(id, order.id, payment.id, body.totalAmount);
-    await updatePurchasePayment(purchaseId, payment.id, order.id);
-
-    // Add to the email marketing list when opted in (non-blocking)
-    if (body.optInEmail && body.contactEmail) {
-      import("@/lib/db/subscribers")
-        .then(({ subscribe }) =>
+    // Add to the email marketing list when the customer opted in
+    if (body.optInEmail) {
+      postPaymentTasks.push({
+        label: "subscriber add",
+        task: import("@/lib/db/subscribers").then(({ subscribe }) =>
           subscribe({
-            email: body.contactEmail,
-            name: body.contactName?.split(" ")[0] || undefined,
-            phone: body.contactPhone || undefined,
+            email: contactEmail,
+            name: contactName.split(" ")[0] || undefined,
+            phone: contactPhone,
             source: "catering",
           })
-        )
-        .catch((err) => console.error("Subscriber add failed:", err));
+        ),
+      });
     }
-
-    // 5. Send emails (non-blocking)
-    sendCateringOrderEmails({
-      contactName: body.contactName,
-      contactEmail: body.contactEmail,
-      contactPhone: body.contactPhone,
-      eventDate: body.eventDate,
-      guestCount: body.guestCount,
-      packageType: body.packageType,
-      deliveryType: body.deliveryType,
-      deliveryAddress: body.deliveryAddress,
-      totalAmount: body.totalAmount,
-      items: body.items || [],
-      notes: body.notes,
-      customizations: body.customizations ?? undefined,
-    }).catch((err) => console.error("Failed to send catering order emails:", err));
-
-    // 6. Generate Square invoice (non-blocking)
-    import("@/lib/square-invoice").then(async ({ createDraftInvoice }) => {
-      try {
-        const result = await createDraftInvoice({
-          contactName: body.contactName,
-          contactEmail: body.contactEmail,
-          contactPhone: body.contactPhone,
-          eventDate: body.eventDate,
-          guestCount: body.guestCount,
-          packageType: body.packageType,
-          totalAmount: body.totalAmount,
-          items: body.items || [],
-          deliveryFee: body.deliveryFee ?? 0,
-          deliveryDistance: body.deliveryDistance,
-          deliveryAddress: body.deliveryAddress,
-          deliveryType: body.deliveryType,
-          notes: body.notes,
-          customizations: body.customizations ?? undefined,
-        });
-        const { updateCateringInvoiceId } = await import("@/lib/db/catering");
-        await updateCateringInvoiceId(id, result.invoiceId);
-      } catch (err) {
-        console.error("Failed to generate catering invoice:", err);
-      }
+    const results = await Promise.allSettled(postPaymentTasks.map((t) => t.task));
+    const labels = postPaymentTasks.map((t) => t.label);
+    results.forEach((r, i) => {
+      if (r.status === "rejected") console.error(`Catering ${labels[i]} failed:`, errText(r.reason));
     });
 
     return NextResponse.json({
       success: true,
-      requestId: id,
-      orderId: order.id,
-      paymentId: payment.id,
+      requestId,
+      orderId: squareOrderId,
+      paymentId,
+      receiptUrl,
+      total,
+      tax,
     });
   } catch (error) {
-    console.error("Catering checkout error:", error);
-    return NextResponse.json({ error: "Checkout failed" }, { status: 500 });
+    console.error("Catering checkout error:", errText(error));
+    return bad("Checkout failed. Please try again.", 500);
   }
 }

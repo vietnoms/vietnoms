@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS catering_requests (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   status TEXT NOT NULL DEFAULT 'draft',  -- draft|submitted|paid|cancelled|completed
   event_date TEXT NOT NULL,
+  event_time TEXT,                        -- HH:MM (24h), restaurant local time
   guest_count INTEGER NOT NULL,
   package_type TEXT NOT NULL,
   customizations TEXT,                    -- JSON

@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import { RESTAURANT } from "./constants";
+import { formatEventDateTime } from "./restaurant-hours";
+import { computeSauces, packageLabel, type CateringCustomizations } from "./catering-order";
 
 function getResend() {
   const key = process.env.RESEND_API_KEY;
@@ -15,21 +18,20 @@ interface CateringEmailData {
   contactEmail: string;
   contactPhone: string;
   eventDate: string;
+  eventTime?: string | null; // HH:MM, restaurant local time
   guestCount: number;
   packageType: string;
   deliveryType: string;
   deliveryAddress?: string | null;
-  totalAmount?: number | null; // cents
+  /** Inquiries: pre-tax estimate in cents. Ignored when `totals` is present. */
+  totalAmount?: number | null;
+  /** Paid orders: the exact amounts charged, in cents. */
+  totals?: { subtotal: number; deliveryFee: number; tax: number; total: number } | null;
+  /** Square receipt link for paid orders. */
+  receiptUrl?: string | null;
   items: { itemName: string; quantity: number; unitPrice?: number | null }[];
   notes?: string | null;
-  customizations?: {
-    bases?: { name: string; quantity: number }[];
-    sides?: { name: string; quantity: number }[];
-    bigUpActive?: boolean;
-    noPeanuts?: boolean;
-    eggRollCut?: string;
-    utensils?: { napkins: boolean; forks: boolean; chopsticks: boolean };
-  } | null;
+  customizations?: CateringCustomizations | null;
 }
 
 function formatMoney(cents: number): string {
@@ -41,74 +43,72 @@ function formatGan(gan: string): string {
 }
 
 function buildDetailsBlock(data: CateringEmailData): string {
+  const c = data.customizations;
+  const isDelivery = data.deliveryType === "delivery";
+  const when = formatEventDateTime(data.eventDate, data.eventTime);
+
   const lines = [
     `Name: ${data.contactName}`,
     `Email: ${data.contactEmail}`,
     `Phone: ${data.contactPhone}`,
-    `Event Date: ${data.eventDate}`,
+    "",
+    `${isDelivery ? "Delivery" : "Pickup"}: ${when}`,
+    isDelivery
+      ? `Deliver to: ${data.deliveryAddress || "(address not provided)"}`
+      : `Pickup at: ${RESTAURANT.address.full}`,
     `Guests: ${data.guestCount}`,
-    `Package: ${data.packageType}`,
-    `Delivery: ${data.deliveryType}${data.deliveryAddress ? ` — ${data.deliveryAddress}` : ""}`,
+    `Style: ${packageLabel(data.packageType)}`,
   ];
+  if (c?.eventType) lines.push(`Event: ${c.eventType}`);
+
   if (data.items.length > 0) {
     lines.push("", "Proteins:");
     for (const item of data.items) {
-      const price = item.unitPrice != null ? ` (${formatMoney(item.unitPrice)} ea)` : "";
-      lines.push(`  - ${item.itemName} x${item.quantity}${price}`);
+      lines.push(`  - ${item.itemName} x${item.quantity}`);
     }
   }
-  if (data.customizations?.bases?.length) {
-    lines.push("", "Bases:");
-    for (const b of data.customizations.bases) {
+  if (c?.bases?.length) {
+    lines.push("", data.packageType === "premade" ? "Bowls:" : "Bases:");
+    for (const b of c.bases) {
       lines.push(`  - ${b.name} x${b.quantity}`);
     }
   }
-  if (data.customizations?.sides?.length) {
+  if (c?.sides?.length) {
     lines.push("", "Sides:");
-    for (const s of data.customizations.sides) {
+    for (const s of c.sides) {
       lines.push(`  - ${s.name} x${s.quantity}`);
     }
   }
-
-  // Computed sauces from bases
-  if (data.customizations?.bases?.length) {
-    const riceQty = data.customizations.bases.find((b) => b.name === "Rice")?.quantity ?? 0;
-    const vermicelliQty = data.customizations.bases.find((b) => b.name === "Vermicelli Noodles")?.quantity ?? 0;
-    const saladQty = data.customizations.bases.find((b) => b.name === "Salad")?.quantity ?? 0;
-    const houseSauce = riceQty + vermicelliQty;
-    const vinaigrette = saladQty;
-    const sauceParts: string[] = [];
-    if (houseSauce > 0) sauceParts.push(`House Sauce x${houseSauce}`);
-    if (vinaigrette > 0) sauceParts.push(`Vietnoms Vinaigrette x${vinaigrette}`);
-    if (sauceParts.length > 0) {
-      lines.push("", `Sauces: ${sauceParts.join(", ")}`);
-    }
+  const sauces = computeSauces(c?.bases);
+  if (sauces.length > 0) {
+    lines.push("", `Sauces: ${sauces.map((s) => `${s.name} x${s.quantity}`).join(", ")}`);
   }
 
-  if (data.customizations?.bigUpActive) {
-    lines.push("", "Big Up: Yes");
-  }
-  if (data.customizations?.noPeanuts) {
-    lines.push("No Peanuts: Yes");
-  }
-  if (data.customizations?.eggRollCut && data.customizations.eggRollCut !== "Uncut") {
-    lines.push(`Egg Roll Cut: ${data.customizations.eggRollCut}`);
-  }
-
-  if (data.customizations?.utensils) {
-    const selected = Object.entries(data.customizations.utensils)
+  const options: string[] = [];
+  if (c?.bigUpActive) options.push("Big Up: +50% protein");
+  if (c?.noPeanuts) options.push("No Peanuts");
+  if (c?.eggRollCut && c.eggRollCut !== "Uncut") options.push(`Egg Roll Cut: ${c.eggRollCut}`);
+  if (c?.utensils) {
+    const selected = Object.entries(c.utensils)
       .filter(([, v]) => v)
       .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
-    if (selected.length > 0) {
-      lines.push(`Utensils: ${selected.join(", ")}`);
-    }
+    if (selected.length > 0) options.push(`Utensils: ${selected.join(", ")}`);
   }
+  if (options.length > 0) lines.push("", ...options);
 
-  if (data.totalAmount != null) {
-    lines.push("", `Total: ${formatMoney(data.totalAmount)}`);
+  if (data.totals) {
+    lines.push("", `Subtotal: ${formatMoney(data.totals.subtotal)}`);
+    if (data.totals.deliveryFee > 0) lines.push(`Delivery fee: ${formatMoney(data.totals.deliveryFee)}`);
+    lines.push(`Sales tax: ${formatMoney(data.totals.tax)}`);
+    lines.push(`Total paid: ${formatMoney(data.totals.total)}`);
+  } else if (data.totalAmount != null) {
+    lines.push("", `Estimated total (before tax): ${formatMoney(data.totalAmount)}`);
   }
   if (data.notes) {
     lines.push("", `Notes: ${data.notes}`);
+  }
+  if (data.receiptUrl) {
+    lines.push("", `Receipt: ${data.receiptUrl}`);
   }
   return lines.join("\n");
 }
@@ -116,28 +116,32 @@ function buildDetailsBlock(data: CateringEmailData): string {
 export async function sendCateringOrderEmails(data: CateringEmailData) {
   const resend = getResend();
   const details = buildDetailsBlock(data);
+  const whenShort = formatEventDateTime(data.eventDate, data.eventTime, "short");
+  const paid = data.totals ? ` Your payment of ${formatMoney(data.totals.total)} has been received.` : "";
 
   await Promise.all([
     // Admin notification
     resend.emails.send({
       from: FROM_CATERING,
       to: ADMIN_EMAIL,
-      subject: `New Catering Order - ${data.contactName}`,
+      subject: `New Catering Order - ${data.contactName} - ${whenShort}`,
       text: `A new catering order has been placed and paid.\n\n${details}`,
     }),
-    // Customer confirmation
+    // Customer confirmation / receipt
     resend.emails.send({
       from: FROM_CATERING,
       to: data.contactEmail,
+      replyTo: ADMIN_EMAIL,
       subject: "Your Vietnoms Catering Order Confirmation",
       text: [
         `Hi ${data.contactName},`,
         "",
-        "Thank you for your catering order! Here are your details:",
+        `Thank you for your catering order! Your order is confirmed.${paid}`,
         "",
         details,
         "",
-        "We'll reach out closer to your event date to confirm logistics.",
+        ...(data.receiptUrl ? [`View your receipt: ${data.receiptUrl}`, ""] : []),
+        `We'll reach out closer to your event date to confirm logistics. Questions? Call us at ${RESTAURANT.phone} or reply to this email.`,
         "",
         "Thanks,",
         "Vietnoms Catering",
@@ -149,17 +153,19 @@ export async function sendCateringOrderEmails(data: CateringEmailData) {
 export async function sendCateringInquiryEmails(data: CateringEmailData) {
   const resend = getResend();
   const details = buildDetailsBlock(data);
+  const whenShort = formatEventDateTime(data.eventDate, data.eventTime, "short");
 
   await Promise.all([
     resend.emails.send({
       from: FROM_CATERING,
       to: ADMIN_EMAIL,
-      subject: `New Catering Inquiry - ${data.contactName}`,
+      subject: `New Catering Inquiry - ${data.contactName} - ${whenShort}`,
       text: `A new catering inquiry has been submitted.\n\n${details}`,
     }),
     resend.emails.send({
       from: FROM_CATERING,
       to: data.contactEmail,
+      replyTo: ADMIN_EMAIL,
       subject: "We Received Your Catering Inquiry",
       text: [
         `Hi ${data.contactName},`,

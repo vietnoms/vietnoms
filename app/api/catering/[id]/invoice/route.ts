@@ -47,6 +47,7 @@ export async function POST(
       contactEmail: req.contactEmail,
       contactPhone: req.contactPhone,
       eventDate: req.eventDate,
+      eventTime: req.eventTime,
       guestCount: req.guestCount,
       packageType: req.packageType,
       totalAmount: req.totalAmount ?? 0,

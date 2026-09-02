@@ -31,6 +31,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       eventDate,
+      eventTime,
       guestCount,
       packageType,
       customizations,
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
     const { id } = await createCateringRequest({
       status: "submitted",
       eventDate,
+      eventTime: eventTime || undefined,
       guestCount,
       packageType,
       customizations: customizations ? JSON.stringify(customizations) : undefined,
@@ -98,6 +100,7 @@ export async function POST(request: Request) {
       contactEmail,
       contactPhone,
       eventDate,
+      eventTime: eventTime || undefined,
       guestCount,
       packageType,
       deliveryType: deliveryType || "pickup",
@@ -114,6 +117,7 @@ export async function POST(request: Request) {
       contactEmail,
       contactPhone,
       eventDate,
+      eventTime: eventTime || undefined,
       guestCount,
       packageType,
       totalAmount,

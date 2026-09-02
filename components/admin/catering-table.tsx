@@ -10,11 +10,13 @@ import {
   RefreshCw,
   AlertTriangle,
 } from "lucide-react";
+import { formatTime12 } from "@/lib/restaurant-hours";
 
 interface CateringRequest {
   id: number;
   status: string;
   eventDate: string;
+  eventTime: string | null;
   guestCount: number;
   packageType: string;
   customizations: string | null;
@@ -237,7 +239,12 @@ export function CateringTable() {
                   <div className="text-sm text-white truncate">
                     {req.contactName}
                   </div>
-                  <div className="text-sm text-gray-400">{req.eventDate}</div>
+                  <div className="text-sm text-gray-400">
+                    {req.eventDate}
+                    {req.eventTime && (
+                      <span className="text-gray-500"> · {formatTime12(req.eventTime)}</span>
+                    )}
+                  </div>
                   <div className="text-sm text-gray-400">{req.guestCount}</div>
                   <div className="text-sm text-gray-400 capitalize">
                     {req.packageType}

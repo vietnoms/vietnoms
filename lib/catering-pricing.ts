@@ -184,3 +184,9 @@ export function calculateEstimate(
     breakdown,
   };
 }
+
+// Ordering rules shared by the wizard and the API
+export const MIN_GUESTS = 10;
+export const MAX_ONLINE_PAY_GUESTS = 40;      // 40+ guests go through an inquiry / custom quote
+export const MIN_LEAD_HOURS = 48;             // earliest event date the wizard allows
+export const ONLINE_PAY_MIN_LEAD_HOURS = 120; // under 5 days requires manual review (inquiry only)

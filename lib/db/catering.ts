@@ -9,6 +9,7 @@ export async function ensureCateringTables() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       status TEXT NOT NULL DEFAULT 'draft',
       event_date TEXT NOT NULL,
+      event_time TEXT,
       guest_count INTEGER NOT NULL,
       package_type TEXT NOT NULL,
       customizations TEXT,
@@ -40,6 +41,8 @@ export async function ensureCateringTables() {
   `);
   // Add invoice column if missing
   await db.execute("ALTER TABLE catering_requests ADD COLUMN square_invoice_id TEXT").catch(() => {});
+  // Pickup/delivery time (HH:MM, restaurant local time)
+  await db.execute("ALTER TABLE catering_requests ADD COLUMN event_time TEXT").catch(() => {});
   tablesEnsured = true;
 }
 
@@ -47,6 +50,7 @@ export interface CateringRequestRow {
   id: number;
   status: string;
   eventDate: string;
+  eventTime: string | null;
   guestCount: number;
   packageType: string;
   customizations: string | null;
@@ -79,6 +83,7 @@ export interface CateringItemRow {
 export interface CreateCateringRequestInput {
   status?: string;
   eventDate: string;
+  eventTime?: string;
   guestCount: number;
   packageType: string;
   customizations?: string;
@@ -107,6 +112,7 @@ function mapRow(row: Record<string, unknown>): CateringRequestRow {
     id: Number(row.id),
     status: row.status as string,
     eventDate: row.event_date as string,
+    eventTime: (row.event_time as string) || null,
     guestCount: Number(row.guest_count),
     packageType: row.package_type as string,
     customizations: row.customizations as string | null,
@@ -145,14 +151,15 @@ export async function createCateringRequest(
   const db = getTurso();
   const result = await db.execute({
     sql: `INSERT INTO catering_requests
-          (status, event_date, guest_count, package_type, customizations,
+          (status, event_date, event_time, guest_count, package_type, customizations,
            contact_name, contact_email, contact_phone,
            delivery_type, delivery_address, delivery_distance, delivery_fee,
            total_amount, notes, fulfillment_type)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       input.status ?? "draft",
       input.eventDate,
+      input.eventTime ?? null,
       input.guestCount,
       input.packageType,
       input.customizations ?? null,

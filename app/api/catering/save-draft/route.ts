@@ -8,6 +8,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       eventDate,
+      eventTime,
       guestCount,
       packageType,
       customizations,
@@ -30,6 +31,7 @@ export async function POST(request: Request) {
     const { id } = await createCateringRequest({
       status: "draft",
       eventDate,
+      eventTime: eventTime || undefined,
       guestCount,
       packageType,
       customizations: customizations ? JSON.stringify(customizations) : undefined,

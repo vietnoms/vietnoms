@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSquare, LOCATION_ID } from "@/lib/square";
+import { getSquare, LOCATION_ID, getSquareErrorMessage } from "@/lib/square";
 import { getSession } from "@/lib/auth";
 import { accumulateLoyaltyPoints, getLoyaltyAccount, createReward } from "@/lib/loyalty";
 import { createPurchase, updatePurchasePayment, updatePurchaseStatus } from "@/lib/db/purchases";
@@ -32,26 +32,6 @@ interface CheckoutRequest {
   receiptPreference?: "email" | "text" | "both";
   optInText?: boolean;
   optInEmail?: boolean;
-}
-
-function getSquareErrorMessage(error: unknown): string {
-  if (error && typeof error === "object") {
-    // Square SDK errors have an `errors` array
-    const sqErr = error as { errors?: { detail?: string; code?: string }[] };
-    if (sqErr.errors?.length) {
-      const first = sqErr.errors[0];
-      if (first.code === "CARD_DECLINED") return "Your card was declined. Please try a different payment method.";
-      if (first.code === "INSUFFICIENT_FUNDS") return "Insufficient funds. Please try a different payment method.";
-      if (first.code === "INVALID_CARD") return "Invalid card details. Please check and try again.";
-      if (first.code === "CVV_FAILURE") return "CVV check failed. Please verify your card details.";
-      if (first.code === "INVALID_EXPIRATION") return "Card expiration is invalid. Please check and try again.";
-      if (first.detail) return first.detail;
-    }
-    if ("message" in error && typeof (error as { message: string }).message === "string") {
-      return (error as { message: string }).message;
-    }
-  }
-  return "An unexpected error occurred. Please try again.";
 }
 
 export async function POST(request: Request) {

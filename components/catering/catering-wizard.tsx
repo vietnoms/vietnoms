@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +13,7 @@ import { CustomizeStep } from "./customize-step";
 import {
   ArrowLeft,
   CheckCircle,
+  ExternalLink,
   Loader2,
   MapPin,
   Mail,
@@ -27,6 +28,10 @@ import {
   BIG_UP_MULTIPLIER,
   CATERING_TAX_RATE,
   PREMADE_BOWL_DEFAULTS,
+  MIN_GUESTS,
+  MAX_ONLINE_PAY_GUESTS,
+  MIN_LEAD_HOURS,
+  ONLINE_PAY_MIN_LEAD_HOURS,
   calculateEstimate,
   getDeliveryFee,
   distributeEqually,
@@ -34,8 +39,24 @@ import {
   type ProteinSelection,
   type SideSelection,
 } from "@/lib/catering-pricing";
+import {
+  generateCateringTimeSlots,
+  getHoursForDateString,
+  formatEventDateTime,
+} from "@/lib/restaurant-hours";
+import { RESTAURANT } from "@/lib/constants";
 
-const SMALL_ORDER_MAX_GUESTS = 40;
+/** Exact amounts from Square (via /api/catering/calculate), in cents. */
+interface CateringTotals {
+  subtotal: number;
+  deliveryFee: number;
+  tax: number;
+  total: number;
+}
+
+type SuccessState =
+  | { kind: "paid"; receiptUrl: string | null; total: number }
+  | { kind: "emailed" };
 
 type Step = "info" | "style" | "customize" | "checkout";
 
@@ -81,26 +102,15 @@ function formatMoney(cents: number): string {
 
 const INITIAL_SIDES: SideSelection[] = SIDE_TYPES.map((name) => ({ name, quantity: 0 }));
 
-const TIME_SLOTS = (() => {
-  const slots: { label: string; value: string }[] = [];
-  for (let h = 8; h <= 20; h++) {
-    for (const m of [0, 15, 30, 45]) {
-      const hour24 = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
-      const period = h >= 12 ? "PM" : "AM";
-      const hour12 = h > 12 ? h - 12 : h === 0 ? 12 : h;
-      const label = `${hour12}:${String(m).padStart(2, "0")} ${period}`;
-      slots.push({ label, value: hour24 });
-    }
-  }
-  return slots;
-})();
-
 export function CateringWizard() {
   const [step, setStep] = useState<Step>("info");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [success, setSuccess] = useState<"paid" | "emailed" | null>(null);
+  const [success, setSuccess] = useState<SuccessState | null>(null);
   const [draftSaved, setDraftSaved] = useState(false);
+  const [totals, setTotals] = useState<CateringTotals | null>(null);
+  const [totalsLoading, setTotalsLoading] = useState(false);
+  const [totalsError, setTotalsError] = useState("");
 
   const [state, setState] = useState<WizardState>({
     eventDate: "", eventTime: "", guestCount: 50, eventType: "",
@@ -230,8 +240,15 @@ export function CateringWizard() {
     return (new Date(eventDateStr).getTime() - Date.now()) / (1000 * 60 * 60);
   }, [state.eventDate, state.eventTime]);
 
-  const isShortNotice = hoursUntilEvent < 120; // under 5 days
-  const canPayOnline = state.guestCount < SMALL_ORDER_MAX_GUESTS && !forceEmailOnly && !isShortNotice;
+  const isShortNotice = hoursUntilEvent < ONLINE_PAY_MIN_LEAD_HOURS; // under 5 days
+  const canPayOnline = state.guestCount < MAX_ONLINE_PAY_GUESTS && !forceEmailOnly && !isShortNotice;
+
+  // Time slots are limited to the restaurant's hours on the chosen date
+  const timeSlots = useMemo(() => generateCateringTimeSlots(state.eventDate), [state.eventDate]);
+  const dateHours = useMemo(
+    () => (state.eventDate ? getHoursForDateString(state.eventDate) : null),
+    [state.eventDate]
+  );
 
   const estimate = useMemo(
     () => calculateEstimate(
@@ -244,12 +261,12 @@ export function CateringWizard() {
     [state.guestCount, state.proteins, state.deliveryType, state.deliveryDistance, state.bigUpActive, state.sides, state.packageType]
   );
 
-  const taxAmount = Math.round(estimate.total * CATERING_TAX_RATE);
-  const grandTotal = estimate.total + taxAmount;
+  // Rough tax shown on inquiry-only orders; paid orders show Square's exact figures
+  const estimatedTax = Math.round(estimate.total * CATERING_TAX_RATE);
 
   const minDate = useMemo(() => {
     const d = new Date();
-    d.setTime(d.getTime() + 48 * 60 * 60 * 1000); // 48 hours ahead
+    d.setTime(d.getTime() + MIN_LEAD_HOURS * 60 * 60 * 1000);
     return d.toISOString().split("T")[0];
   }, []);
 
@@ -308,6 +325,28 @@ export function CateringWizard() {
     } catch {}
   }, [buildPayload, draftSaved]);
 
+  // Exact totals (with sales tax) come from Square so the amount shown is the amount charged
+  const fetchTotals = useCallback(async () => {
+    setTotalsLoading(true); setTotalsError("");
+    try {
+      const res = await fetch("/api/catering/calculate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
+      const data = await res.json();
+      if (!res.ok || data.total == null) throw new Error(data.error || "Unable to calculate total");
+      setTotals({ subtotal: data.subtotal, deliveryFee: data.deliveryFee, tax: data.tax, total: data.total });
+    } catch (err) {
+      setTotals(null);
+      setTotalsError(err instanceof Error ? err.message : "Unable to calculate total");
+    } finally { setTotalsLoading(false); }
+  }, [buildPayload]);
+
+  // The order can't change while on the checkout step (contact fields don't affect price)
+  useEffect(() => {
+    if (step === "checkout" && canPayOnline) fetchTotals();
+  }, [step, canPayOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleEmailSubmit = async () => {
     setSubmitting(true); setError("");
     try {
@@ -317,22 +356,23 @@ export function CateringWizard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to submit");
-      setSuccess("emailed");
+      setSuccess({ kind: "emailed" });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally { setSubmitting(false); }
   };
 
   const handlePaymentComplete = async (token: string) => {
+    if (!totals) { setError("Please wait for the order total to finish calculating."); return; }
     setSubmitting(true); setError("");
     try {
       const res = await fetch("/api/catering/checkout", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(buildPayload({ paymentToken: token })),
+        body: JSON.stringify(buildPayload({ paymentToken: token, expectedTotal: totals.total })),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Payment failed");
-      setSuccess("paid");
+      setSuccess({ kind: "paid", receiptUrl: data.receiptUrl ?? null, total: data.total ?? totals.total });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed");
     } finally { setSubmitting(false); }
@@ -366,17 +406,47 @@ export function CateringWizard() {
   const stepIndex = steps.findIndex((s) => s.key === step);
 
   if (success) {
+    const whenLabel = formatEventDateTime(state.eventDate, state.eventTime);
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 max-w-lg mx-auto">
         <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
         <h2 className="mt-4 font-display text-2xl font-bold text-white">
-          {success === "paid" ? "Order Confirmed!" : "Inquiry Submitted!"}
+          {success.kind === "paid" ? "Order Confirmed!" : "Inquiry Submitted!"}
         </h2>
-        <p className="mt-2 text-gray-400">
-          {success === "paid"
-            ? "Your payment has been processed. Check your email for confirmation."
-            : "We've sent a copy to your email. We'll get back to you within 24 hours."}
-        </p>
+        {success.kind === "paid" ? (
+          <>
+            <p className="mt-2 text-gray-400">
+              Your payment of <strong className="text-white">{formatMoney(success.total)}</strong> has been received.
+              A confirmation was sent to <strong className="text-white">{state.contactEmail}</strong>.
+            </p>
+            <div className="mt-6 bg-surface-alt rounded-lg p-4 text-left text-sm space-y-1">
+              <p className="text-gray-400">
+                <strong className="text-white">{state.deliveryType === "delivery" ? "Delivery" : "Pickup"}:</strong>{" "}
+                {whenLabel}
+              </p>
+              <p className="text-gray-400">
+                <strong className="text-white">Where:</strong>{" "}
+                {state.deliveryType === "delivery" ? state.deliveryAddress : RESTAURANT.address.full}
+              </p>
+              <p className="text-gray-400">
+                <strong className="text-white">Guests:</strong> {state.guestCount}
+              </p>
+            </div>
+            {success.receiptUrl && (
+              <a href={success.receiptUrl} target="_blank" rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-surface-alt border border-gray-700 rounded-lg text-sm text-gray-200 hover:border-gray-500 hover:text-white transition-colors">
+                <ExternalLink className="h-4 w-4" />View Receipt
+              </a>
+            )}
+            <p className="mt-6 text-sm text-gray-500">
+              We&apos;ll reach out closer to your event date to confirm logistics.
+            </p>
+          </>
+        ) : (
+          <p className="mt-2 text-gray-400">
+            We&apos;ve sent a copy to your email. We&apos;ll get back to you within 24 hours.
+          </p>
+        )}
       </div>
     );
   }
@@ -388,7 +458,7 @@ export function CateringWizard() {
 
       <div className="grid grid-cols-2 gap-1 text-sm">
         <span className="text-gray-400">Event Date</span>
-        <span className="text-white">{state.eventDate}{state.eventTime ? ` at ${state.eventTime}` : ""}</span>
+        <span className="text-white">{formatEventDateTime(state.eventDate, state.eventTime)}</span>
         <span className="text-gray-400">Guests</span>
         <span className="text-white">{state.guestCount}</span>
         <span className="text-gray-400">Style</span>
@@ -468,13 +538,28 @@ export function CateringWizard() {
             <span>{item.label}</span><span>{formatMoney(item.amount)}</span>
           </div>
         ))}
-        <div className="flex justify-between text-gray-400">
-          <span>Tax (10%)</span><span>{formatMoney(taxAmount)}</span>
-        </div>
-        <div className="border-t border-gray-700 pt-1 flex justify-between font-semibold text-white text-base">
-          <span>Total</span>
-          <span className="text-brand-red">{formatMoney(grandTotal)}</span>
-        </div>
+        {canPayOnline ? (
+          <>
+            <div className="flex justify-between text-gray-400">
+              <span>Sales tax</span>
+              <span>{totals ? formatMoney(totals.tax) : totalsLoading ? "..." : "—"}</span>
+            </div>
+            <div className="border-t border-gray-700 pt-1 flex justify-between font-semibold text-white text-base">
+              <span>Total</span>
+              <span className="text-brand-red">{totals ? formatMoney(totals.total) : "..."}</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex justify-between text-gray-400">
+              <span>Tax (est.)</span><span>{formatMoney(estimatedTax)}</span>
+            </div>
+            <div className="border-t border-gray-700 pt-1 flex justify-between font-semibold text-white text-base">
+              <span>Estimated total</span>
+              <span className="text-brand-red">{formatMoney(estimate.total + estimatedTax)}</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -502,7 +587,9 @@ export function CateringWizard() {
       {step === "info" && (
         <form onSubmit={(e) => {
           e.preventDefault(); setError("");
-          if (state.guestCount < 10) { setError("Minimum 10 guests required."); return; }
+          if (state.guestCount < MIN_GUESTS) { setError(`Minimum ${MIN_GUESTS} guests required.`); return; }
+          if (!dateHours) { setError("We're closed on the date you selected. Please choose another date."); return; }
+          if (!state.eventTime) { setError("Please select a pickup or delivery time."); return; }
           if (state.deliveryType === "delivery" && !state.deliveryAddress) { setError("Please select a delivery address."); return; }
           setStep("style");
         }} className="space-y-6 max-w-2xl mx-auto">
@@ -512,17 +599,32 @@ export function CateringWizard() {
             <div>
               <Label htmlFor="eventDate">Event Date *</Label>
               <Input id="eventDate" type="date" required min={minDate} value={state.eventDate}
-                onChange={(e) => update("eventDate", e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">Minimum 48 hours in advance</p>
+                onChange={(e) => {
+                  const eventDate = e.target.value;
+                  setState((prev) => ({
+                    ...prev, eventDate,
+                    // Keep the chosen time only if it is still within hours on the new date
+                    eventTime: generateCateringTimeSlots(eventDate).some((s) => s.value === prev.eventTime) ? prev.eventTime : "",
+                  }));
+                }} />
+              <p className="text-xs text-gray-500 mt-1">Minimum {MIN_LEAD_HOURS} hours in advance</p>
             </div>
             <div>
-              <Label htmlFor="eventTime">Pickup/Delivery Time</Label>
-              <select id="eventTime" value={state.eventTime}
+              <Label htmlFor="eventTime">Pickup/Delivery Time *</Label>
+              <select id="eventTime" required value={state.eventTime}
+                disabled={!state.eventDate || timeSlots.length === 0}
                 onChange={(e) => update("eventTime", e.target.value)}
-                className="w-full rounded-lg border border-gray-600 bg-surface-alt px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-red">
-                <option value="">Select a time</option>
-                {TIME_SLOTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+                className="w-full rounded-lg border border-gray-600 bg-surface-alt px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-red disabled:opacity-50">
+                <option value="">{state.eventDate ? "Select a time" : "Select a date first"}</option>
+                {timeSlots.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
+              <p className={`text-xs mt-1 ${state.eventDate && !dateHours ? "text-amber-400" : "text-gray-500"}`}>
+                {!state.eventDate
+                  ? "Times are limited to our open hours."
+                  : dateHours
+                    ? `We're open ${dateHours.open} – ${dateHours.close} that day.`
+                    : "We're closed on that date. Please choose another day."}
+              </p>
             </div>
           </div>
 
@@ -695,15 +797,24 @@ export function CateringWizard() {
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-3">
                         <CreditCard className="h-5 w-5 text-brand-red" />
-                        <h3 className="font-display text-base font-bold text-white">Pay Now — {formatMoney(grandTotal)}</h3>
+                        <h3 className="font-display text-base font-bold text-white">
+                          Pay Now{totals ? ` — ${formatMoney(totals.total)}` : ""}
+                        </h3>
                       </div>
                       <p className="text-xs text-gray-400 mb-3">
                         Secure payment via Square. Your order will be confirmed immediately.
                       </p>
-                      {!state.contactName || !state.contactEmail || !state.contactPhone ? (
+                      {totalsLoading ? (
+                        <p className="text-sm text-gray-400">Calculating your total...</p>
+                      ) : totalsError || !totals ? (
+                        <div className="text-sm text-amber-400 space-y-2">
+                          <p>{totalsError || "Unable to calculate your total."}</p>
+                          <Button variant="outline" size="sm" onClick={fetchTotals}>Try again</Button>
+                        </div>
+                      ) : !state.contactName || !state.contactEmail || !state.contactPhone ? (
                         <p className="text-sm text-amber-400">Fill in your contact info above to pay.</p>
                       ) : (
-                        <CateringPayment totalCents={grandTotal} onPaymentComplete={handlePaymentComplete} onError={setError} />
+                        <CateringPayment totalCents={totals.total} onPaymentComplete={handlePaymentComplete} onError={setError} />
                       )}
                     </CardContent>
                   </Card>
@@ -721,7 +832,7 @@ export function CateringWizard() {
                     <p className="text-xs text-gray-400 mb-3">
                       {forceEmailOnly
                         ? "Delivery over 20 miles requires a custom quote."
-                        : state.guestCount >= SMALL_ORDER_MAX_GUESTS
+                        : state.guestCount >= MAX_ONLINE_PAY_GUESTS
                           ? "For 40+ guests, submit your details and we'll follow up within 24 hours with a custom quote."
                           : "Submit your catering details and we'll follow up within 24 hours."}
                     </p>
