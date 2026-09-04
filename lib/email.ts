@@ -67,7 +67,12 @@ function buildDetailsBlock(data: CateringEmailData): string {
       lines.push(`  - ${item.itemName} x${item.quantity}`);
     }
   }
-  if (c?.bases?.length) {
+  if (data.packageType === "premade" && c?.bowls?.length) {
+    lines.push("", "Bowls:");
+    for (const b of c.bowls) {
+      if (b.quantity > 0) lines.push(`  - ${b.base} + ${b.protein} x${b.quantity}`);
+    }
+  } else if (c?.bases?.length) {
     lines.push("", data.packageType === "premade" ? "Bowls:" : "Bases:");
     for (const b of c.bases) {
       lines.push(`  - ${b.name} x${b.quantity}`);

@@ -61,6 +61,7 @@ type SuccessState =
 type Step = "info" | "style" | "customize" | "checkout";
 
 interface BaseSelection { name: string; quantity: number; }
+interface BowlSelection { base: string; protein: string; quantity: number; }
 
 interface WizardState {
   // Step 1 — Event details (no contact info)
@@ -81,6 +82,7 @@ interface WizardState {
   // Step 3 — Customize
   proteins: ProteinSelection[];
   bases: BaseSelection[];
+  bowls: BowlSelection[]; // pre-made only: one entry per base + protein combination
   bigUpActive: boolean;
   sides: SideSelection[];
   noPeanuts: boolean;
@@ -98,6 +100,19 @@ interface WizardState {
 
 function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+/** Pre-made orders: protein and base totals are derived from the bowl grid. */
+function syncFromBowls(prev: WizardState, bowls: BowlSelection[]): WizardState {
+  const active = bowls.filter((b) => b.quantity > 0);
+  const sum = (pred: (b: BowlSelection) => boolean) =>
+    active.filter(pred).reduce((s, b) => s + b.quantity, 0);
+  return {
+    ...prev,
+    bowls: active,
+    proteins: prev.proteins.map((p) => ({ ...p, quantity: p.selected ? sum((b) => b.protein === p.name) : 0 })),
+    bases: prev.bases.map((b) => ({ ...b, quantity: sum((x) => x.base === b.name) })),
+  };
 }
 
 const INITIAL_SIDES: SideSelection[] = SIDE_TYPES.map((name) => ({ name, quantity: 0 }));
@@ -119,6 +134,7 @@ export function CateringWizard() {
     packageType: "",
     proteins: PROTEINS.map((p) => ({ name: p.name, quantity: 0, selected: false })),
     bases: BASES.map((b) => ({ name: b.name, quantity: 0 })),
+    bowls: [],
     bigUpActive: false,
     sides: INITIAL_SIDES.map((s) => ({ ...s })),
     noPeanuts: false, eggRollCut: "Uncut", dietaryNotes: "",
@@ -141,6 +157,15 @@ export function CateringWizard() {
       const maxSelected = prev.guestCount >= 80 ? 4 : 3;
       const currentlySelected = prev.proteins.filter((p) => p.selected);
       const baseline = prev.bigUpActive ? Math.ceil(BIG_UP_MULTIPLIER * prev.guestCount) : prev.guestCount;
+      if (prev.packageType === "premade") {
+        // Quantities come from the bowl grid; toggling only adds/removes a row
+        if (protein.selected) {
+          const next = { ...prev, proteins: prev.proteins.map((p) => p.name === name ? { ...p, selected: false, quantity: 0 } : p) };
+          return syncFromBowls(next, prev.bowls.filter((b) => b.protein !== name));
+        }
+        if (currentlySelected.length >= maxSelected) return prev;
+        return { ...prev, proteins: prev.proteins.map((p) => p.name === name ? { ...p, selected: true, quantity: 0 } : p) };
+      }
       if (protein.selected) {
         const remaining = currentlySelected.filter((p) => p.name !== name);
         const dist = distributeEqually(baseline, remaining.length);
@@ -164,6 +189,7 @@ export function CateringWizard() {
 
   const adjustProtein = useCallback((name: string, delta: number) => {
     setState((prev) => {
+      if (prev.packageType === "premade") return prev; // set via the bowl grid
       const protein = prev.proteins.find((p) => p.name === name);
       if (!protein || !protein.selected) return prev;
       const newQty = protein.quantity + delta;
@@ -211,6 +237,22 @@ export function CateringWizard() {
         ];
       }
       return { ...prev, bases: newBases, sides: newSides };
+    });
+  }, []);
+
+  // Pre-made: set the number of bowls for one base + protein combination
+  const updateBowl = useCallback((base: string, protein: string, quantity: number) => {
+    setState((prev) => {
+      const clamped = Math.max(0, Math.floor(quantity));
+      const others = prev.bowls.filter((b) => !(b.base === base && b.protein === protein));
+      const otherTotal = others.reduce((s, b) => s + b.quantity, 0);
+      if (otherTotal + clamped > prev.guestCount) return prev;
+      const baseInUse = others.some((b) => b.base === base && b.quantity > 0);
+      if (clamped > 0 && !baseInUse) {
+        const activeBases = new Set(others.filter((b) => b.quantity > 0).map((b) => b.base)).size;
+        if (activeBases >= getMaxBaseTypes(prev.guestCount)) return prev;
+      }
+      return syncFromBowls(prev, [...others, { base, protein, quantity: clamped }]);
     });
   }, []);
 
@@ -291,6 +333,7 @@ export function CateringWizard() {
         eventType: state.eventType,
         proteins: state.proteins.filter((p) => p.selected),
         bases: state.bases.filter((b) => b.quantity > 0),
+        bowls: state.packageType === "premade" ? state.bowls.filter((b) => b.quantity > 0) : undefined,
         sides: state.sides.filter((s) => s.quantity > 0),
         bigUpActive: state.bigUpActive,
         noPeanuts: state.noPeanuts,
@@ -383,6 +426,7 @@ export function CateringWizard() {
       ...prev, packageType: pkg,
       proteins: PROTEINS.map((p) => ({ name: p.name, quantity: 0, selected: false })),
       bases: BASES.map((b) => ({ name: b.name, quantity: 0 })),
+      bowls: [],
       sides: INITIAL_SIDES.map((s) => ({ ...s })),
       bigUpActive: false, noPeanuts: false, eggRollCut: "Uncut" as const,
     }));
@@ -481,13 +525,20 @@ export function CateringWizard() {
         })}
       </div>
 
-      {/* Bases */}
-      {activeBases.length > 0 && (
+      {/* Bowls (pre-made) / Bases (buffet) */}
+      {!isBuffet && state.bowls.length > 0 ? (
+        <div className="border-t border-gray-700 pt-2">
+          <h4 className="text-sm font-semibold text-white mb-1">Bowls</h4>
+          {state.bowls.map((b) => (
+            <div key={`${b.base}-${b.protein}`} className="text-sm text-gray-400">{b.base} + {b.protein} x{b.quantity}</div>
+          ))}
+        </div>
+      ) : activeBases.length > 0 ? (
         <div className="border-t border-gray-700 pt-2">
           <h4 className="text-sm font-semibold text-white mb-1">Bases</h4>
           {activeBases.map((b) => <div key={b.name} className="text-sm text-gray-400">{b.name} x{b.quantity}</div>)}
         </div>
-      )}
+      ) : null}
 
       {/* Sides */}
       {isBuffet && state.sides.some((s) => s.quantity > 0) && (
@@ -716,6 +767,7 @@ export function CateringWizard() {
             estimate={estimate}
             onToggleProtein={toggleProtein} onAdjustProtein={adjustProtein}
             onToggleBigUp={toggleBigUp} onUpdateBase={updateBase}
+            bowls={state.bowls} onUpdateBowl={updateBowl}
             onUpdateSideQuantity={updateSideQuantity}
             onUpdateNoPeanuts={(v) => update("noPeanuts", v)}
             onUpdateEggRollCut={(v) => update("eggRollCut", v)}
@@ -725,7 +777,12 @@ export function CateringWizard() {
               const sel = state.proteins.filter((p) => p.selected);
               if (sel.length === 0) { setError("Please select at least one protein."); return; }
               const totalB = state.bases.reduce((s, b) => s + b.quantity, 0);
-              if (totalB !== state.guestCount) { setError(`Base servings (${totalB}) must equal ${state.guestCount}.`); return; }
+              if (totalB !== state.guestCount) {
+                setError(state.packageType === "premade"
+                  ? `Bowls (${totalB}) must equal ${state.guestCount} guests.`
+                  : `Base servings (${totalB}) must equal ${state.guestCount}.`);
+                return;
+              }
               setError(""); saveDraft(); setStep("checkout");
             }}
             onBack={() => setStep("style")}

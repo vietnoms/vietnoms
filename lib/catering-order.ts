@@ -1,5 +1,12 @@
 import type { Square } from "square";
-import { BIG_UP_MULTIPLIER, getDeliveryFee, type ProteinSelection } from "./catering-pricing";
+import {
+  BASES,
+  BIG_UP_MULTIPLIER,
+  PROTEINS,
+  getDeliveryFee,
+  getMaxBaseTypes,
+  type ProteinSelection,
+} from "./catering-pricing";
 import { formatEventDateTime, restaurantLocalToIso } from "./restaurant-hours";
 
 /**
@@ -74,6 +81,8 @@ export interface CateringCustomizations {
   eventType?: string;
   proteins?: ProteinSelection[];
   bases?: { name: string; quantity: number }[];
+  /** Pre-made orders only: one entry per base + protein combination. */
+  bowls?: BowlSelection[];
   sides?: { name: string; quantity: number }[];
   bigUpActive?: boolean;
   noPeanuts?: boolean;
@@ -128,7 +137,7 @@ function selectedUtensils(c?: CateringCustomizations | null): string[] {
     .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
 }
 
-function summarizeQuantities(list?: { name: string; quantity: number }[] | null): string {
+export function summarizeQuantities(list?: { name: string; quantity: number }[] | null): string {
   return (list ?? [])
     .filter((x) => x.quantity > 0)
     .map((x) => `${x.name} x${x.quantity}`)
@@ -175,8 +184,10 @@ export function buildCateringLineItems(data: CateringLineItemInput): {
 
   // Per-person base charge carries the order-wide kitchen notes
   const baseNotes: string[] = [];
-  if (data.packageType === "premade" && c?.bases?.length) {
-    baseNotes.push(`Bowls: ${summarizeQuantities(c.bases)}`);
+  if (data.packageType === "premade") {
+    const bowls = summarizeBowls(c?.bowls);
+    if (bowls) baseNotes.push(`Bowls: ${bowls}`);
+    else if (c?.bases?.length) baseNotes.push(`Bowls: ${summarizeQuantities(c.bases)}`);
   }
   if (c?.noPeanuts) baseNotes.push("NO PEANUTS");
   const cut = eggRollCutLabel(c);
@@ -299,8 +310,10 @@ export function buildTicketNote(data: CateringOrderData): string {
   );
   if (c?.eventType?.trim()) parts.push(c.eventType.trim());
 
+  const bowls = data.packageType === "premade" ? summarizeBowls(c?.bowls) : "";
   const bases = summarizeQuantities(c?.bases);
-  if (bases) parts.push(`${data.packageType === "premade" ? "Bowls" : "Bases"}: ${bases}`);
+  if (bowls) parts.push(`Bowls: ${bowls}`);
+  else if (bases) parts.push(`${data.packageType === "premade" ? "Bowls" : "Bases"}: ${bases}`);
   const sauces = summarizeQuantities(computeSauces(c?.bases));
   if (sauces) parts.push(`Sauces: ${sauces}`);
 
@@ -410,4 +423,71 @@ export function buildCateringOrder(opts: {
       deliveryType: data.deliveryType ?? "pickup",
     },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pre-made bowls: each bowl is exactly one base + one protein
+// ---------------------------------------------------------------------------
+
+export interface BowlSelection {
+  base: string;
+  protein: string;
+  quantity: number;
+}
+
+/** "Rice + Lemongrass Chicken x12, Salad + Grilled Shrimp x8" */
+export function summarizeBowls(bowls?: BowlSelection[] | null): string {
+  return (bowls ?? [])
+    .filter((b) => b.quantity > 0)
+    .map((b) => `${b.base} + ${b.protein} x${b.quantity}`)
+    .join(", ");
+}
+
+/** Protein and base totals implied by the bowl selections. */
+export function deriveFromBowls(bowls: BowlSelection[]): {
+  proteins: { name: string; quantity: number }[];
+  bases: { name: string; quantity: number }[];
+} {
+  const proteins = new Map<string, number>();
+  const bases = new Map<string, number>();
+  for (const b of bowls) {
+    if (b.quantity <= 0) continue;
+    proteins.set(b.protein, (proteins.get(b.protein) ?? 0) + b.quantity);
+    bases.set(b.base, (bases.get(b.base) ?? 0) + b.quantity);
+  }
+  const toList = (m: Map<string, number>) =>
+    Array.from(m.entries()).map(([name, quantity]) => ({ name, quantity }));
+  return { proteins: toList(proteins), bases: toList(bases) };
+}
+
+/** Customer-facing error for invalid bowl selections, or null when they are valid. */
+export function validateBowls(bowls: unknown, guestCount: number): string | null {
+  if (!Array.isArray(bowls) || bowls.length === 0) {
+    return "Please choose how many of each bowl you would like.";
+  }
+  const baseNames: string[] = BASES.map((b) => b.name);
+  const proteinNames: string[] = PROTEINS.map((p) => p.name);
+  let total = 0;
+  const usedBases = new Set<string>();
+  for (const raw of bowls as Partial<BowlSelection>[]) {
+    if (!raw || typeof raw.base !== "string" || typeof raw.protein !== "string") {
+      return "Invalid bowl selection.";
+    }
+    if (!baseNames.includes(raw.base) || !proteinNames.includes(raw.protein)) {
+      return "Invalid bowl selection.";
+    }
+    const qty = raw.quantity;
+    if (typeof qty !== "number" || !Number.isInteger(qty) || qty < 0) return "Invalid bowl quantity.";
+    if (qty === 0) continue;
+    total += qty;
+    usedBases.add(raw.base);
+  }
+  if (total !== guestCount) {
+    return `Bowls (${total}) must equal the guest count (${guestCount}).`;
+  }
+  const maxBases = getMaxBaseTypes(guestCount);
+  if (usedBases.size > maxBases) {
+    return `Choose at most ${maxBases} base type${maxBases > 1 ? "s" : ""} for ${guestCount} guests.`;
+  }
+  return null;
 }

@@ -22,11 +22,18 @@ interface BaseSelection {
   quantity: number;
 }
 
+interface BowlSelection {
+  base: string;
+  protein: string;
+  quantity: number;
+}
+
 interface CustomizeStepProps {
   guestCount: number;
   packageType: "buffet" | "premade";
   proteins: ProteinSelection[];
   bases: BaseSelection[];
+  bowls: BowlSelection[];
   sides: SideSelection[];
   bigUpActive: boolean;
   noPeanuts: boolean;
@@ -37,6 +44,7 @@ interface CustomizeStepProps {
   onAdjustProtein: (name: string, delta: number) => void;
   onToggleBigUp: () => void;
   onUpdateBase: (name: string, quantity: number) => void;
+  onUpdateBowl: (base: string, protein: string, quantity: number) => void;
   onUpdateSideQuantity: (name: string, quantity: number) => void;
   onUpdateNoPeanuts: (value: boolean) => void;
   onUpdateEggRollCut: (value: "1/2" | "1/4" | "Uncut") => void;
@@ -72,6 +80,7 @@ export function CustomizeStep({
   packageType,
   proteins,
   bases,
+  bowls,
   sides,
   bigUpActive,
   noPeanuts,
@@ -82,6 +91,7 @@ export function CustomizeStep({
   onAdjustProtein,
   onToggleBigUp,
   onUpdateBase,
+  onUpdateBowl,
   onUpdateSideQuantity,
   onUpdateNoPeanuts,
   onUpdateEggRollCut,
@@ -231,8 +241,8 @@ export function CustomizeStep({
                   </div>
                 </div>
 
-                {/* Fine-tune controls */}
-                {isSelected && (
+                {/* Fine-tune controls (buffet; pre-made quantities come from the bowl grid) */}
+                {isSelected && isBuffet && (
                   <div
                     className="flex items-center justify-end gap-2 px-4 pb-3"
                     onClick={(e) => e.stopPropagation()}
@@ -313,7 +323,8 @@ export function CustomizeStep({
         </Card>
       )}
 
-      {/* Base Selection */}
+      {/* Base Selection (buffet) */}
+      {isBuffet && (
       <div>
         <Label className="text-base font-semibold">Base Selection</Label>
         <p className="text-xs text-gray-500 mb-3">
@@ -380,6 +391,95 @@ export function CustomizeStep({
           </p>
         )}
       </div>
+      )}
+
+      {/* Bowl builder (pre-made): how many of each base + protein */}
+      {!isBuffet && (
+        <div>
+          <Label className="text-base font-semibold">Build Your Bowls</Label>
+          <p className="text-xs text-gray-500 mb-3">
+            Choose how many of each bowl. Total should equal {guestCount}.
+            {maxBaseTypes < BASES.length && (
+              <span>
+                {" "}
+                (max {maxBaseTypes} base type
+                {maxBaseTypes > 1 ? "s" : ""} for your party size)
+              </span>
+            )}
+          </p>
+
+          {selectedProteins.length === 0 ? (
+            <p className="text-sm text-gray-400">
+              Select a protein above to start building bowls.
+            </p>
+          ) : (
+            <div className="overflow-x-auto bg-surface-alt rounded-lg px-3 py-2">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-gray-500">
+                    <th className="text-left font-medium py-2">Protein</th>
+                    {BASES.map((base) => (
+                      <th key={base.name} className="text-center font-medium py-2 px-1">
+                        {base.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedProteins.map((p) => (
+                    <tr key={p.name} className="border-t border-gray-800">
+                      <td className="py-2 pr-2 text-white font-medium">{p.name}</td>
+                      {BASES.map((base) => {
+                        const qty =
+                          bowls.find((b) => b.base === base.name && b.protein === p.name)?.quantity ?? 0;
+                        const baseActive =
+                          (bases.find((b) => b.name === base.name)?.quantity ?? 0) > 0;
+                        const lockedBase =
+                          qty === 0 && !baseActive && activeBaseTypeCount >= maxBaseTypes;
+                        return (
+                          <td key={base.name} className="py-2 px-1">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                type="button"
+                                aria-label={`Fewer ${base.name} + ${p.name} bowls`}
+                                className="h-7 w-7 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => onUpdateBowl(base.name, p.name, qty - 1)}
+                                disabled={qty <= 0}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-8 text-center text-white font-semibold">{qty}</span>
+                              <button
+                                type="button"
+                                aria-label={`More ${base.name} + ${p.name} bowls`}
+                                className="h-7 w-7 rounded-full bg-gray-700 text-white hover:bg-gray-600 flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed"
+                                onClick={() => onUpdateBowl(base.name, p.name, qty + 1)}
+                                disabled={lockedBase || totalBaseServings >= guestCount}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {totalBaseServings > 0 && (
+            <p
+              className={`text-sm mt-2 ${
+                totalBaseServings === guestCount ? "text-green-400" : "text-amber-400"
+              }`}
+            >
+              {totalBaseServings} / {guestCount} bowls
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Sides — Buffet: quantity controls, Premade: info card */}
       {isBuffet ? (

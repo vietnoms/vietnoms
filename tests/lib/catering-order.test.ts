@@ -6,6 +6,9 @@ import {
   buildCateringOrder,
   parseFormattedAddress,
   computeSauces,
+  summarizeBowls,
+  deriveFromBowls,
+  validateBowls,
   CATERING_CATALOG,
   CATERING_SALES_TAX_ID,
   DELIVERY_LINE_UID,
@@ -271,5 +274,67 @@ describe("buildCateringOrder", () => {
       source: "catering_checkout",
     });
     expect(order.ticketName!.length).toBeLessThanOrEqual(30);
+  });
+});
+
+describe("pre-made bowls", () => {
+  const bowls = [
+    { base: "Rice", protein: "Lemongrass Chicken", quantity: 8 },
+    { base: "Rice", protein: "Grilled Shrimp", quantity: 4 },
+    { base: "Salad", protein: "Grilled Shrimp", quantity: 0 },
+  ];
+
+  it("summarizes bowls for tickets and emails", () => {
+    expect(summarizeBowls(bowls)).toBe("Rice + Lemongrass Chicken x8, Rice + Grilled Shrimp x4");
+    expect(summarizeBowls(undefined)).toBe("");
+  });
+
+  it("derives protein and base totals", () => {
+    expect(deriveFromBowls(bowls)).toEqual({
+      proteins: [
+        { name: "Lemongrass Chicken", quantity: 8 },
+        { name: "Grilled Shrimp", quantity: 4 },
+      ],
+      bases: [{ name: "Rice", quantity: 12 }],
+    });
+  });
+
+  it("accepts a valid selection", () => {
+    expect(validateBowls(bowls, 12)).toBeNull();
+  });
+
+  it("rejects missing, mismatched, unknown, and over-limit selections", () => {
+    expect(validateBowls(undefined, 12)).toMatch(/choose how many/i);
+    expect(validateBowls([], 12)).toMatch(/choose how many/i);
+    expect(validateBowls(bowls, 20)).toMatch(/Bowls \(12\) must equal the guest count \(20\)/);
+    expect(validateBowls([{ base: "Quinoa", protein: "Lemongrass Chicken", quantity: 12 }], 12)).toMatch(/Invalid bowl/);
+    expect(validateBowls([{ base: "Rice", protein: "Lemongrass Chicken", quantity: 1.5 }], 12)).toMatch(/Invalid bowl quantity/);
+    // 12 guests allow only one base type
+    expect(
+      validateBowls(
+        [
+          { base: "Rice", protein: "Lemongrass Chicken", quantity: 6 },
+          { base: "Salad", protein: "Lemongrass Chicken", quantity: 6 },
+        ],
+        12
+      )
+    ).toMatch(/at most 1 base type/);
+  });
+
+  it("prints the bowl breakdown on the per-person line and the ticket note", () => {
+    const data = {
+      ...premadePickup,
+      items: [
+        { itemName: "Lemongrass Chicken", quantity: 8 },
+        { itemName: "Grilled Shrimp", quantity: 4 },
+      ],
+      customizations: { ...premadePickup.customizations, bases: [{ name: "Rice", quantity: 12 }], bowls },
+    };
+    const { lineItems } = buildCateringLineItems(data);
+    expect(line(lineItems, CATERING_CATALOG.cateringPerPerson)?.note).toBe(
+      "Bowls: Rice + Lemongrass Chicken x8, Rice + Grilled Shrimp x4"
+    );
+    expect(buildTicketNote(data)).toContain("Bowls: Rice + Lemongrass Chicken x8, Rice + Grilled Shrimp x4");
+    expect(buildTicketNote(data)).toContain("Sauces: House Sauce x12");
   });
 });

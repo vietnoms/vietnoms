@@ -14,6 +14,8 @@ import { sendCateringOrderEmails } from "@/lib/email";
 import { findOrCreateCustomerByEmail } from "@/lib/square-customers";
 import {
   buildCateringOrder,
+  deriveFromBowls,
+  validateBowls,
   type CateringCustomizations,
   type CateringOrderData,
 } from "@/lib/catering-order";
@@ -25,6 +27,8 @@ import {
 } from "@/lib/restaurant-hours";
 import {
   calculateEstimate,
+  BASE_PRICE_PER_PERSON,
+  PROTEINS,
   MAX_DELIVERY_MILES,
   MIN_GUESTS,
   MAX_ONLINE_PAY_GUESTS,
@@ -112,6 +116,22 @@ export async function POST(request: Request) {
     const customizations: CateringCustomizations = body.customizations ?? {};
     const proteins = Array.isArray(customizations.proteins) ? customizations.proteins : [];
     const sides: SideSelection[] = Array.isArray(customizations.sides) ? customizations.sides : [];
+    if (packageType === "premade") {
+      // Pre-made bowls: every bowl is one base + one protein, and protein totals must match
+      const bowlError = validateBowls(customizations.bowls, guestCount);
+      if (bowlError) return bad(bowlError);
+      const derived = deriveFromBowls(customizations.bowls ?? []);
+      const proteinsMatch =
+        derived.proteins.every(
+          (d) => (proteins.find((p) => p.name === d.name)?.quantity ?? 0) === d.quantity
+        ) &&
+        proteins.reduce((s, p) => s + p.quantity, 0) ===
+          derived.proteins.reduce((s, p) => s + p.quantity, 0);
+      if (!proteinsMatch) {
+        return bad("Bowl selections do not match the proteins. Please refresh and try again.");
+      }
+      customizations.bases = derived.bases;
+    }
     const serverEstimate = calculateEstimate(
       guestCount,
       proteins,
@@ -132,9 +152,14 @@ export async function POST(request: Request) {
       eventTime: body.eventTime,
       guestCount,
       packageType,
-      items: (body.items ?? [])
-        .filter((i) => i.quantity > 0)
-        .map((i) => ({ itemName: i.itemName, quantity: i.quantity, unitPrice: i.unitPrice })),
+      // Line items come from the verified protein selections, not the client's item list
+      items: proteins
+        .filter((p) => p.quantity > 0)
+        .map((p) => ({
+          itemName: p.name,
+          quantity: p.quantity,
+          unitPrice: BASE_PRICE_PER_PERSON + (PROTEINS.find((pr) => pr.name === p.name)?.upcharge ?? 0),
+        })),
       deliveryType: isDelivery ? "delivery" : "pickup",
       deliveryAddress: isDelivery ? body.deliveryAddress : undefined,
       deliveryDistance: isDelivery ? body.deliveryDistance : undefined,

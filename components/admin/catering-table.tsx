@@ -11,6 +11,12 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { formatTime12 } from "@/lib/restaurant-hours";
+import {
+  computeSauces,
+  summarizeBowls,
+  summarizeQuantities,
+  type CateringCustomizations,
+} from "@/lib/catering-order";
 
 interface CateringRequest {
   id: number;
@@ -63,6 +69,54 @@ const STATUS_COLORS: Record<string, string> = {
 
 function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
+}
+
+/** Everything the customer chose in the wizard (bowls/bases, sides, sauces, options). */
+function CustomizationDetails({ raw, packageType }: { raw: string | null; packageType: string }) {
+  let c: CateringCustomizations | null = null;
+  try {
+    c = raw ? (JSON.parse(raw) as CateringCustomizations) : null;
+  } catch {
+    c = null;
+  }
+  if (!c) return null;
+
+  const rows: { label: string; value: string }[] = [];
+  if (c.eventType) rows.push({ label: "Event", value: c.eventType });
+  const bowls = packageType === "premade" ? summarizeBowls(c.bowls) : "";
+  if (bowls) rows.push({ label: "Bowls", value: bowls });
+  else if (c.bases?.length) {
+    rows.push({ label: packageType === "premade" ? "Bowls" : "Bases", value: summarizeQuantities(c.bases) });
+  }
+  const sides = summarizeQuantities(c.sides);
+  if (sides) rows.push({ label: "Sides", value: sides });
+  const sauces = summarizeQuantities(computeSauces(c.bases));
+  if (sauces) rows.push({ label: "Sauces", value: sauces });
+  const options: string[] = [];
+  if (c.bigUpActive) options.push("Big Up (+50% protein)");
+  if (c.noPeanuts) options.push("No peanuts");
+  if (c.eggRollCut && c.eggRollCut !== "Uncut") options.push(`Egg rolls cut ${c.eggRollCut}`);
+  if (options.length) rows.push({ label: "Options", value: options.join(", ") });
+  if (c.utensils) {
+    const selected = Object.entries(c.utensils)
+      .filter(([, v]) => v)
+      .map(([k]) => k.charAt(0).toUpperCase() + k.slice(1));
+    if (selected.length) rows.push({ label: "Utensils", value: selected.join(", ") });
+  }
+  if (rows.length === 0) return null;
+
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-white mb-1">Order Details</h4>
+      <div className="space-y-1 text-sm">
+        {rows.map((r) => (
+          <p key={r.label} className="text-gray-400">
+            <strong className="text-white">{r.label}:</strong> {r.value}
+          </p>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function CateringTable() {
@@ -333,6 +387,8 @@ export function CateringTable() {
                         )}
                       </div>
                     </div>
+
+                    <CustomizationDetails raw={req.customizations} packageType={req.packageType} />
 
                     {/* Line items */}
                     {expandedItems.length > 0 && (
