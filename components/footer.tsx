@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
-import { RESTAURANT } from "@/lib/constants";
+import { RESTAURANT, THIRD_PARTY_DELIVERY } from "@/lib/constants";
 import { formatPhoneForTel } from "@/lib/utils";
 import { EmailSignupForm } from "@/components/marketing/email-signup-form";
 import { MapPin, Phone, Mail, ArrowUpRight } from "lucide-react";
@@ -12,10 +12,20 @@ export function Footer() {
   const footerRef = useRef<HTMLElement>(null);
   const isInView = useInView(footerRef, { once: true, margin: "-50px" });
 
-  const quickLinks: { href: string; label: string; external?: boolean }[] = [
+  const quickLinks: {
+    href: string;
+    label: string;
+    external?: boolean;
+    ariaLabel?: string;
+  }[] = [
     { href: "/menu", label: "Menu" },
     { href: "/order", label: "Order Online" },
-    { href: RESTAURANT.orderDeliveryUrl, label: "Order Delivery", external: true },
+    {
+      href: RESTAURANT.orderDeliveryUrl,
+      label: "Order Delivery",
+      external: true,
+      ariaLabel: RESTAURANT.orderDeliveryLabel,
+    },
     { href: "/specials", label: "Specials" },
     { href: "/rewards", label: "Rewards" },
     { href: "/catering", label: "Catering" },
@@ -87,6 +97,7 @@ export function Footer() {
                       href={link.href}
                       target="_blank"
                       rel="noopener noreferrer"
+                      aria-label={link.ariaLabel}
                       className="group inline-flex items-center gap-1 text-gray-400 hover:text-white text-sm transition-colors"
                     >
                       {link.label}
@@ -161,6 +172,31 @@ export function Footer() {
                 <span>{RESTAURANT.email}</span>
               </a>
             </address>
+
+            {/* Third-party delivery apps — deliberately muted; our own pickup and
+                Cash App delivery links above carry better prices. */}
+            <div className="mt-8">
+              <h5 className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                Also on delivery apps
+              </h5>
+              <p className="mt-2 text-xs text-gray-500 leading-relaxed">
+                DoorDash, Uber Eats &amp; Grubhub — menu prices on those apps may be
+                higher.
+              </p>
+              <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                {THIRD_PARTY_DELIVERY.map((app) => (
+                  <a
+                    key={app.name}
+                    href={app.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline underline-offset-2 hover:text-gray-300 transition-colors"
+                  >
+                    {app.name}
+                  </a>
+                ))}
+              </p>
+            </div>
           </motion.div>
         </div>
 

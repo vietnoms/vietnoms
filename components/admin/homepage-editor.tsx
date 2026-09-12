@@ -33,9 +33,9 @@ const FIELDS: Record<string, { label: string; type: "text" | "textarea" | "image
   about_image: { label: "Photo", type: "image", default: "", section: "About Section" },
 
   // Ordering Callout
-  ordering_heading: { label: "Heading", type: "text", default: "Order Online for Pickup", section: "Order Callout" },
-  ordering_text: { label: "Description", type: "textarea", default: "Skip the wait. Order your favorite Vietnamese dishes online and pick them up fresh and ready.", section: "Order Callout" },
-  ordering_button: { label: "Button Text", type: "text", default: "Start Your Order", section: "Order Callout" },
+  ordering_heading: { label: "Heading", type: "text", default: "Order Online — Pickup or Delivery", section: "Order Callout" },
+  ordering_text: { label: "Description", type: "textarea", default: "Pickup is priced on our site. Delivery opens in Cash App (Square).", section: "Order Callout" },
+  ordering_button: { label: "Pickup Button Text", type: "text", default: "Order for Pickup", section: "Order Callout" },
 
   // Catering Banner
   catering_heading: { label: "Heading", type: "text", default: "Catering for Your Next Event", section: "Catering Banner" },

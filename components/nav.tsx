@@ -9,10 +9,20 @@ import { LoginDialog } from "@/components/auth/login-dialog";
 import { LoyaltyBadge } from "@/components/loyalty/loyalty-badge";
 import { RESTAURANT } from "@/lib/constants";
 
-const NAV_LINKS: { href: string; label: string; external?: boolean }[] = [
+const NAV_LINKS: {
+  href: string;
+  label: string;
+  external?: boolean;
+  ariaLabel?: string;
+}[] = [
   { href: "/menu", label: "Menu" },
   { href: "/order", label: "Order Online" },
-  { href: RESTAURANT.orderDeliveryUrl, label: "Delivery", external: true },
+  {
+    href: RESTAURANT.orderDeliveryUrl,
+    label: "Delivery",
+    external: true,
+    ariaLabel: RESTAURANT.orderDeliveryLabel,
+  },
   { href: "/specials", label: "Specials" },
   { href: "/catering", label: "Catering" },
   { href: "/rewards", label: "Rewards" },
@@ -69,6 +79,7 @@ export function Nav() {
                     href={link.href}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label={link.ariaLabel}
                     className="relative px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors group"
                   >
                     {link.label}
@@ -166,6 +177,7 @@ export function Nav() {
                           href={link.href}
                           target="_blank"
                           rel="noopener noreferrer"
+                          aria-label={link.ariaLabel}
                           className="block text-lg font-medium text-gray-300 hover:text-brand-yellow transition-colors py-3 border-b border-gray-800/50"
                           onClick={() => setMobileOpen(false)}
                         >

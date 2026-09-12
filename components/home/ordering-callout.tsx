@@ -105,7 +105,7 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
             className="mt-8 text-xl text-white/90 max-w-xl mx-auto leading-relaxed"
           >
             {text ||
-              "Skip the wait. Order your favorite Vietnamese dishes online and pick them up fresh and ready."}
+              "Pickup is priced on our site. Delivery opens in Cash App (Square)."}
           </motion.p>
 
           {/* CTA Button */}
@@ -128,7 +128,12 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
               variant="outline"
               className="border-2 border-white bg-transparent text-white hover:bg-white hover:text-brand-red font-bold text-lg px-10 transition-all duration-300"
             >
-              <a href={RESTAURANT.orderDeliveryUrl} target="_blank" rel="noopener noreferrer">
+              <a
+                href={RESTAURANT.orderDeliveryUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={RESTAURANT.orderDeliveryLabel}
+              >
                 Order Delivery
               </a>
             </Button>
@@ -141,7 +146,7 @@ export function OrderingCallout({ heading, text, buttonText }: OrderingCalloutPr
             transition={{ duration: 0.6, delay: 0.8 }}
             className="mt-8 text-white/60 text-sm"
           >
-            No account required
+            Pickup: no account required. Delivery: finish in Cash App.
           </motion.p>
         </div>
       </div>
