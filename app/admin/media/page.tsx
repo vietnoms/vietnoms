@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { MediaManager } from "@/components/admin/media-manager";
 import { EmbeddedPhotosManager } from "@/components/admin/embedded-photos-manager";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Media Library | Vietnoms Admin",
@@ -24,6 +25,7 @@ export default async function AdminMediaPage() {
           Upload and manage images for the gallery, marketing, and AI-generated
           assets.
         </p>
+        <SectionExplainer id="media" className="mt-4" />
         <div className="mt-8">
           <EmbeddedPhotosManager />
         </div>

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
-import { Star, Loader2, ArrowRight } from "lucide-react";
+import { Star, Loader2, ArrowRight, HelpCircle, ChevronDown } from "lucide-react";
 
 interface RewardTier {
   id: string;
@@ -133,6 +133,35 @@ export function RewardsPanel() {
           : "Earn points — order now"}{" "}
         <ArrowRight className="h-4 w-4" />
       </Link>
+
+      <details className="group mt-6 border-t border-white/10 pt-4 text-sm">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-gray-400 hover:text-white transition-colors [&::-webkit-details-marker]:hidden">
+          <HelpCircle className="h-4 w-4 text-brand-yellow" />
+          How your {unit} work
+          <ChevronDown className="ml-auto h-4 w-4 transition-transform group-open:rotate-180" />
+        </summary>
+        <ul className="mt-3 list-disc space-y-1.5 pl-5 text-gray-400">
+          <li>
+            <strong className="text-gray-300">Balance</strong> is what you can
+            spend right now. <strong className="text-gray-300">Lifetime</strong>{" "}
+            is everything you&apos;ve ever earned. It never goes down when you
+            redeem.
+          </li>
+          <li>
+            You earn {unit} on every online order placed while signed in, and
+            on in-store purchases when you give the cashier this phone number.
+            New {unit} can take a few minutes to show up.
+          </li>
+          <li>
+            The progress bar tracks your next reward. Once you have enough,
+            pick the reward at checkout and those {unit} come off your balance.
+          </li>
+          <li>
+            Everything runs on our Square loyalty program, so your online and
+            in-store {unit} share one balance, tied to your phone number.
+          </li>
+        </ul>
+      </details>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { CateringTable } from "@/components/admin/catering-table";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Catering Dashboard | Vietnoms Admin",
@@ -22,6 +23,7 @@ export default async function AdminCateringPage() {
         <p className="mt-2 text-gray-400">
           Manage catering requests, orders, and inquiries.
         </p>
+        <SectionExplainer id="catering" className="mt-4" />
         <div className="mt-8">
           <CateringTable />
         </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { ContentGenerator } from "@/components/admin/content-generator";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Content Generator | Vietnoms Admin",
@@ -23,6 +24,7 @@ export default async function AdminContentPage() {
           Generate SEO-optimized content for blog posts, GMB, meta tags, and
           more. Powered by Claude.
         </p>
+        <SectionExplainer id="content" className="mt-4" />
         <div className="mt-8">
           <ContentGenerator />
         </div>

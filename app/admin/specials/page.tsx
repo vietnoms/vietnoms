@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { SpecialsManager } from "@/components/admin/specials-manager";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Specials | Vietnoms Admin",
@@ -18,6 +19,7 @@ export default async function AdminSpecialsPage() {
       <h1 className="font-display text-2xl font-bold text-white mb-6">
         Specials &amp; Announcements
       </h1>
+      <SectionExplainer id="specials" className="mb-6" />
       <SpecialsManager />
     </div>
   );

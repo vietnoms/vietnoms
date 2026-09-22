@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { HeroManager } from "@/components/admin/hero-manager";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export default async function AdminHeroPage() {
           <p className="mt-2 text-gray-400">
             Manage the homepage hero videos and images. Drag to reorder.
           </p>
+          <SectionExplainer id="hero" className="mt-4" />
           <div className="mt-6">
             <HeroManager />
           </div>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { SeoChecklist } from "@/components/admin/seo-checklist";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "SEO Audit | Vietnoms Admin",
@@ -23,6 +24,7 @@ export default async function AdminSeoPage() {
           Track your SEO progress. Check off tasks as you complete them — state
           is saved to the database.
         </p>
+        <SectionExplainer id="seo" className="mt-4" />
         <div className="mt-8">
           <SeoChecklist />
         </div>

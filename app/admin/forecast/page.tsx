@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { ForecastDashboard } from "@/components/admin/forecast-dashboard";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Convention Forecast | Vietnoms Admin",
@@ -23,6 +24,7 @@ export default async function AdminForecastPage() {
           Track upcoming convention center events and forecast busy periods for
           staffing and inventory planning.
         </p>
+        <SectionExplainer id="forecast" className="mt-4" />
         <div className="mt-8">
           <ForecastDashboard />
         </div>

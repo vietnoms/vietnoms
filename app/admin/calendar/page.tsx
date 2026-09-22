@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/admin";
 import { getMenuItems } from "@/lib/menu-data";
 import { listMedia } from "@/lib/db/media";
 import { SocialCalendar } from "@/components/admin/social-calendar";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Content Calendar | Vietnoms Admin",
@@ -31,6 +32,7 @@ export default async function AdminCalendarPage() {
           Facebook/Instagram when the Meta API is configured; otherwise they
           queue up here for one-click copy &amp; paste.
         </p>
+        <SectionExplainer id="calendar" className="mt-4" />
         <div className="mt-8">
           <SocialCalendar
             menuItems={menuItems.map((item) => ({

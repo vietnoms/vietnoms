@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { SubscribersTable } from "@/components/admin/subscribers-table";
 import { PopupSettings } from "@/components/admin/popup-settings";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Subscribers | Vietnoms Admin",
@@ -25,6 +26,7 @@ export default async function SubscribersPage() {
           catering, or rewards page. Export as CSV for your email platform.
         </p>
       </div>
+      <SectionExplainer id="subscribers" />
       <PopupSettings />
       <SubscribersTable />
     </div>

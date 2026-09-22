@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { SchemaBuilder } from "@/components/admin/schema-builder";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Schema Builder | Vietnoms Admin",
@@ -22,6 +23,7 @@ export default async function AdminSchemaPage() {
         <p className="mt-2 text-gray-400">
           Generate JSON-LD structured data for SEO.
         </p>
+        <SectionExplainer id="schema" className="mt-4" />
         <div className="mt-8">
           <SchemaBuilder />
         </div>

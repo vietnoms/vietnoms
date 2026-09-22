@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { isAdmin } from "@/lib/admin";
 import { HomepageEditor } from "@/components/admin/homepage-editor";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,7 @@ export default async function AdminHomepagePage() {
         <p className="mt-2 text-gray-400">
           Edit text, images, and sections on the homepage.
         </p>
+        <SectionExplainer id="homepage" className="mt-4" />
         <div className="mt-6">
           <HomepageEditor />
         </div>

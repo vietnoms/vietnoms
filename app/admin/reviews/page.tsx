@@ -4,6 +4,7 @@ import { isAdmin } from "@/lib/admin";
 import { getGoogleReviewsUnfiltered } from "@/lib/google-reviews";
 import { getMenuItems } from "@/lib/menu-data";
 import { ReviewsDashboard } from "@/components/admin/reviews-dashboard";
+import { SectionExplainer } from "@/components/admin/section-explainer";
 
 export const metadata: Metadata = {
   title: "Reviews | Vietnoms Admin",
@@ -38,6 +39,7 @@ export default async function AdminReviewsPage() {
         Moderate dish reviews, monitor Google reviews, and manage automated
         post-order review requests.
       </p>
+      <SectionExplainer id="reviews" className="mb-6" />
       <ReviewsDashboard google={google} itemNames={itemNames} />
     </div>
   );
